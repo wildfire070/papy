@@ -9,6 +9,16 @@
 #include <builtinFonts/bookerly_bold_2b.h>
 #include <builtinFonts/bookerly_bold_italic_2b.h>
 #include <builtinFonts/bookerly_italic_2b.h>
+// Medium font (16pt) - generate with: python3 fontconvert.py bookerly_medium_2b 16 Bookerly*.ttf --2bit
+#include <builtinFonts/bookerly_medium_2b.h>
+#include <builtinFonts/bookerly_medium_bold_2b.h>
+#include <builtinFonts/bookerly_medium_bold_italic_2b.h>
+#include <builtinFonts/bookerly_medium_italic_2b.h>
+// Large font (18pt) - generate with: python3 fontconvert.py bookerly_large_2b 18 Bookerly*.ttf --2bit
+#include <builtinFonts/bookerly_large_2b.h>
+#include <builtinFonts/bookerly_large_bold_2b.h>
+#include <builtinFonts/bookerly_large_bold_italic_2b.h>
+#include <builtinFonts/bookerly_large_italic_2b.h>
 #include <builtinFonts/pixelarial14.h>
 #include <builtinFonts/ubuntu_10.h>
 #include <builtinFonts/ubuntu_bold_10.h>
@@ -44,12 +54,28 @@ InputManager inputManager;
 GfxRenderer renderer(einkDisplay);
 Activity* currentActivity;
 
-// Fonts
+// Fonts - Small (14pt, default)
 EpdFont bookerlyFont(&bookerly_2b);
 EpdFont bookerlyBoldFont(&bookerly_bold_2b);
 EpdFont bookerlyItalicFont(&bookerly_italic_2b);
 EpdFont bookerlyBoldItalicFont(&bookerly_bold_italic_2b);
 EpdFontFamily bookerlyFontFamily(&bookerlyFont, &bookerlyBoldFont, &bookerlyItalicFont, &bookerlyBoldItalicFont);
+
+// Fonts - Medium (16pt)
+EpdFont bookerlyMediumFont(&bookerly_medium_2b);
+EpdFont bookerlyMediumBoldFont(&bookerly_medium_bold_2b);
+EpdFont bookerlyMediumItalicFont(&bookerly_medium_italic_2b);
+EpdFont bookerlyMediumBoldItalicFont(&bookerly_medium_bold_italic_2b);
+EpdFontFamily bookerlyMediumFontFamily(&bookerlyMediumFont, &bookerlyMediumBoldFont, &bookerlyMediumItalicFont,
+                                       &bookerlyMediumBoldItalicFont);
+
+// Fonts - Large (18pt)
+EpdFont bookerlyLargeFont(&bookerly_large_2b);
+EpdFont bookerlyLargeBoldFont(&bookerly_large_bold_2b);
+EpdFont bookerlyLargeItalicFont(&bookerly_large_italic_2b);
+EpdFont bookerlyLargeBoldItalicFont(&bookerly_large_bold_italic_2b);
+EpdFontFamily bookerlyLargeFontFamily(&bookerlyLargeFont, &bookerlyLargeBoldFont, &bookerlyLargeItalicFont,
+                                      &bookerlyLargeBoldItalicFont);
 
 EpdFont smallFont(&pixelarial14);
 EpdFontFamily smallFontFamily(&smallFont);
@@ -164,6 +190,8 @@ void setupDisplayAndFonts() {
   einkDisplay.begin();
   Serial.printf("[%lu] [   ] Display initialized\n", millis());
   renderer.insertFont(READER_FONT_ID, bookerlyFontFamily);
+  renderer.insertFont(READER_FONT_ID_MEDIUM, bookerlyMediumFontFamily);
+  renderer.insertFont(READER_FONT_ID_LARGE, bookerlyLargeFontFamily);
   renderer.insertFont(UI_FONT_ID, ubuntuFontFamily);
   renderer.insertFont(SMALL_FONT_ID, smallFontFamily);
   Serial.printf("[%lu] [   ] Fonts setup\n", millis());

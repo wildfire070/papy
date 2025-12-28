@@ -2,6 +2,8 @@
 #include <cstdint>
 #include <iosfwd>
 
+#include "config.h"
+
 class CrossPointSettings {
  private:
   // Private constructor for singleton
@@ -28,6 +30,8 @@ class CrossPointSettings {
     LANDSCAPE_CCW = 3  // 800x480 logical coordinates, native panel orientation
   };
 
+  enum FONT_SIZE { FONT_SMALL = 0, FONT_MEDIUM = 1, FONT_LARGE = 2 };
+
   // Sleep screen settings
   uint8_t sleepScreen = DARK;
   // Status bar settings
@@ -39,6 +43,9 @@ class CrossPointSettings {
   // EPUB reading orientation settings
   // 0 = portrait (default), 1 = landscape clockwise, 2 = inverted, 3 = landscape counter-clockwise
   uint8_t orientation = PORTRAIT;
+  // Font size for reading
+  // 0 = small (14pt), 1 = medium (16pt), 2 = large (18pt)
+  uint8_t fontSize = FONT_SMALL;
 
   ~CrossPointSettings() = default;
 
@@ -46,6 +53,17 @@ class CrossPointSettings {
   static CrossPointSettings& getInstance() { return instance; }
 
   uint16_t getPowerButtonDuration() const { return shortPwrBtn ? 10 : 500; }
+
+  int getReaderFontId() const {
+    switch (fontSize) {
+      case FONT_MEDIUM:
+        return READER_FONT_ID_MEDIUM;
+      case FONT_LARGE:
+        return READER_FONT_ID_LARGE;
+      default:
+        return READER_FONT_ID;
+    }
+  }
 
   bool saveToFile() const;
   bool loadFromFile();
