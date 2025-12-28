@@ -36,11 +36,11 @@
 /**
  * Generated with:
  *  ruby -rdigest -e 'puts [
- *    "./lib/EpdFont/builtinFonts/ubuntu_10.h",
- *    "./lib/EpdFont/builtinFonts/ubuntu_bold_10.h",
+ *    "./lib/EpdFont/builtinFonts/ubuntu_12.h",
+ *    "./lib/EpdFont/builtinFonts/ubuntu_bold_12.h",
  *  ].map{|f| Digest::SHA256.hexdigest(File.read(f)).to_i(16) }.sum % (2 ** 32) - (2 ** 31)'
  */
-#define UI_FONT_ID (-1619831379)
+#define UI_FONT_ID (-731562571)
 
 /**
  * Generated with:

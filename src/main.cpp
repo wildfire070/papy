@@ -20,8 +20,8 @@
 #include <builtinFonts/bookerly_large_bold_italic_2b.h>
 #include <builtinFonts/bookerly_large_italic_2b.h>
 #include <builtinFonts/pixelarial14.h>
-#include <builtinFonts/ubuntu_10.h>
-#include <builtinFonts/ubuntu_bold_10.h>
+#include <builtinFonts/ubuntu_12.h>
+#include <builtinFonts/ubuntu_bold_12.h>
 
 #include "Battery.h"
 #include "CrossPointSettings.h"
@@ -80,9 +80,9 @@ EpdFontFamily bookerlyLargeFontFamily(&bookerlyLargeFont, &bookerlyLargeBoldFont
 EpdFont smallFont(&pixelarial14);
 EpdFontFamily smallFontFamily(&smallFont);
 
-EpdFont ubuntu10Font(&ubuntu_10);
-EpdFont ubuntuBold10Font(&ubuntu_bold_10);
-EpdFontFamily ubuntuFontFamily(&ubuntu10Font, &ubuntuBold10Font);
+EpdFont ubuntu12Font(&ubuntu_12);
+EpdFont ubuntuBold12Font(&ubuntu_bold_12);
+EpdFontFamily ubuntuFontFamily(&ubuntu12Font, &ubuntuBold12Font);
 
 // Auto-sleep timeout (10 minutes of inactivity)
 constexpr unsigned long AUTO_SLEEP_TIMEOUT_MS = 10 * 60 * 1000;
