@@ -1,4 +1,4 @@
-# Makefile for CrossPoint Reader firmware
+# Makefile for Papyrix Reader firmware
 # Wraps PlatformIO commands for convenience
 
 .PHONY: all build build-release upload upload-release flash flash-release \
@@ -8,54 +8,54 @@
 all: help
 
 # Build targets
-build:
+build: ## Build firmware (default environment)
 	pio run
 
-build-release:
+build-release: ## Build release firmware
 	pio run -e gh_release
 
 # Upload targets
-upload:
+upload: ## Build and flash to device
 	pio run --target upload
 
-upload-release:
+upload-release: ## Build and flash release firmware
 	pio run -e gh_release --target upload
 
 # Aliases
-flash: upload
+flash: upload ## Alias for upload
 
-flash-release: upload-release
+flash-release: upload-release ## Alias for upload-release
 
 # Clean
-clean:
+clean: ## Clean build artifacts
 	pio run --target clean
 
 # Code quality
-format:
+format: ## Format code with clang-format
 	./bin/clang-format-fix
 
-check:
+check: ## Run static analysis (cppcheck)
 	pio check
 
 # Device/debug
-monitor:
+monitor: ## Open serial monitor
 	pio device monitor
 
-size:
+size: ## Show firmware size
 	pio run --target size
 
-erase:
+erase: ## Erase device flash
 	pio run --target erase
 
 # Filesystem
-build-fs:
+build-fs: ## Build filesystem image
 	pio run --target buildfs
 
-upload-fs:
+upload-fs: ## Upload filesystem to device
 	pio run --target uploadfs
 
 # Image conversion
-sleep-screen:
+sleep-screen: ## Convert image to sleep screen BMP
 ifdef INPUT
 ifdef OUTPUT
 	python3 scripts/create_sleep_screen_image.py $(INPUT) $(OUTPUT) $(ARGS)
@@ -67,34 +67,17 @@ else
 	@echo "Example: make sleep-screen INPUT=photo.jpg OUTPUT=sleep.bmp"
 endif
 
-# Help
-help:
-	@echo "CrossPoint Reader Makefile"
+## Help:
+
+help: ## Show this help
+	@echo "Papyrix Reader - Build System"
 	@echo ""
-	@echo "Build:"
-	@echo "  make build          - Build dev firmware (default)"
-	@echo "  make build-release  - Build release firmware"
-	@echo "  make clean          - Clean build artifacts"
+	@echo "Usage: make [target]"
 	@echo ""
-	@echo "Flash:"
-	@echo "  make upload         - Build and flash dev firmware"
-	@echo "  make upload-release - Build and flash release firmware"
-	@echo "  make flash          - Alias for upload"
+	@awk 'BEGIN {FS = ":.*##"; section=""} \
+		/^##/ { section=substr($$0, 4); next } \
+		/^[a-zA-Z_-]+:.*##/ { \
+			if (section != "") { printf "\n\033[1m%s\033[0m\n", section; section="" } \
+			printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 \
+		}' $(MAKEFILE_LIST)
 	@echo ""
-	@echo "Code quality:"
-	@echo "  make format         - Format code with clang-format"
-	@echo "  make check          - Run cppcheck static analysis"
-	@echo ""
-	@echo "Device:"
-	@echo "  make monitor        - Open serial monitor"
-	@echo "  make size           - Show firmware size"
-	@echo "  make erase          - Erase device flash"
-	@echo ""
-	@echo "Filesystem:"
-	@echo "  make build-fs       - Build SPIFFS filesystem"
-	@echo "  make upload-fs      - Upload SPIFFS to device"
-	@echo ""
-	@echo "Image conversion:"
-	@echo "  make sleep-screen INPUT=<image> OUTPUT=<bmp> [ARGS='...']"
-	@echo "                      - Convert image to sleep screen format"
-	@echo "  Options: --orientation portrait|landscape, --bits 2|4|8, --dither, --fit contain|cover|stretch"

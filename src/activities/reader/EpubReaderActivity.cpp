@@ -1,5 +1,6 @@
 #include "EpubReaderActivity.h"
 
+#include <Bitmap.h>
 #include <Epub/Page.h>
 #include <FsHelpers.h>
 #include <GfxRenderer.h>
@@ -320,6 +321,14 @@ void EpubReaderActivity::renderScreen() {
 
   if (section->pageCount == 0) {
     Serial.printf("[%lu] [ERS] No pages to render\n", millis());
+
+    // Render cover image if this is spine[0] and cover exists
+    if (currentSpineIndex == 0 && epub->generateCoverBmp()) {
+      Serial.printf("[%lu] [ERS] Rendering cover page from BMP\n", millis());
+      renderCoverPage(orientedMarginTop, orientedMarginRight, orientedMarginBottom, orientedMarginLeft);
+      return;
+    }
+
     renderer.drawCenteredText(SETTINGS.getReaderFontId(), 300, "Empty chapter", true, BOLD);
     renderStatusBar(orientedMarginRight, orientedMarginBottom, orientedMarginLeft);
     renderer.displayBuffer();
@@ -342,9 +351,17 @@ void EpubReaderActivity::renderScreen() {
       section.reset();
       return renderScreen();
     }
-    const auto start = millis();
-    renderContents(std::move(p), orientedMarginTop, orientedMarginRight, orientedMarginBottom, orientedMarginLeft);
-    Serial.printf("[%lu] [ERS] Rendered page in %dms\n", millis(), millis() - start);
+
+    // Check if this is an empty cover page (spine[0], page 0, no elements) and setting is enabled
+    if (SETTINGS.showBookCover && currentSpineIndex == 0 && section->currentPage == 0 && p->elements.empty() &&
+        epub->generateCoverBmp()) {
+      Serial.printf("[%lu] [ERS] Empty cover page detected, rendering cover BMP\n", millis());
+      renderCoverPage(orientedMarginTop, orientedMarginRight, orientedMarginBottom, orientedMarginLeft);
+    } else {
+      const auto start = millis();
+      renderContents(std::move(p), orientedMarginTop, orientedMarginRight, orientedMarginBottom, orientedMarginLeft);
+      Serial.printf("[%lu] [ERS] Rendered page in %dms\n", millis(), millis() - start);
+    }
   }
 
   File f;
@@ -397,6 +414,83 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
 
   // restore the bw data
   renderer.restoreBwBuffer();
+}
+
+void EpubReaderActivity::renderCoverPage(const int orientedMarginTop, const int orientedMarginRight,
+                                         const int orientedMarginBottom, const int orientedMarginLeft) {
+  File coverFile;
+  if (!FsHelpers::openFileForRead("ERS", epub->getCoverBmpPath(), coverFile)) {
+    Serial.printf("[%lu] [ERS] Failed to open cover BMP\n", millis());
+    renderer.drawCenteredText(SETTINGS.getReaderFontId(), 300, "Cover unavailable", true, BOLD);
+    renderStatusBar(orientedMarginRight, orientedMarginBottom, orientedMarginLeft);
+    renderer.displayBuffer();
+    return;
+  }
+
+  Bitmap bitmap(coverFile);
+  if (bitmap.parseHeaders() != BmpReaderError::Ok) {
+    coverFile.close();
+    renderer.drawCenteredText(SETTINGS.getReaderFontId(), 300, "Cover unavailable", true, BOLD);
+    renderStatusBar(orientedMarginRight, orientedMarginBottom, orientedMarginLeft);
+    renderer.displayBuffer();
+    return;
+  }
+
+  // Calculate viewport (accounting for margins)
+  const int viewportWidth = renderer.getScreenWidth() - orientedMarginLeft - orientedMarginRight;
+  const int viewportHeight = renderer.getScreenHeight() - orientedMarginTop - orientedMarginBottom;
+
+  // Center image in viewport (scaling logic from SleepActivity)
+  int x, y;
+  if (bitmap.getWidth() > viewportWidth || bitmap.getHeight() > viewportHeight) {
+    const float ratio = static_cast<float>(bitmap.getWidth()) / static_cast<float>(bitmap.getHeight());
+    const float viewportRatio = static_cast<float>(viewportWidth) / static_cast<float>(viewportHeight);
+    if (ratio > viewportRatio) {
+      x = orientedMarginLeft;
+      y = orientedMarginTop + (viewportHeight - viewportWidth / ratio) / 2;
+    } else {
+      x = orientedMarginLeft + (viewportWidth - viewportHeight * ratio) / 2;
+      y = orientedMarginTop;
+    }
+  } else {
+    x = orientedMarginLeft + (viewportWidth - bitmap.getWidth()) / 2;
+    y = orientedMarginTop + (viewportHeight - bitmap.getHeight()) / 2;
+  }
+
+  renderer.drawBitmap(bitmap, x, y, viewportWidth, viewportHeight);
+  renderStatusBar(orientedMarginRight, orientedMarginBottom, orientedMarginLeft);
+
+  // Display with refresh logic
+  if (pagesUntilFullRefresh <= 1) {
+    renderer.displayBuffer(EInkDisplay::HALF_REFRESH);
+    pagesUntilFullRefresh = pagesPerRefresh;
+  } else {
+    renderer.displayBuffer();
+    pagesUntilFullRefresh--;
+  }
+
+  // Grayscale rendering (if bitmap supports it)
+  if (bitmap.hasGreyscale()) {
+    renderer.storeBwBuffer();
+
+    bitmap.rewindToData();
+    renderer.clearScreen(0x00);
+    renderer.setRenderMode(GfxRenderer::GRAYSCALE_LSB);
+    renderer.drawBitmap(bitmap, x, y, viewportWidth, viewportHeight);
+    renderer.copyGrayscaleLsbBuffers();
+
+    bitmap.rewindToData();
+    renderer.clearScreen(0x00);
+    renderer.setRenderMode(GfxRenderer::GRAYSCALE_MSB);
+    renderer.drawBitmap(bitmap, x, y, viewportWidth, viewportHeight);
+    renderer.copyGrayscaleMsbBuffers();
+
+    renderer.displayGrayBuffer();
+    renderer.setRenderMode(GfxRenderer::BW);
+    renderer.restoreBwBuffer();
+  }
+
+  coverFile.close();
 }
 
 void EpubReaderActivity::renderStatusBar(const int orientedMarginRight, const int orientedMarginBottom,

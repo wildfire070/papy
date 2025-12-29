@@ -60,6 +60,8 @@ class CrossPointSettings {
   uint8_t frontButtonLayout = BACK_CONFIRM_LEFT_RIGHT;
   // Side button layout
   uint8_t sideButtonLayout = PREV_NEXT;
+  // Show book cover as first page when reading
+  uint8_t showBookCover = 1;
 
   ~CrossPointSettings() = default;
 

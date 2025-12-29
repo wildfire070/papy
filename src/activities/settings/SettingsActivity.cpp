@@ -9,7 +9,7 @@
 
 // Define the static settings list
 namespace {
-constexpr int settingsCount = 8;
+constexpr int settingsCount = 9;
 const SettingInfo settingsList[settingsCount] = {
     // Should match with SLEEP_SCREEN_MODE
     {"Sleep Screen", SettingType::ENUM, &CrossPointSettings::sleepScreen, {"Dark", "Light", "Custom", "Cover"}},
@@ -17,6 +17,7 @@ const SettingInfo settingsList[settingsCount] = {
     {"Extra Paragraph Spacing", SettingType::TOGGLE, &CrossPointSettings::extraParagraphSpacing, {}},
     // Should match with FONT_SIZE
     {"Font Size", SettingType::ENUM, &CrossPointSettings::fontSize, {"Small", "Normal", "Large"}},
+    {"Show Book Cover", SettingType::TOGGLE, &CrossPointSettings::showBookCover, {}},
     {"Short Power Button Click", SettingType::TOGGLE, &CrossPointSettings::shortPwrBtn, {}},
     {"Reading Orientation",
      SettingType::ENUM,
