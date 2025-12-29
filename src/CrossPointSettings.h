@@ -42,6 +42,9 @@ class CrossPointSettings {
   // Swapped: Next, Previous
   enum SIDE_BUTTON_LAYOUT { PREV_NEXT = 0, NEXT_PREV = 1 };
 
+  // Sleep timeout options (in minutes)
+  enum SLEEP_TIMEOUT { SLEEP_5_MIN = 0, SLEEP_10_MIN = 1, SLEEP_15_MIN = 2, SLEEP_30_MIN = 3 };
+
   // Sleep screen settings
   uint8_t sleepScreen = DARK;
   // Status bar settings
@@ -62,6 +65,8 @@ class CrossPointSettings {
   uint8_t sideButtonLayout = PREV_NEXT;
   // Show book cover as first page when reading
   uint8_t showBookCover = 1;
+  // Auto-sleep timeout setting
+  uint8_t sleepTimeout = SLEEP_10_MIN;
 
   ~CrossPointSettings() = default;
 
@@ -69,6 +74,19 @@ class CrossPointSettings {
   static CrossPointSettings& getInstance() { return instance; }
 
   uint16_t getPowerButtonDuration() const { return shortPwrBtn ? 10 : 500; }
+
+  uint32_t getSleepTimeoutMs() const {
+    switch (sleepTimeout) {
+      case SLEEP_5_MIN:
+        return 5 * 60 * 1000;
+      case SLEEP_15_MIN:
+        return 15 * 60 * 1000;
+      case SLEEP_30_MIN:
+        return 30 * 60 * 1000;
+      default:
+        return 10 * 60 * 1000;
+    }
+  }
 
   int getReaderFontId() const {
     switch (fontSize) {

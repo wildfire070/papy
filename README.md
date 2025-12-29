@@ -18,6 +18,7 @@ Papyrix is a fork of [CrossPoint Reader](https://github.com/daveallie/crosspoint
 - **Improved UI font** - Updated from Ubuntu 10pt to 12pt for better readability
 - **Better default font size** - Changed to 16pt Normal for comfortable reading
 - **Book cover display** - Show book cover as first page when reading (configurable)
+- **Sleep timeout setting** - Configurable auto-sleep timeout (5/10/15/30 min)
 
 ## Motivation
 

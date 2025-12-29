@@ -96,6 +96,10 @@ The Settings screen allows you to configure the device's behavior:
 - **Short Power Button Click** (default: OFF)
   - Whether to trigger power on a short press (ON) or long press (OFF)
 
+- **Sleep Timeout** (default: 10 min)
+  - Options: 5 min, 10 min, 15 min, 30 min
+  - Time of inactivity before the device automatically sleeps
+
 - **Reading Orientation** (default: Portrait)
   - Options: Portrait, Landscape CW, Inverted, Landscape CCW
   - Screen orientation for reading
