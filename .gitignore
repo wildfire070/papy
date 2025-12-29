@@ -5,3 +5,4 @@
 lib/EpdFont/fontsrc
 *.generated.h
 CLAUDE.md
+.claude/

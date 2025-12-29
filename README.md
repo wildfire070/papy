@@ -98,6 +98,15 @@ make flash
 pio run --target upload
 ```
 
+You can also flash using esptool directly (useful if you have a pre-built firmware binary):
+
+```sh
+esptool.py --chip esp32c3 --port /dev/ttyACM0 --baud 460800 \
+  write_flash -z 0x0 firmware.bin
+```
+
+Replace `/dev/ttyACM0` with your device port (e.g., `COM3` on Windows, `/dev/tty.usbmodem*` on macOS).
+
 ### Creating sleep screen images
 
 Convert any image to a sleep screen format compatible with Papyrix:
