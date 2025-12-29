@@ -90,6 +90,9 @@ The Settings screen allows you to configure the device's behavior:
   - Options: Small (14pt), Normal (16pt), Large (18pt)
   - Text size for reading
 
+- **Show Book Cover** (default: ON)
+  - Display the book cover image as the first page when reading
+
 - **Short Power Button Click** (default: OFF)
   - Whether to trigger power on a short press (ON) or long press (OFF)
 
@@ -129,8 +132,8 @@ You can customize the sleep screen by placing custom images in specific location
 > - Larger images will be automatically scaled down while preserving aspect ratio
 > - All color images are converted to 4-level grayscale on the e-ink display
 
-> [!WARNING]
-> The **Cover** sleep screen option is experimental and may not work as expected with all books.
+> [!TIP]
+> The **Cover** sleep screen option displays the cover of the currently open book when the device sleeps.
 
 ---
 

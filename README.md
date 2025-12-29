@@ -17,6 +17,7 @@ Papyrix is a fork of [CrossPoint Reader](https://github.com/daveallie/crosspoint
 - **Redesigned home screen** - New 2x2 grid layout for better navigation
 - **Improved UI font** - Updated from Ubuntu 10pt to 12pt for better readability
 - **Better default font size** - Changed to 16pt Normal for comfortable reading
+- **Book cover display** - Show book cover as first page when reading (configurable)
 
 ## Motivation
 
@@ -40,7 +41,8 @@ This project is **not affiliated with Xteink**; it's built as a community projec
   - [x] Support nested folders
   - [ ] EPUB picker with cover art
 - [x] Custom sleep screen
-  - [ ] Cover sleep screen
+  - [x] Cover sleep screen
+- [x] Book cover display when reading
 - [x] Wifi book upload
 - [ ] Wifi OTA updates
 - [x] Configurable font size options
