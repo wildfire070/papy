@@ -256,6 +256,13 @@ bool ZipFile::loadZipDetails() {
   return true;
 }
 
+uint16_t ZipFile::getTotalEntries() {
+  if (!zipDetails.isSet) {
+    loadZipDetails();
+  }
+  return zipDetails.totalEntries;
+}
+
 bool ZipFile::open() {
   if (!SdMan.openFileForRead("ZIP", filePath, file)) {
     return false;

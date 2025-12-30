@@ -38,6 +38,7 @@ class ZipFile {
   bool open();
   bool close();
   bool loadAllFileStatSlims();
+  uint16_t getTotalEntries();
   bool getInflatedFileSize(const char* filename, size_t* size);
   // Due to the memory required to run each of these, it is recommended to not preopen the zip file for multiple
   // These functions will open and close the zip as needed
