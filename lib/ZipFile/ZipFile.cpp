@@ -65,6 +65,13 @@ bool ZipFile::loadAllFileStatSlims() {
     file.read(&k, 2);
     file.seekCur(8);
     file.read(&fileStat.localHeaderOffset, 4);
+
+    // Bounds check to prevent buffer overflow
+    if (nameLen > 255) {
+      file.seekCur(nameLen + m + k);  // Skip this entry entirely
+      continue;
+    }
+
     file.read(itemName, nameLen);
     itemName[nameLen] = '\0';
 
@@ -123,6 +130,13 @@ bool ZipFile::loadFileStatSlim(const char* filename, FileStatSlim* fileStat) {
     file.read(&k, 2);
     file.seekCur(8);
     file.read(&fileStat->localHeaderOffset, 4);
+
+    // Bounds check to prevent buffer overflow
+    if (nameLen > 255) {
+      file.seekCur(nameLen + m + k);  // Skip this entry entirely
+      continue;
+    }
+
     file.read(itemName, nameLen);
     itemName[nameLen] = '\0';
 
