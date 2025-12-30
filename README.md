@@ -54,6 +54,14 @@ See [the user guide](./USER_GUIDE.md) for instructions on operating Papyrix.
 
 ## Installing
 
+### Using Papyrix Flasher (Recommended)
+
+The easiest way to install Papyrix is using [papyrix-flasher](https://github.com/bigbag/papyrix-flasher) — a cross-platform CLI tool with auto-detection and embedded bootloader. Download the latest release for your platform and run:
+
+```bash
+papyrix-flasher flash firmware.bin
+```
+
 ### Manual Build
 
 See [Development](#development) below.
