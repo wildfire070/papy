@@ -20,22 +20,20 @@ constexpr const char* sleepTimeoutValues[] = {"5 min", "10 min", "15 min", "30 m
 
 constexpr int settingsCount = 12;
 const SettingInfo settingsList[settingsCount] = {
-    // Theme selection (special type - handled dynamically)
+    // Theme
     {"Theme", SettingType::THEME_SELECT, nullptr, nullptr, 0},
-    // Should match with SLEEP_SCREEN_MODE
-    {"Sleep Screen", SettingType::ENUM, &CrossPointSettings::sleepScreen, sleepScreenValues, 4},
-    {"Status Bar", SettingType::ENUM, &CrossPointSettings::statusBar, statusBarValues, 3},
-    {"Extra Paragraph Spacing", SettingType::TOGGLE, &CrossPointSettings::extraParagraphSpacing, nullptr, 0},
-    // Should match with FONT_SIZE
+    // Book Settings
     {"Font Size", SettingType::ENUM, &CrossPointSettings::fontSize, fontSizeValues, 3},
-    // Should match with PAGES_PER_REFRESH
-    {"Pages Per Refresh", SettingType::ENUM, &CrossPointSettings::pagesPerRefresh, pagesPerRefreshValues, 5},
+    {"Extra Paragraph Spacing", SettingType::TOGGLE, &CrossPointSettings::extraParagraphSpacing, nullptr, 0},
+    {"Reading Orientation", SettingType::ENUM, &CrossPointSettings::orientation, orientationValues, 4},
+    {"Status Bar", SettingType::ENUM, &CrossPointSettings::statusBar, statusBarValues, 3},
     {"Show Book Cover", SettingType::TOGGLE, &CrossPointSettings::showBookCover, nullptr, 0},
     {"Show Book Info", SettingType::TOGGLE, &CrossPointSettings::showBookMetadata, nullptr, 0},
-    {"Short Power Button Click", SettingType::TOGGLE, &CrossPointSettings::shortPwrBtn, nullptr, 0},
-    {"Reading Orientation", SettingType::ENUM, &CrossPointSettings::orientation, orientationValues, 4},
-    // Should match with SLEEP_TIMEOUT
+    // Device Settings
+    {"Pages Per Refresh", SettingType::ENUM, &CrossPointSettings::pagesPerRefresh, pagesPerRefreshValues, 5},
     {"Sleep Timeout", SettingType::ENUM, &CrossPointSettings::sleepTimeout, sleepTimeoutValues, 4},
+    {"Sleep Screen", SettingType::ENUM, &CrossPointSettings::sleepScreen, sleepScreenValues, 4},
+    {"Short Power Button Click", SettingType::TOGGLE, &CrossPointSettings::shortPwrBtn, nullptr, 0},
     {"Check for updates", SettingType::ACTION, nullptr, nullptr, 0},
 };
 }  // namespace
