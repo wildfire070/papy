@@ -43,6 +43,9 @@ class CrossPointSettings {
   // Pages per full refresh (to clear ghosting)
   enum PAGES_PER_REFRESH { PPR_1 = 0, PPR_5 = 1, PPR_10 = 2, PPR_15 = 3, PPR_30 = 4 };
 
+  // Paragraph alignment options (values match TextBlock::BLOCK_STYLE)
+  enum PARAGRAPH_ALIGNMENT { ALIGN_JUSTIFIED = 0, ALIGN_LEFT = 1, ALIGN_CENTER = 2, ALIGN_RIGHT = 3 };
+
   // Sleep screen settings
   uint8_t sleepScreen = DARK;
   // Status bar settings
@@ -67,6 +70,8 @@ class CrossPointSettings {
   uint8_t showBookMetadata = 1;
   // Auto-sleep timeout setting
   uint8_t sleepTimeout = SLEEP_10_MIN;
+  // Paragraph alignment for EPUB text
+  uint8_t paragraphAlignment = ALIGN_JUSTIFIED;
   // Theme name (loaded from /themes/<name>.theme)
   char themeName[32] = "light";
 

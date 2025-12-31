@@ -103,6 +103,10 @@ The Settings screen allows you to configure the device's behavior:
   - Options: Small (14pt), Normal (16pt), Large (18pt)
   - Text size for reading
 
+- **Paragraph Alignment** (default: Justified)
+  - Options: Justified, Left, Center, Right
+  - Text alignment for paragraphs (headers remain centered)
+
 - **Pages Per Refresh** (default: 15)
   - Options: 1, 5, 10, 15, 30
   - Number of pages to turn before performing a full e-paper refresh (clears ghosting)

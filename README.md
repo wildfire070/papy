@@ -22,6 +22,7 @@ Papyrix is a fork of [CrossPoint Reader](https://github.com/daveallie/crosspoint
 - **Book cover display** - Show book cover as first page when reading (configurable)
 - **Sleep timeout setting** - Configurable auto-sleep timeout (5/10/15/30 min)
 - **Pages per refresh setting** - Control e-paper full refresh frequency (1/5/10/15/30 pages)
+- **Paragraph alignment setting** - Configurable text alignment (Justified/Left/Center/Right)
 - **UTF-8 filename support** - Cyrillic and other non-ASCII characters in file names
 - **EPUB 3 support** - Native navigation document (nav.xhtml) parsing with NCX fallback
 
@@ -54,6 +55,7 @@ This project is **not affiliated with Xteink**; it's built as a community projec
 - [x] Wifi book upload
 - [x] Wifi OTA updates
 - [x] Configurable font size options
+- [x] Configurable paragraph alignment
 - [x] Configurable pages per refresh
 - [x] Custom themes (colors, layout, button mapping)
 - [x] Custom fonts from SD card
