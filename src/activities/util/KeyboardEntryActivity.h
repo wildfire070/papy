@@ -70,24 +70,33 @@ class KeyboardEntryActivity : public Activity {
   // Keyboard state
   int selectedRow = 0;
   int selectedCol = 0;
-  bool shiftActive = false;
 
   // Callbacks
   OnCompleteCallback onComplete;
   OnCancelCallback onCancel;
 
-  // Keyboard layout
-  static constexpr int NUM_ROWS = 5;
-  static constexpr int KEYS_PER_ROW = 13;  // Max keys per row (rows 0 and 1 have 13 keys)
-  static const char* const keyboard[NUM_ROWS];
-  static const char* const keyboardShift[NUM_ROWS];
+  // Keyboard layout - Full Grid (9 rows x 10 columns)
+  static constexpr int NUM_ROWS = 9;
+  static constexpr int KEYS_PER_ROW = 10;
+  static constexpr char keyboard[NUM_ROWS][KEYS_PER_ROW] = {
+      {'a','b','c','d','e','f','g','h','i','j'},  // row 0: lowercase
+      {'k','l','m','n','o','p','q','r','s','t'},  // row 1: lowercase
+      {'u','v','w','x','y','z','.','-','_','@'},  // row 2: lowercase + symbols
+      {'A','B','C','D','E','F','G','H','I','J'},  // row 3: uppercase
+      {'K','L','M','N','O','P','Q','R','S','T'},  // row 4: uppercase
+      {'U','V','W','X','Y','Z','!','#','$','%'},  // row 5: uppercase + symbols
+      {'1','2','3','4','5','6','7','8','9','0'},  // row 6: numbers
+      {'^','&','*','(',')','+',' ','[',']','\\'},  // row 7: symbols (space is '=')
+      {'\x01','\x01','\x01','\x01','\x01','\x01','\x02','\x02','\x02','\x02'}  // row 8: controls
+  };
+  // Control characters: \x01 = SPACE, \x02 = BACKSPACE
 
-  // Special key positions (bottom row)
-  static constexpr int SPECIAL_ROW = 4;
-  static constexpr int SHIFT_COL = 0;
-  static constexpr int SPACE_COL = 2;
-  static constexpr int BACKSPACE_COL = 7;
-  static constexpr int DONE_COL = 9;
+  // Control row (row 8) key positions - only SPACE and BACKSPACE
+  static constexpr int CONTROL_ROW = 8;
+  static constexpr int SPACE_START = 0;
+  static constexpr int SPACE_END = 5;      // cols 0-5 (6 keys wide)
+  static constexpr int BACKSPACE_START = 6;
+  static constexpr int BACKSPACE_END = 9;  // cols 6-9 (4 keys wide)
 
   static void taskTrampoline(void* param);
   [[noreturn]] void displayTaskLoop();

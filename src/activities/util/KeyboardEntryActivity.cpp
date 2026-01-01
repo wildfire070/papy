@@ -4,15 +4,8 @@
 #include "MappedInputManager.h"
 #include "ThemeManager.h"
 
-// Keyboard layouts - lowercase
-const char* const KeyboardEntryActivity::keyboard[NUM_ROWS] = {
-    "`1234567890-=", "qwertyuiop[]\\", "asdfghjkl;'", "zxcvbnm,./",
-    "^  _____<OK"  // ^ = shift, _ = space, < = backspace, OK = done
-};
-
-// Keyboard layouts - uppercase/symbols
-const char* const KeyboardEntryActivity::keyboardShift[NUM_ROWS] = {"~!@#$%^&*()_+", "QWERTYUIOP{}|", "ASDFGHJKL:\"",
-                                                                    "ZXCVBNM<>?", "SPECIAL ROW"};
+// Definition of static constexpr member (required for ODR-use)
+constexpr char KeyboardEntryActivity::keyboard[NUM_ROWS][KEYS_PER_ROW];
 
 void KeyboardEntryActivity::taskTrampoline(void* param) {
   auto* self = static_cast<KeyboardEntryActivity*>(param);
@@ -62,43 +55,19 @@ void KeyboardEntryActivity::onExit() {
 
 int KeyboardEntryActivity::getRowLength(const int row) const {
   if (row < 0 || row >= NUM_ROWS) return 0;
-
-  // Return actual length of each row based on keyboard layout
-  switch (row) {
-    case 0:
-      return 13;  // `1234567890-=
-    case 1:
-      return 13;  // qwertyuiop[]backslash
-    case 2:
-      return 11;  // asdfghjkl;'
-    case 3:
-      return 10;  // zxcvbnm,./
-    case 4:
-      return 10;  // caps (2 wide), space (5 wide), backspace (2 wide), OK
-    default:
-      return 0;
-  }
+  return KEYS_PER_ROW;  // All rows have 10 columns
 }
 
 char KeyboardEntryActivity::getSelectedChar() const {
-  const char* const* layout = shiftActive ? keyboardShift : keyboard;
-
   if (selectedRow < 0 || selectedRow >= NUM_ROWS) return '\0';
-  if (selectedCol < 0 || selectedCol >= getRowLength(selectedRow)) return '\0';
-
-  return layout[selectedRow][selectedCol];
+  if (selectedCol < 0 || selectedCol >= KEYS_PER_ROW) return '\0';
+  return keyboard[selectedRow][selectedCol];
 }
 
 void KeyboardEntryActivity::handleKeyPress() {
-  // Handle special row (bottom row with shift, space, backspace, done)
-  if (selectedRow == SPECIAL_ROW) {
-    if (selectedCol >= SHIFT_COL && selectedCol < SPACE_COL) {
-      // Shift toggle
-      shiftActive = !shiftActive;
-      return;
-    }
-
-    if (selectedCol >= SPACE_COL && selectedCol < BACKSPACE_COL) {
+  // Handle control row (row 8: SPACE, BACKSPACE)
+  if (selectedRow == CONTROL_ROW) {
+    if (selectedCol >= SPACE_START && selectedCol <= SPACE_END) {
       // Space bar
       if (maxLength == 0 || text.length() < maxLength) {
         text += ' ';
@@ -106,21 +75,14 @@ void KeyboardEntryActivity::handleKeyPress() {
       return;
     }
 
-    if (selectedCol >= BACKSPACE_COL && selectedCol < DONE_COL) {
+    if (selectedCol >= BACKSPACE_START && selectedCol <= BACKSPACE_END) {
       // Backspace
       if (!text.empty()) {
         text.pop_back();
       }
       return;
     }
-
-    if (selectedCol >= DONE_COL) {
-      // Done button
-      if (onComplete) {
-        onComplete(text);
-      }
-      return;
-    }
+    return;
   }
 
   // Regular character
@@ -131,92 +93,74 @@ void KeyboardEntryActivity::handleKeyPress() {
 
   if (maxLength == 0 || text.length() < maxLength) {
     text += c;
-    // Auto-disable shift after typing a letter
-    if (shiftActive && ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'))) {
-      shiftActive = false;
-    }
   }
 }
 
 void KeyboardEntryActivity::loop() {
-  // Navigation
+  // Navigation - Up
   if (mappedInput.wasPressed(MappedInputManager::Button::Up)) {
     if (selectedRow > 0) {
       selectedRow--;
-      // Clamp column to valid range for new row
-      const int maxCol = getRowLength(selectedRow) - 1;
-      if (selectedCol > maxCol) selectedCol = maxCol;
     }
     updateRequired = true;
   }
 
+  // Navigation - Down
   if (mappedInput.wasPressed(MappedInputManager::Button::Down)) {
     if (selectedRow < NUM_ROWS - 1) {
       selectedRow++;
-      const int maxCol = getRowLength(selectedRow) - 1;
-      if (selectedCol > maxCol) selectedCol = maxCol;
+      // When entering control row, snap to nearest control key
+      if (selectedRow == CONTROL_ROW) {
+        if (selectedCol <= SPACE_END) {
+          selectedCol = (SPACE_START + SPACE_END) / 2;  // Center of SPACE
+        } else {
+          selectedCol = (BACKSPACE_START + BACKSPACE_END) / 2;  // Center of BACKSPACE
+        }
+      }
     }
     updateRequired = true;
   }
 
+  // Navigation - Left
   if (mappedInput.wasPressed(MappedInputManager::Button::Left)) {
-    // Special bottom row case
-    if (selectedRow == SPECIAL_ROW) {
-      // Bottom row has special key widths
-      if (selectedCol >= SHIFT_COL && selectedCol < SPACE_COL) {
-        // In shift key, do nothing
-      } else if (selectedCol >= SPACE_COL && selectedCol < BACKSPACE_COL) {
-        // In space bar, move to shift
-        selectedCol = SHIFT_COL;
-      } else if (selectedCol >= BACKSPACE_COL && selectedCol < DONE_COL) {
-        // In backspace, move to space
-        selectedCol = SPACE_COL;
-      } else if (selectedCol >= DONE_COL) {
-        // At done button, move to backspace
-        selectedCol = BACKSPACE_COL;
+    // Control row: snap between SPACE and BACKSPACE
+    if (selectedRow == CONTROL_ROW) {
+      if (selectedCol >= BACKSPACE_START) {
+        selectedCol = (SPACE_START + SPACE_END) / 2;
       }
-      updateRequired = true;
-      return;
-    }
-
-    if (selectedCol > 0) {
-      selectedCol--;
-    } else if (selectedRow > 0) {
-      // Wrap to previous row
-      selectedRow--;
-      selectedCol = getRowLength(selectedRow) - 1;
+      // If already on SPACE, stay there
+    } else {
+      // Regular rows: standard grid navigation with wrap
+      if (selectedCol > 0) {
+        selectedCol--;
+      } else if (selectedRow > 0) {
+        selectedRow--;
+        selectedCol = KEYS_PER_ROW - 1;
+      }
     }
     updateRequired = true;
   }
 
+  // Navigation - Right
   if (mappedInput.wasPressed(MappedInputManager::Button::Right)) {
-    const int maxCol = getRowLength(selectedRow) - 1;
-
-    // Special bottom row case
-    if (selectedRow == SPECIAL_ROW) {
-      // Bottom row has special key widths
-      if (selectedCol >= SHIFT_COL && selectedCol < SPACE_COL) {
-        // In shift key, move to space
-        selectedCol = SPACE_COL;
-      } else if (selectedCol >= SPACE_COL && selectedCol < BACKSPACE_COL) {
-        // In space bar, move to backspace
-        selectedCol = BACKSPACE_COL;
-      } else if (selectedCol >= BACKSPACE_COL && selectedCol < DONE_COL) {
-        // In backspace, move to done
-        selectedCol = DONE_COL;
-      } else if (selectedCol >= DONE_COL) {
-        // At done button, do nothing
+    // Control row: snap between SPACE and BACKSPACE
+    if (selectedRow == CONTROL_ROW) {
+      if (selectedCol <= SPACE_END) {
+        selectedCol = (BACKSPACE_START + BACKSPACE_END) / 2;
       }
-      updateRequired = true;
-      return;
-    }
-
-    if (selectedCol < maxCol) {
-      selectedCol++;
-    } else if (selectedRow < NUM_ROWS - 1) {
-      // Wrap to next row
-      selectedRow++;
-      selectedCol = 0;
+      // If already on BACKSPACE, stay there
+    } else {
+      // Regular rows: standard grid navigation with wrap
+      if (selectedCol < KEYS_PER_ROW - 1) {
+        selectedCol++;
+      } else if (selectedRow < NUM_ROWS - 1) {
+        selectedRow++;
+        selectedCol = 0;
+        // When entering control row via wrap, start at SPACE
+        if (selectedRow == CONTROL_ROW) {
+          selectedCol = (SPACE_START + SPACE_END) / 2;
+        }
+      }
     }
     updateRequired = true;
   }
@@ -241,12 +185,22 @@ void KeyboardEntryActivity::render() const {
 
   renderer.clearScreen(THEME.backgroundColor);
 
-  // Draw title
-  renderer.drawCenteredText(THEME.uiFontId, startY, title.c_str(), THEME.primaryTextBlack, REGULAR);
+  // Draw title (bold, same style as WiFi Networks screen)
+  renderer.drawCenteredText(THEME.readerFontId, startY, title.c_str(), THEME.primaryTextBlack, BOLD);
+
+  // Margins
+  constexpr int marginAfterTitle = 15;
+  constexpr int marginAfterInput = 35;
 
   // Draw input field
-  const int inputY = startY + 22;
-  renderer.drawText(THEME.uiFontId, 10, inputY, "[", THEME.primaryTextBlack);
+  const int inputY = startY + marginAfterTitle + 12;
+
+  // Match button hints width (buttons span from x=25 to x=456, width=431)
+  constexpr int buttonAreaLeft = 25;
+  constexpr int buttonAreaRight = 456;
+  constexpr int buttonAreaWidth = buttonAreaRight - buttonAreaLeft;
+
+  renderer.drawText(THEME.uiFontId, buttonAreaLeft, inputY, "[", THEME.primaryTextBlack);
 
   std::string displayText;
   if (isPassword) {
@@ -258,79 +212,97 @@ void KeyboardEntryActivity::render() const {
   // Show cursor at end
   displayText += "_";
 
-  // Truncate if too long for display - use actual character width from font
+  // Truncate if too long for display
   int approxCharWidth = renderer.getSpaceWidth(THEME.uiFontId);
-  if (approxCharWidth < 1) approxCharWidth = 8;  // Fallback to approximate width
-  const int maxDisplayLen = (pageWidth - 40) / approxCharWidth;
+  if (approxCharWidth < 1) approxCharWidth = 8;
+  const int maxDisplayLen = (buttonAreaWidth - 30) / approxCharWidth;
   if (displayText.length() > static_cast<size_t>(maxDisplayLen)) {
     displayText = "..." + displayText.substr(displayText.length() - maxDisplayLen + 3);
   }
 
-  renderer.drawText(THEME.uiFontId, 20, inputY, displayText.c_str(), THEME.primaryTextBlack);
-  renderer.drawText(THEME.uiFontId, pageWidth - 15, inputY, "]", THEME.primaryTextBlack);
+  renderer.drawText(THEME.uiFontId, buttonAreaLeft + 10, inputY, displayText.c_str(), THEME.primaryTextBlack);
+  renderer.drawText(THEME.uiFontId, buttonAreaRight - 10, inputY, "]", THEME.primaryTextBlack);
 
-  // Draw keyboard - use compact spacing to fit 5 rows on screen
-  const int keyboardStartY = inputY + 25;
-  constexpr int keyWidth = 18;
-  constexpr int keyHeight = 18;
-  constexpr int keySpacing = 3;
+  // Keyboard layout constants - match button area width
+  constexpr int borderPadding = 10;
+  constexpr int separatorHeight = 18;  // Space between groups (lowercase, uppercase, numbers, controls)
+  constexpr int borderWidth = buttonAreaWidth;
+  constexpr int gridWidth = borderWidth - 2 * borderPadding;
+  constexpr int keySpacingH = 2;  // Horizontal spacing between keys
+  constexpr int keySpacingV = 6;  // Vertical spacing between rows
+  constexpr int keyWidth = (gridWidth - (KEYS_PER_ROW - 1) * keySpacingH) / KEYS_PER_ROW;
+  constexpr int keyHeight = 20;
+  const int leftMargin = buttonAreaLeft;
 
-  const char* const* layout = shiftActive ? keyboardShift : keyboard;
+  // Calculate total keyboard height
+  // 8 regular rows + 1 control row + 3 separators (no zone labels)
+  constexpr int regularRowsHeight = 8 * (keyHeight + keySpacingV);
+  constexpr int controlRowHeight = keyHeight + keySpacingV;
+  constexpr int separatorsHeight = 3 * separatorHeight;
+  constexpr int totalKeyboardHeight = regularRowsHeight + controlRowHeight + separatorsHeight + 2 * borderPadding;
 
-  // Calculate left margin to center the longest row (13 keys)
-  constexpr int maxRowWidth = KEYS_PER_ROW * (keyWidth + keySpacing);
-  const int leftMargin = (pageWidth - maxRowWidth) / 2;
+  const int keyboardStartY = inputY + marginAfterInput;
+
+  // Draw keyboard border
+  renderer.drawRect(leftMargin, keyboardStartY, borderWidth, totalKeyboardHeight, THEME.primaryTextBlack);
+
+  // Current Y position for rendering
+  int currentY = keyboardStartY + borderPadding;
+  const int contentStartX = leftMargin + borderPadding;
+
+  // Zone separator positions (draw after these rows)
+  const int zoneSeparatorAfterRows[] = {2, 5, 7};
+  int zoneIndex = 0;
 
   for (int row = 0; row < NUM_ROWS; row++) {
-    const int rowY = keyboardStartY + row * (keyHeight + keySpacing);
+    const int rowY = currentY;
 
-    // Left-align all rows for consistent navigation
-    const int startX = leftMargin;
+    // Handle control row (row 8) specially
+    if (row == CONTROL_ROW) {
+      // Draw 2 control buttons: SPACE, BACKSPACE (<-)
+      int currentX = contentStartX;
 
-    // Handle bottom row (row 4) specially with proper multi-column keys
-    if (row == 4) {
-      // Bottom row layout: CAPS (2 cols) | SPACE (5 cols) | <- (2 cols) | OK (2 cols)
-      // Total: 11 visual columns, but we use logical positions for selection
+      // SPACE button (cols 0-5, 6 keys wide)
+      const int spaceWidth = 6 * keyWidth + 5 * keySpacingH;
+      const bool spaceSelected = (selectedRow == CONTROL_ROW && selectedCol >= SPACE_START && selectedCol <= SPACE_END);
+      const char* spaceLabel = "SPACE";
+      const int spaceTextWidth = renderer.getTextWidth(THEME.uiFontId, spaceLabel);
+      const int spaceTextX = currentX + (spaceWidth - spaceTextWidth) / 2;
+      renderItemWithSelector(spaceTextX, rowY, spaceLabel, spaceSelected);
+      currentX += spaceWidth + keySpacingH;
 
-      int currentX = startX;
-
-      // CAPS key (logical col 0, spans 2 key widths)
-      const bool capsSelected = (selectedRow == 4 && selectedCol >= SHIFT_COL && selectedCol < SPACE_COL);
-      renderItemWithSelector(currentX + 2, rowY, shiftActive ? "CAPS" : "caps", capsSelected);
-      currentX += 2 * (keyWidth + keySpacing);
-
-      // Space bar (logical cols 2-6, spans 5 key widths)
-      const bool spaceSelected = (selectedRow == 4 && selectedCol >= SPACE_COL && selectedCol < BACKSPACE_COL);
-      const int spaceTextWidth = renderer.getTextWidth(THEME.uiFontId, "_____");
-      const int spaceXWidth = 5 * (keyWidth + keySpacing);
-      const int spaceXPos = currentX + (spaceXWidth - spaceTextWidth) / 2;
-      renderItemWithSelector(spaceXPos, rowY, "_____", spaceSelected);
-      currentX += spaceXWidth;
-
-      // Backspace key (logical col 7, spans 2 key widths)
-      const bool bsSelected = (selectedRow == 4 && selectedCol >= BACKSPACE_COL && selectedCol < DONE_COL);
-      renderItemWithSelector(currentX + 2, rowY, "<-", bsSelected);
-      currentX += 2 * (keyWidth + keySpacing);
-
-      // OK button (logical col 9, spans 2 key widths)
-      const bool okSelected = (selectedRow == 4 && selectedCol >= DONE_COL);
-      renderItemWithSelector(currentX + 2, rowY, "OK", okSelected);
+      // BACKSPACE button (cols 6-9, 4 keys wide)
+      const int bsWidth = 4 * keyWidth + 3 * keySpacingH;
+      const bool bsSelected = (selectedRow == CONTROL_ROW && selectedCol >= BACKSPACE_START && selectedCol <= BACKSPACE_END);
+      const char* bsLabel = "<-";
+      const int bsTextWidth = renderer.getTextWidth(THEME.uiFontId, bsLabel);
+      const int bsTextX = currentX + (bsWidth - bsTextWidth) / 2;
+      renderItemWithSelector(bsTextX, rowY, bsLabel, bsSelected);
     } else {
-      // Regular rows: render each key individually
-      for (int col = 0; col < getRowLength(row); col++) {
-        // Get the character to display
-        const char c = layout[row][col];
+      // Regular rows: render each key
+      for (int col = 0; col < KEYS_PER_ROW; col++) {
+        const char c = keyboard[row][col];
         std::string keyLabel(1, c);
         const int charWidth = renderer.getTextWidth(THEME.uiFontId, keyLabel.c_str());
 
-        const int keyX = startX + col * (keyWidth + keySpacing) + (keyWidth - charWidth) / 2;
+        const int keyX = contentStartX + col * (keyWidth + keySpacingH) + (keyWidth - charWidth) / 2;
         const bool isSelected = row == selectedRow && col == selectedCol;
         renderItemWithSelector(keyX, rowY, keyLabel.c_str(), isSelected);
       }
     }
+
+    currentY += keyHeight + keySpacingV;
+
+    // Draw zone separator after specific rows
+    if (zoneIndex < 3 && row == zoneSeparatorAfterRows[zoneIndex]) {
+      const int separatorY = currentY + separatorHeight / 2 - 1;
+      renderer.drawLine(contentStartX, separatorY, contentStartX + gridWidth, separatorY, THEME.primaryTextBlack);
+      currentY += separatorHeight;
+      zoneIndex++;
+    }
   }
 
-  // Draw button hints at bottom of screen (consistent with other screens)
+  // Draw button hints at bottom of screen
   const auto labels = mappedInput.mapLabels("Back", "Confirm", "Left", "Right");
   renderer.drawButtonHints(THEME.uiFontId, labels.btn1, labels.btn2, labels.btn3, labels.btn4, THEME.primaryTextBlack);
   renderer.displayBuffer();
