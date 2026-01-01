@@ -68,6 +68,8 @@ void CrossPointWebServerActivity::onExit() {
 
   Serial.printf("[%lu] [WEBACT] [MEM] Free heap at onExit start: %d bytes\n", millis(), ESP.getFreeHeap());
 
+  // Save state before modifying - we need to check if WiFi was actually used
+  const auto stateBeforeExit = state;
   state = WebServerActivityState::SHUTTING_DOWN;
 
   // Stop the web server first (before disconnecting WiFi)
@@ -123,6 +125,15 @@ void CrossPointWebServerActivity::onExit() {
   Serial.printf("[%lu] [WEBACT] Mutex deleted\n", millis());
 
   Serial.printf("[%lu] [WEBACT] [MEM] Free heap at onExit end: %d bytes\n", millis(), ESP.getFreeHeap());
+
+  // WiFi fragments heap memory permanently on ESP32
+  // Restart is required to read XTC books after using WiFi
+  // Only restart if WiFi was actually started (not just mode selection)
+  if (stateBeforeExit != WebServerActivityState::MODE_SELECTION) {
+    Serial.printf("[%lu] [WEBACT] Restarting to reclaim memory (was in state %d)...\n", millis(),
+                  static_cast<int>(stateBeforeExit));
+    ESP.restart();
+  }
 }
 
 void CrossPointWebServerActivity::onNetworkModeSelected(const NetworkMode mode) {

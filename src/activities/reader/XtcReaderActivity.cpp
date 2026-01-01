@@ -67,6 +67,7 @@ void XtcReaderActivity::onExit() {
   }
   vSemaphoreDelete(renderingMutex);
   renderingMutex = nullptr;
+
   xtc.reset();
 }
 
@@ -179,20 +180,19 @@ void XtcReaderActivity::renderPage() {
   const uint16_t pageHeight = xtc->getPageHeight();
   const uint8_t bitDepth = xtc->getBitDepth();
 
-  // Calculate buffer size for one page
-  // XTG (1-bit): Row-major, ((width+7)/8) * height bytes
-  // XTH (2-bit): Two bit planes, column-major, ((width * height + 7) / 8) * 2 bytes
-  size_t pageBufferSize;
+  // Calculate buffer size based on bit depth
+  size_t bufferSize;
   if (bitDepth == 2) {
-    pageBufferSize = ((static_cast<size_t>(pageWidth) * pageHeight + 7) / 8) * 2;
+    bufferSize = ((static_cast<size_t>(pageWidth) * pageHeight + 7) / 8) * 2;
   } else {
-    pageBufferSize = static_cast<size_t>((pageWidth + 7) / 8) * pageHeight;
+    bufferSize = static_cast<size_t>((pageWidth + 7) / 8) * pageHeight;
   }
 
   // Allocate page buffer
-  uint8_t* pageBuffer = static_cast<uint8_t*>(malloc(pageBufferSize));
+  uint8_t* pageBuffer = static_cast<uint8_t*>(malloc(bufferSize));
   if (!pageBuffer) {
-    Serial.printf("[%lu] [XTR] Failed to allocate page buffer (%lu bytes)\n", millis(), pageBufferSize);
+    Serial.printf("[%lu] [XTR] Failed to allocate page buffer (%zu bytes, free heap: %d)\n",
+                  millis(), bufferSize, ESP.getFreeHeap());
     renderer.clearScreen();
     renderer.drawCenteredText(UI_FONT_ID, 300, "Memory error", true, BOLD);
     renderer.displayBuffer();
@@ -200,7 +200,7 @@ void XtcReaderActivity::renderPage() {
   }
 
   // Load page data
-  size_t bytesRead = xtc->loadPage(currentPage, pageBuffer, pageBufferSize);
+  size_t bytesRead = xtc->loadPage(currentPage, pageBuffer, bufferSize);
   if (bytesRead == 0) {
     Serial.printf("[%lu] [XTR] Failed to load page %lu\n", millis(), currentPage);
     free(pageBuffer);
@@ -314,7 +314,6 @@ void XtcReaderActivity::renderPage() {
     renderer.cleanupGrayscaleWithFrameBuffer();
 
     free(pageBuffer);
-
     Serial.printf("[%lu] [XTR] Rendered page %lu/%lu (2-bit grayscale)\n", millis(), currentPage + 1,
                   xtc->getPageCount());
     return;
@@ -339,8 +338,6 @@ void XtcReaderActivity::renderPage() {
   }
   // White pixels are already cleared by clearScreen()
 
-  free(pageBuffer);
-
   // XTC pages already have status bar pre-rendered, no need to add our own
 
   // Display with appropriate refresh
@@ -352,6 +349,7 @@ void XtcReaderActivity::renderPage() {
     pagesUntilFullRefresh--;
   }
 
+  free(pageBuffer);
   Serial.printf("[%lu] [XTR] Rendered page %lu/%lu (%u-bit)\n", millis(), currentPage + 1, xtc->getPageCount(),
                 bitDepth);
 }

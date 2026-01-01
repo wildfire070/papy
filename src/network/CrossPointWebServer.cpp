@@ -17,6 +17,14 @@ const char* HIDDEN_ITEMS[] = {"System Volume Information", "XTCache"};
 constexpr size_t HIDDEN_ITEMS_COUNT = sizeof(HIDDEN_ITEMS) / sizeof(HIDDEN_ITEMS[0]);
 }  // namespace
 
+// Static variables for upload handling (declared early so stop() can clear them)
+static FsFile uploadFile;
+static String uploadFileName;
+static String uploadPath = "/";
+static size_t uploadSize = 0;
+static bool uploadSuccess = false;
+static String uploadError = "";
+
 // File listing page template - now using generated headers:
 // - HomePageHtml (from html/HomePage.html)
 // - FilesPageHeaderHtml (from html/FilesPageHeader.html)
@@ -114,8 +122,11 @@ void CrossPointWebServer::stop() {
   Serial.printf("[%lu] [WEB] Web server stopped and deleted\n", millis());
   Serial.printf("[%lu] [WEB] [MEM] Free heap after delete server: %d bytes\n", millis(), ESP.getFreeHeap());
 
-  // Note: Static upload variables (uploadFileName, uploadPath, uploadError) are declared
-  // later in the file and will be cleared when they go out of scope or on next upload
+  // Clear static upload variables to free heap memory
+  uploadFileName = "";
+  uploadPath = "/";
+  uploadError = "";
+
   Serial.printf("[%lu] [WEB] [MEM] Free heap final: %d bytes\n", millis(), ESP.getFreeHeap());
 }
 
@@ -279,14 +290,6 @@ void CrossPointWebServer::handleFileListData() const {
   server->sendContent("");
   Serial.printf("[%lu] [WEB] Served file listing page for path: %s\n", millis(), currentPath.c_str());
 }
-
-// Static variables for upload handling
-static FsFile uploadFile;
-static String uploadFileName;
-static String uploadPath = "/";
-static size_t uploadSize = 0;
-static bool uploadSuccess = false;
-static String uploadError = "";
 
 void CrossPointWebServer::handleUpload() const {
   static unsigned long lastWriteTime = 0;

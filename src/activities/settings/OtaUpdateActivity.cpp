@@ -80,11 +80,15 @@ void OtaUpdateActivity::onEnter() {
 void OtaUpdateActivity::onExit() {
   ActivityWithSubactivity::onExit();
 
+  Serial.printf("[%lu] [OTA] [MEM] Free heap at onExit start: %d bytes\n", millis(), ESP.getFreeHeap());
+
   // Turn off wifi
   WiFi.disconnect(false);  // false = don't erase credentials, send disconnect frame
   delay(100);              // Allow disconnect frame to be sent
   WiFi.mode(WIFI_OFF);
   delay(100);  // Allow WiFi hardware to fully power down
+
+  Serial.printf("[%lu] [OTA] [MEM] Free heap after WiFi off: %d bytes\n", millis(), ESP.getFreeHeap());
 
   // Wait until not rendering to delete task to avoid killing mid-instruction to EPD
   xSemaphoreTake(renderingMutex, portMAX_DELAY);
@@ -94,6 +98,12 @@ void OtaUpdateActivity::onExit() {
   }
   vSemaphoreDelete(renderingMutex);
   renderingMutex = nullptr;
+
+  // WiFi fragments heap memory permanently on ESP32
+  // Restart is required to read XTC books after using WiFi
+  // WiFi is always started in onEnter(), so we always need to restart
+  Serial.printf("[%lu] [OTA] Restarting to reclaim memory...\n", millis());
+  ESP.restart();
 }
 
 void OtaUpdateActivity::displayTaskLoop() {

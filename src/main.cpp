@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <EInkDisplay.h>
+#include <esp_system.h>
 #include <Epub.h>
 #include <GfxRenderer.h>
 #include <InputManager.h>
@@ -106,6 +107,13 @@ void enterNewActivity(Activity* activity) {
 
 // Verify long press on wake-up from deep sleep
 void verifyWakeupLongPress() {
+  // Skip verification on software restart (e.g., after WiFi memory cleanup)
+  const auto resetReason = esp_reset_reason();
+  if (resetReason == ESP_RST_SW) {
+    Serial.printf("[%lu] [   ] Skipping wakeup verification (software restart)\n", millis());
+    return;
+  }
+
   // Give the user up to 1000ms to start holding the power button, and must hold for SETTINGS.getPowerButtonDuration()
   const auto start = millis();
   bool abort = false;
@@ -273,7 +281,7 @@ void loop() {
   // Check for any user activity (button press or release) or active background work
   static unsigned long lastActivityTime = millis();
   if (inputManager.wasAnyPressed() || inputManager.wasAnyReleased() ||
-      (currentActivity && currentActivity->skipLoopDelay())) {
+      (currentActivity && currentActivity->preventAutoSleep())) {
     lastActivityTime = millis();  // Reset inactivity timer
   }
 

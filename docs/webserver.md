@@ -259,10 +259,10 @@ When you're finished uploading files:
 
 1. Press the **Back** button on your Papyrix Reader
 2. The web server will automatically stop
-3. WiFi will disconnect to conserve battery
-4. You'll return to the previous screen
+3. WiFi will disconnect
+4. **The device will automatically restart** to reclaim memory
 
-Your uploaded files will be immediately available in the file browser!
+> **Note:** The automatic restart is required because the ESP32's WiFi stack fragments memory in a way that cannot be recovered. Without this restart, XTC books may fail to load with a "Memory error". The restart is quick and your uploaded files will be immediately available in the file browser.
 
 ---
 

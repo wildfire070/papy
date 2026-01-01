@@ -1,5 +1,7 @@
 #include "ReaderActivity.h"
 
+#include <esp_heap_caps.h>
+
 #include "Epub.h"
 #include "EpubReaderActivity.h"
 #include "FileSelectionActivity.h"
@@ -62,6 +64,26 @@ void ReaderActivity::onSelectBookFile(const std::string& path) {
   enterNewActivity(new FullScreenMessageActivity(renderer, mappedInput, "Loading..."));
 
   if (isXtcFile(path)) {
+    // Check if we have enough contiguous memory for XTC loading
+    // After WiFi use, heap can be fragmented even with plenty of free memory
+    const size_t largestBlock = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+    Serial.printf("[%lu] [XTC] Largest free block: %zu bytes, free heap: %d\n",
+                  millis(), largestBlock, ESP.getFreeHeap());
+
+    // Need at least 130KB contiguous: ~30KB for page table + 96KB for page buffer + margin
+    if (largestBlock < 130000) {
+      // Memory too fragmented - suggest restart
+      Serial.printf("[%lu] [XTC] Memory fragmented (largest block %zu < 130KB), need restart\n",
+                    millis(), largestBlock);
+      exitActivity();
+      enterNewActivity(new FullScreenMessageActivity(renderer, mappedInput,
+                                                     "Low memory. Please restart device.", REGULAR,
+                                                     EInkDisplay::HALF_REFRESH));
+      delay(3000);
+      onGoToFileSelection();
+      return;
+    }
+
     // Load XTC file
     auto xtc = loadXtc(path);
     if (xtc) {

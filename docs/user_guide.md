@@ -77,6 +77,8 @@ When you enter the screen, you'll be prompted to choose a network mode:
 Once connected, your X4 will start hosting a web server. See the [webserver docs](webserver.md) for more
 information on how to connect and upload files.
 
+> **Note:** When you exit File Transfer, the device will automatically restart to reclaim memory used by WiFi.
+
 ### 3.5 Settings
 
 The Settings screen allows you to configure the device's behavior:
@@ -128,6 +130,7 @@ The Settings screen allows you to configure the device's behavior:
 
 - **Check for updates**
   - Check for and install firmware updates via WiFi
+  - Device will restart after exiting to reclaim WiFi memory
 
 ### 3.6 Sleep Screen
 
