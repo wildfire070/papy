@@ -1,5 +1,11 @@
 # Papyrix
 
+[![Changelog](https://img.shields.io/badge/changelog-CHANGELOG.md-blue)](CHANGELOG.md)
+[![User Guide](https://img.shields.io/badge/docs-User_Guide-green)](docs/user_guide.md)
+[![Customization](https://img.shields.io/badge/docs-Customization-green)](docs/customization.md)
+[![File Formats](https://img.shields.io/badge/docs-File_Formats-green)](docs/file-formats.md)
+[![Webserver](https://img.shields.io/badge/docs-Webserver-green)](docs/webserver.md)
+
 A lightweight, user-friendly firmware fork for the **Xteink X4** e-paper display reader.
 Built using **PlatformIO** and targeting the **ESP32-C3** microcontroller.
 
@@ -160,6 +166,16 @@ make gh-release VERSION=0.1.1
 # With custom notes
 make gh-release VERSION=0.1.1 NOTES="Release notes here"
 ```
+
+### Generating changelog
+
+Generate `CHANGELOG.md` from git tags and commit history:
+
+```sh
+make changelog
+```
+
+This creates a changelog grouped by version tags, with commit messages and author information.
 
 ## Internals
 

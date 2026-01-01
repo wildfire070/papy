@@ -2,7 +2,7 @@
 # Wraps PlatformIO commands for convenience
 
 .PHONY: all build build-release release upload upload-release flash flash-release \
-        clean format check monitor size erase build-fs upload-fs sleep-screen gh-release help
+        clean format check monitor size erase build-fs upload-fs sleep-screen gh-release changelog help
 
 # Default target
 all: help
@@ -83,6 +83,27 @@ else
 		--title "Papyrix v$(VERSION)" \
 		--generate-notes
 endif
+
+changelog: ## Generate CHANGELOG.md from git history
+	@echo "Generating CHANGELOG.md..."
+	@echo "" > CHANGELOG.md; \
+	previous_tag=0; \
+	for current_tag in $$(git tag --sort=-creatordate); do \
+		if [ "$$previous_tag" != 0 ]; then \
+			tag_date=$$(git log -1 --pretty=format:'%ad' --date=short $${previous_tag}); \
+			printf "\n## $${previous_tag} ($${tag_date})\n\n" >> CHANGELOG.md; \
+			git log $${current_tag}...$${previous_tag} --pretty=format:'*  %s [[%an](mailto:%ae)]' --reverse | grep -v Merge >> CHANGELOG.md; \
+			printf "\n" >> CHANGELOG.md; \
+		fi; \
+		previous_tag=$${current_tag}; \
+	done; \
+	if [ "$$previous_tag" != 0 ]; then \
+		tag_date=$$(git log -1 --pretty=format:'%ad' --date=short $${previous_tag}); \
+		printf "\n## $${previous_tag} ($${tag_date})\n\n" >> CHANGELOG.md; \
+		git log $${previous_tag} --pretty=format:'*  %s [[%an](mailto:%ae)]' --reverse | grep -v Merge >> CHANGELOG.md; \
+		printf "\n" >> CHANGELOG.md; \
+	fi
+	@echo "CHANGELOG.md generated successfully."
 
 # Image conversion
 sleep-screen: ## Convert image to sleep screen BMP
