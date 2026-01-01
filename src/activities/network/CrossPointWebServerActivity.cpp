@@ -364,7 +364,7 @@ void drawQRCode(const GfxRenderer& renderer, const int x, const int y, const std
 
 void CrossPointWebServerActivity::renderServerRunning() const {
   // Use consistent line spacing
-  constexpr int LINE_SPACING = 28;  // Space between lines
+  constexpr int LINE_SPACING = 32;  // Space between lines
 
   renderer.drawCenteredText(THEME.readerFontId, 15, "File Transfer", THEME.primaryTextBlack, BOLD);
 

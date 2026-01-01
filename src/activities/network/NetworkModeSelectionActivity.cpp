@@ -103,23 +103,39 @@ void NetworkModeSelectionActivity::render() const {
   // Draw subtitle
   renderer.drawCenteredText(THEME.uiFontId, 50, "How would you like to connect?", THEME.primaryTextBlack, REGULAR);
 
-  // Draw menu items centered on screen
-  constexpr int itemHeight = 50;  // Height for each menu item (including description)
-  const int startY = (pageHeight - (MENU_ITEM_COUNT * itemHeight)) / 2 + 10;
+  // Draw menu items as grid boxes (matching HomeActivity style)
+  constexpr int itemHeight = 80;
+  constexpr int itemWidth = 400;
+  constexpr int itemGap = 10;
+  const int itemX = (pageWidth - itemWidth) / 2;
+  const int startY = (pageHeight - (MENU_ITEM_COUNT * (itemHeight + itemGap) - itemGap)) / 2;
 
   for (int i = 0; i < MENU_ITEM_COUNT; i++) {
-    const int itemY = startY + i * itemHeight;
+    const int itemY = startY + i * (itemHeight + itemGap);
     const bool isSelected = (i == selectedIndex);
 
-    // Draw selection highlight for selected item
     if (isSelected) {
-      renderer.fillRect(20, itemY - 2, pageWidth - 40, itemHeight - 6, THEME.selectionFillBlack);
+      // Selected - filled background (like HomeActivity)
+      renderer.fillRect(itemX, itemY, itemWidth, itemHeight, THEME.selectionFillBlack);
+    } else {
+      // Not selected - bordered (like HomeActivity)
+      renderer.drawRect(itemX, itemY, itemWidth, itemHeight, THEME.primaryTextBlack);
     }
 
-    // Use selection text color when selected, primary text color otherwise
+    // Draw title and description centered within box
     const bool textColor = isSelected ? THEME.selectionTextBlack : THEME.primaryTextBlack;
-    renderer.drawText(THEME.uiFontId, 30, itemY, MENU_ITEMS[i], textColor);
-    renderer.drawText(THEME.smallFontId, 30, itemY + 22, MENU_DESCRIPTIONS[i], textColor);
+
+    // Title - centered horizontally, positioned in upper portion
+    const int titleWidth = renderer.getTextWidth(THEME.uiFontId, MENU_ITEMS[i]);
+    const int titleX = itemX + (itemWidth - titleWidth) / 2;
+    const int titleY = itemY + 10;
+    renderer.drawText(THEME.uiFontId, titleX, titleY, MENU_ITEMS[i], textColor);
+
+    // Description - centered horizontally, positioned in lower portion
+    const int descWidth = renderer.getTextWidth(THEME.smallFontId, MENU_DESCRIPTIONS[i]);
+    const int descX = itemX + (itemWidth - descWidth) / 2;
+    const int descY = itemY + 55;
+    renderer.drawText(THEME.smallFontId, descX, descY, MENU_DESCRIPTIONS[i], textColor);
   }
 
   // Draw help text at bottom
