@@ -145,7 +145,7 @@ bool Section::createSectionFile(const int fontId, const float lineCompression, c
     if (!SdMan.openFileForWrite("SCT", tmpHtmlPath, tmpHtml)) {
       continue;
     }
-    success = epub->readItemContentsToStream(localPath, tmpHtml, 1024);
+    success = epub->readItemContentsToStream(localPath, tmpHtml, 4096);
     fileSize = tmpHtml.size();
     tmpHtml.close();
 

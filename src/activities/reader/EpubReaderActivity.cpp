@@ -269,50 +269,24 @@ void EpubReaderActivity::renderScreen() {
                                     SETTINGS.paragraphAlignment, viewportWidth, viewportHeight)) {
       Serial.printf("[%lu] [ERS] Cache not found, building...\n", millis());
 
-      // Progress bar dimensions
-      constexpr int barWidth = 200;
-      constexpr int barHeight = 10;
+      // Show static "Indexing..." message
       constexpr int boxMargin = 20;
       const int fontId = SETTINGS.getReaderFontId();
       const int textWidth = renderer.getTextWidth(fontId, "Indexing...");
-      const int boxWidthWithBar = (barWidth > textWidth ? barWidth : textWidth) + boxMargin * 2;
-      const int boxWidthNoBar = textWidth + boxMargin * 2;
-      const int boxHeightWithBar = renderer.getLineHeight(fontId) + barHeight + boxMargin * 3;
-      const int boxHeightNoBar = renderer.getLineHeight(fontId) + boxMargin * 2;
-      const int boxXWithBar = (renderer.getScreenWidth() - boxWidthWithBar) / 2;
-      const int boxXNoBar = (renderer.getScreenWidth() - boxWidthNoBar) / 2;
+      const int boxWidth = textWidth + boxMargin * 2;
+      const int boxHeight = renderer.getLineHeight(fontId) + boxMargin * 2;
+      const int boxX = (renderer.getScreenWidth() - boxWidth) / 2;
       constexpr int boxY = 50;
-      const int barX = boxXWithBar + (boxWidthWithBar - barWidth) / 2;
-      const int barY = boxY + renderer.getLineHeight(fontId) + boxMargin * 2;
 
-      // Always show "Indexing..." text first
-      {
-        renderer.fillRect(boxXNoBar, boxY, boxWidthNoBar, boxHeightNoBar, !THEME.primaryTextBlack);
-        renderer.drawText(fontId, boxXNoBar + boxMargin, boxY + boxMargin, "Indexing...", THEME.primaryTextBlack);
-        renderer.drawRect(boxXNoBar + 5, boxY + 5, boxWidthNoBar - 10, boxHeightNoBar - 10, THEME.primaryTextBlack);
-        renderer.displayBuffer();
-        pagesUntilFullRefresh = 0;
-      }
-
-      // Setup callback - only called for chapters >= 50KB, redraws with progress bar
-      auto progressSetup = [this, fontId, boxXWithBar, boxWidthWithBar, boxHeightWithBar, barX, barY] {
-        renderer.fillRect(boxXWithBar, boxY, boxWidthWithBar, boxHeightWithBar, !THEME.primaryTextBlack);
-        renderer.drawText(fontId, boxXWithBar + boxMargin, boxY + boxMargin, "Indexing...", THEME.primaryTextBlack);
-        renderer.drawRect(boxXWithBar + 5, boxY + 5, boxWidthWithBar - 10, boxHeightWithBar - 10, THEME.primaryTextBlack);
-        renderer.drawRect(barX, barY, barWidth, barHeight, THEME.primaryTextBlack);
-        renderer.displayBuffer();
-      };
-
-      // Progress callback to update progress bar
-      auto progressCallback = [this, barX, barY, barWidth, barHeight](int progress) {
-        const int fillWidth = (barWidth - 2) * progress / 100;
-        renderer.fillRect(barX + 1, barY + 1, fillWidth, barHeight - 2, THEME.primaryTextBlack);
-        renderer.displayBuffer(EInkDisplay::FAST_REFRESH);
-      };
+      renderer.fillRect(boxX, boxY, boxWidth, boxHeight, !THEME.primaryTextBlack);
+      renderer.drawText(fontId, boxX + boxMargin, boxY + boxMargin, "Indexing...", THEME.primaryTextBlack);
+      renderer.drawRect(boxX + 5, boxY + 5, boxWidth - 10, boxHeight - 10, THEME.primaryTextBlack);
+      renderer.displayBuffer();
+      pagesUntilFullRefresh = 0;
 
       if (!section->createSectionFile(SETTINGS.getReaderFontId(), lineCompression, SETTINGS.extraParagraphSpacing,
-                                        SETTINGS.paragraphAlignment, viewportWidth, viewportHeight, progressSetup,
-                                        progressCallback)) {
+                                        SETTINGS.paragraphAlignment, viewportWidth, viewportHeight, nullptr,
+                                        nullptr)) {
         Serial.printf("[%lu] [ERS] Failed to persist page data to SD\n", millis());
         section.reset();
         // Show error message to user
