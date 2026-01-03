@@ -19,7 +19,7 @@ constexpr const char* orientationValues[] = {"Portrait", "Landscape CW", "Invert
 constexpr const char* sleepTimeoutValues[] = {"5 min", "10 min", "15 min", "30 min"};
 constexpr const char* paragraphAlignmentValues[] = {"Justified", "Left", "Center", "Right"};
 
-constexpr int settingsCount = 13;
+constexpr int settingsCount = 14;
 const SettingInfo settingsList[settingsCount] = {
     // Theme
     {"Theme", SettingType::THEME_SELECT, nullptr, nullptr, 0},
@@ -36,6 +36,7 @@ const SettingInfo settingsList[settingsCount] = {
     {"Sleep Screen", SettingType::ENUM, &CrossPointSettings::sleepScreen, sleepScreenValues, 4},
     {"Short Power Button Click", SettingType::TOGGLE, &CrossPointSettings::shortPwrBtn, nullptr, 0},
     // Actions
+    {"Net Library", SettingType::ACTION, nullptr, nullptr, 0},
     {"File transfer", SettingType::ACTION, nullptr, nullptr, 0},
     {"Check for updates", SettingType::ACTION, nullptr, nullptr, 0},
 };
@@ -154,7 +155,10 @@ void SettingsActivity::toggleCurrentSetting() {
       THEME_MANAGER.loadTheme(SETTINGS.themeName);
     }
   } else if (setting.type == SettingType::ACTION) {
-    if (std::string(setting.name) == "File transfer") {
+    if (std::string(setting.name) == "Net Library") {
+      SETTINGS.saveToFile();
+      onOpdsLibraryOpen();
+    } else if (std::string(setting.name) == "File transfer") {
       SETTINGS.saveToFile();
       onFileTransferOpen();
     } else if (std::string(setting.name) == "Check for updates") {

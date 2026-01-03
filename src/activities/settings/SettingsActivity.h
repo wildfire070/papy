@@ -29,6 +29,7 @@ class SettingsActivity final : public ActivityWithSubactivity {
   int selectedSettingIndex = 0;  // Currently selected setting
   const std::function<void()> onGoHome;
   const std::function<void()> onFileTransferOpen;
+  const std::function<void()> onOpdsLibraryOpen;
 
   // Theme selection state
   std::vector<std::string> availableThemes;
@@ -43,10 +44,12 @@ class SettingsActivity final : public ActivityWithSubactivity {
  public:
   explicit SettingsActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
                             const std::function<void()>& onGoHome,
-                            const std::function<void()>& onFileTransferOpen)
+                            const std::function<void()>& onFileTransferOpen,
+                            const std::function<void()>& onOpdsLibraryOpen)
       : ActivityWithSubactivity("Settings", renderer, mappedInput),
         onGoHome(onGoHome),
-        onFileTransferOpen(onFileTransferOpen) {}
+        onFileTransferOpen(onFileTransferOpen),
+        onOpdsLibraryOpen(onOpdsLibraryOpen) {}
   void onEnter() override;
   void onExit() override;
   void loop() override;

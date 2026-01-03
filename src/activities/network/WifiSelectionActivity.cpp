@@ -111,7 +111,7 @@ void WifiSelectionActivity::processWifiScanResults() {
 
   if (scanResult == WIFI_SCAN_FAILED) {
     state = WifiSelectionState::NETWORK_LIST;
-    updateRequired = true;
+        updateRequired = true;
     return;
   }
 
@@ -160,7 +160,7 @@ void WifiSelectionActivity::processWifiScanResults() {
   WiFi.scanDelete();
   state = WifiSelectionState::NETWORK_LIST;
   selectedNetworkIndex = 0;
-  updateRequired = true;
+    updateRequired = true;
 }
 
 void WifiSelectionActivity::selectNetwork(const int index) {
@@ -203,7 +203,7 @@ void WifiSelectionActivity::selectNetwork(const int index) {
         },
         [this] {
           state = WifiSelectionState::NETWORK_LIST;
-          updateRequired = true;
+                    updateRequired = true;
           exitActivity();
         }));
     updateRequired = true;
@@ -249,7 +249,7 @@ void WifiSelectionActivity::checkConnectionStatus() {
     if (!usedSavedPassword && !enteredPassword.empty()) {
       state = WifiSelectionState::SAVE_PROMPT;
       savePromptSelection = 0;  // Default to "Yes"
-      updateRequired = true;
+            updateRequired = true;
     } else {
       // Using saved password or open network - complete immediately
       Serial.printf("[%lu] [WIFI] Connected with saved/open credentials, completing immediately\n", millis());
@@ -264,7 +264,7 @@ void WifiSelectionActivity::checkConnectionStatus() {
       connectionError = "Network not found";
     }
     state = WifiSelectionState::CONNECTION_FAILED;
-    updateRequired = true;
+        updateRequired = true;
     return;
   }
 
@@ -273,7 +273,7 @@ void WifiSelectionActivity::checkConnectionStatus() {
     WiFi.disconnect();
     connectionError = "Connection timeout";
     state = WifiSelectionState::CONNECTION_FAILED;
-    updateRequired = true;
+        updateRequired = true;
     return;
   }
 }
@@ -361,11 +361,11 @@ void WifiSelectionActivity::loop() {
       }
       // Go back to network list
       state = WifiSelectionState::NETWORK_LIST;
-      updateRequired = true;
+            updateRequired = true;
     } else if (mappedInput.wasPressed(MappedInputManager::Button::Back)) {
       // Skip forgetting, go back to network list
       state = WifiSelectionState::NETWORK_LIST;
-      updateRequired = true;
+            updateRequired = true;
     }
     return;
   }
@@ -384,11 +384,11 @@ void WifiSelectionActivity::loop() {
       // If we used saved credentials, offer to forget the network
       if (usedSavedPassword) {
         state = WifiSelectionState::FORGET_PROMPT;
-        forgetPromptSelection = 0;  // Default to "Yes"
+                forgetPromptSelection = 0;  // Default to "Yes"
       } else {
         // Go back to network list on failure
         state = WifiSelectionState::NETWORK_LIST;
-      }
+              }
       updateRequired = true;
       return;
     }
@@ -575,7 +575,7 @@ void WifiSelectionActivity::renderNetworkList() const {
 
   // Draw help text
   renderer.drawText(THEME.smallFontId, 20, pageHeight - 75, "* = Encrypted | + = Saved", THEME.primaryTextBlack);
-  const auto labels = mappedInput.mapLabels("« Back", "Connect", "", "");
+  const auto labels = mappedInput.mapLabels("Back", "Connect", "", "");
   renderer.drawButtonHints(THEME.uiFontId, labels.btn1, labels.btn2, labels.btn3, labels.btn4, THEME.primaryTextBlack);
 }
 
@@ -587,7 +587,7 @@ void WifiSelectionActivity::renderConnecting() const {
   if (state == WifiSelectionState::SCANNING) {
     renderer.drawCenteredText(THEME.uiFontId, top, "Scanning...", THEME.primaryTextBlack, REGULAR);
   } else {
-    renderer.drawCenteredText(THEME.readerFontId, top - 40, "Connecting...", THEME.primaryTextBlack, BOLD);
+    renderer.drawCenteredText(THEME.uiFontId, top - 40, "Connecting...", THEME.primaryTextBlack, BOLD);
 
     std::string ssidInfo = "to " + selectedSSID;
     if (ssidInfo.length() > 25) {

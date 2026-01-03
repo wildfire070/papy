@@ -12,7 +12,7 @@ constexpr int PAGE_ITEMS = 23;
 constexpr int SKIP_PAGE_MS = 700;
 constexpr unsigned long GO_HOME_MS = 1000;
 
-const char* HIDDEN_DIRS[] = {"System Volume Information", "LOST.DIR", "$RECYCLE.BIN"};
+const char* HIDDEN_DIRS[] = {"System Volume Information", "LOST.DIR", "$RECYCLE.BIN", "themes", "XTCache"};
 constexpr size_t HIDDEN_DIRS_COUNT = sizeof(HIDDEN_DIRS) / sizeof(HIDDEN_DIRS[0]);
 
 bool isHiddenName(const char* name) {
@@ -192,7 +192,7 @@ void FileSelectionActivity::render() const {
   renderer.drawCenteredText(THEME.readerFontId, 10, "Books", THEME.primaryTextBlack, BOLD);
 
   // Help text
-  const auto labels = mappedInput.mapLabels("« Home", "Open", "", "");
+  const auto labels = mappedInput.mapLabels("Home", "Open", "", "");
   renderer.drawButtonHints(THEME.uiFontId, labels.btn1, labels.btn2, labels.btn3, labels.btn4, THEME.primaryTextBlack);
 
   if (files.empty()) {

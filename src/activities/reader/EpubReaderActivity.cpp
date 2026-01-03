@@ -217,6 +217,12 @@ void EpubReaderActivity::loop() {
 
 void EpubReaderActivity::displayTaskLoop() {
   while (true) {
+    // If a subactivity is active, yield CPU time but don't render
+    if (subActivity) {
+      vTaskDelay(10 / portTICK_PERIOD_MS);
+      continue;
+    }
+
     if (updateRequired) {
       updateRequired = false;
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
@@ -228,6 +234,11 @@ void EpubReaderActivity::displayTaskLoop() {
 }
 
 void EpubReaderActivity::renderScreen() {
+  // Double-check subactivity under mutex protection to prevent race condition
+  if (subActivity) {
+    return;
+  }
+
   if (!epub) {
     return;
   }

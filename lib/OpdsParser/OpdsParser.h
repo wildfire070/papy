@@ -1,0 +1,51 @@
+#pragma once
+#include <expat.h>
+#include <string>
+#include <vector>
+
+enum class OpdsEntryType {
+  NAVIGATION,
+  BOOK
+};
+
+struct OpdsEntry {
+  OpdsEntryType type = OpdsEntryType::NAVIGATION;
+  std::string title;
+  std::string author;
+  std::string href;
+  std::string id;
+};
+
+using OpdsBook = OpdsEntry;
+
+class OpdsParser {
+ public:
+  OpdsParser() = default;
+  ~OpdsParser();
+
+  OpdsParser(const OpdsParser&) = delete;
+  OpdsParser& operator=(const OpdsParser&) = delete;
+
+  bool parse(const char* xmlData, size_t length);
+  const std::vector<OpdsEntry>& getEntries() const { return entries; }
+  std::vector<OpdsEntry> getBooks() const;
+  void clear();
+
+ private:
+  static void XMLCALL startElement(void* userData, const XML_Char* name,
+                                   const XML_Char** atts);
+  static void XMLCALL endElement(void* userData, const XML_Char* name);
+  static void XMLCALL characterData(void* userData, const XML_Char* s,
+                                    int len);
+  static const char* findAttribute(const XML_Char** atts, const char* name);
+
+  XML_Parser parser = nullptr;
+  std::vector<OpdsEntry> entries;
+  OpdsEntry currentEntry;
+  std::string currentText;
+  bool inEntry = false;
+  bool inTitle = false;
+  bool inAuthor = false;
+  bool inAuthorName = false;
+  bool inId = false;
+};

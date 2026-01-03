@@ -13,7 +13,7 @@
 namespace {
 // Folders/files to hide from the web interface file browser
 // Note: Items starting with "." are automatically hidden
-const char* HIDDEN_ITEMS[] = {"System Volume Information", "XTCache"};
+const char* HIDDEN_ITEMS[] = {"System Volume Information", "LOST.DIR", "$RECYCLE.BIN", "themes", "XTCache"};
 constexpr size_t HIDDEN_ITEMS_COUNT = sizeof(HIDDEN_ITEMS) / sizeof(HIDDEN_ITEMS[0]);
 }  // namespace
 

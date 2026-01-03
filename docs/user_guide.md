@@ -146,7 +146,62 @@ The Settings screen allows you to configure the device's behavior:
   - Check for and install firmware updates via WiFi
   - Device will restart after exiting to reclaim WiFi memory
 
-### 3.6 Sleep Screen
+- **Net Library**
+  - Browse and download books from OPDS-compatible servers
+  - See [3.6 Net Library](#36-net-library) below
+
+### 3.6 Net Library
+
+Net Library allows you to browse and download books directly from any [OPDS](https://opds.io/)-compatible server running on your local network. OPDS (Open Publication Distribution System) is an open standard supported by many ebook servers including:
+
+- **Calibre Content Server** — Built into Calibre
+- **COPS** — Calibre OPDS (PHP Server)
+- **Kavita** — Self-hosted digital library
+- **Komga** — Media server for comics/manga
+- **Feedbooks** — Public domain books
+
+#### Getting Started
+
+On first launch, **Project Gutenberg** is preconfigured as a default server, giving you immediate access to over 70,000 free public domain ebooks.
+
+#### Adding More Servers
+
+Servers are configured via the `/opds.ini` file on your SD card:
+
+1. Insert the SD card into your computer
+2. Open or create `/opds.ini` in the root directory
+3. Add servers using the INI format:
+
+```ini
+[My Calibre Server]
+url = http://192.168.1.100:8080/opds
+username = myuser
+password = mypassword
+```
+
+> **Tip:** For Calibre, enable the content server in Preferences > Sharing over the net, then use `http://your-ip:8080/opds` as the URL.
+
+#### Browsing Books
+
+1. Select a configured server from the list
+2. The device will connect via WiFi (you'll be prompted to select a network if not connected)
+3. Navigate through catalogs using **Left/Right** or **Volume Up/Down**
+4. Press **Confirm** to enter a catalog or download a book
+5. Press **Back** to go up one level
+
+#### Supported Formats
+
+Books are downloaded in EPUB format. If a book doesn't have an EPUB version available, it cannot be downloaded.
+
+#### Managing Servers
+
+To add, edit, or remove servers, modify the `/opds.ini` file on your SD card.
+
+Downloaded books are saved to the `/Books/` folder on your SD card.
+
+> **Note:** When you exit Net Library, the device will automatically restart to reclaim memory used by WiFi.
+
+### 3.7 Sleep Screen
 
 ![Sleep Screen](images/sleep-screen.jpg)
 

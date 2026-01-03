@@ -34,9 +34,12 @@
 #include "activities/boot_sleep/SleepActivity.h"
 #include "activities/home/HomeActivity.h"
 #include "activities/network/CrossPointWebServerActivity.h"
+#include "activities/opds/OpdsBookBrowserActivity.h"
+#include "activities/opds/OpdsServerListActivity.h"
 #include "activities/reader/ReaderActivity.h"
 #include "activities/settings/SettingsActivity.h"
 #include "activities/util/FullScreenMessageActivity.h"
+#include "opds/OpdsServerStore.h"
 #include "config.h"
 
 #define SPI_FQ 40000000
@@ -184,9 +187,25 @@ void onGoToFileTransfer() {
   enterNewActivity(new CrossPointWebServerActivity(renderer, mappedInputManager, onGoHome));
 }
 
+void onGoToSettings();
+void onGoToOpdsServers();
+void onOpdsServerSelected(const OpdsServerConfig& server) {
+  exitActivity();
+  enterNewActivity(new OpdsBookBrowserActivity(
+      renderer, mappedInputManager, server,
+      onGoToOpdsServers  // onGoBack
+  ));
+}
+
+void onGoToOpdsServers() {
+  exitActivity();
+  enterNewActivity(new OpdsServerListActivity(renderer, mappedInputManager, onGoToSettings, onOpdsServerSelected));
+}
+
 void onGoToSettings() {
   exitActivity();
-  enterNewActivity(new SettingsActivity(renderer, mappedInputManager, onGoHome, onGoToFileTransfer));
+  enterNewActivity(
+      new SettingsActivity(renderer, mappedInputManager, onGoHome, onGoToFileTransfer, onGoToOpdsServers));
 }
 
 void onGoHome() {
