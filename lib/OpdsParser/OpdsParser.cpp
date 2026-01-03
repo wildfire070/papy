@@ -100,6 +100,8 @@ void OpdsParser::clear() {
   entries.clear();
   currentEntry = OpdsEntry{};
   currentText.clear();
+  searchTemplate.clear();
+  openSearchUrl.clear();
   inEntry = false;
   inTitle = false;
   inAuthor = false;
@@ -134,6 +136,27 @@ void XMLCALL OpdsParser::startElement(void* userData, const XML_Char* name,
   if (strcmp(name, "entry") == 0 || strstr(name, ":entry") != nullptr) {
     self->inEntry = true;
     self->currentEntry = OpdsEntry{};
+    return;
+  }
+
+  // Handle feed-level search links (outside entries)
+  if (!self->inEntry &&
+      (strcmp(name, "link") == 0 || strstr(name, ":link") != nullptr)) {
+    const char* rel = findAttribute(atts, "rel");
+    const char* type = findAttribute(atts, "type");
+    const char* href = findAttribute(atts, "href");
+
+    if (rel && href && strcmp(rel, "search") == 0) {
+      if (type && strstr(type, "application/atom+xml") != nullptr) {
+        // Direct search template (preferred)
+        self->searchTemplate = href;
+        Serial.printf("[%lu] [OPDS] Found search template: %s\n", millis(), href);
+      } else if (type && strstr(type, "opensearchdescription+xml") != nullptr) {
+        // OpenSearch description URL (fallback)
+        self->openSearchUrl = href;
+        Serial.printf("[%lu] [OPDS] Found OpenSearch URL: %s\n", millis(), href);
+      }
+    }
     return;
   }
 

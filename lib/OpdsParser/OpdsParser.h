@@ -37,6 +37,8 @@ class OpdsParser {
   const std::vector<OpdsEntry>& getEntries() const { return entries; }
   std::vector<OpdsEntry> getBooks() const;
   size_t getEntryCount() const { return entries.size(); }
+  const std::string& getSearchTemplate() const { return searchTemplate; }
+  const std::string& getOpenSearchUrl() const { return openSearchUrl; }
   void clear();
 
  private:
@@ -51,6 +53,8 @@ class OpdsParser {
   std::vector<OpdsEntry> entries;
   OpdsEntry currentEntry;
   std::string currentText;
+  std::string searchTemplate;   // Direct search URL template (atom+xml)
+  std::string openSearchUrl;    // OpenSearch description URL
   bool inEntry = false;
   bool inTitle = false;
   bool inAuthor = false;

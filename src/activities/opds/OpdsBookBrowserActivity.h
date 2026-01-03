@@ -47,6 +47,7 @@ class OpdsBookBrowserActivity final : public ActivityWithSubactivity {
   int selectorIndex = 0;
   std::string errorMessage;
   std::string statusMessage;
+  std::string currentSearchTemplate;
   size_t downloadProgress = 0;
   size_t downloadTotal = 0;
 
@@ -64,5 +65,7 @@ class OpdsBookBrowserActivity final : public ActivityWithSubactivity {
   void navigateToEntry(const OpdsEntry& entry);
   void navigateBack();
   void downloadBook(const OpdsEntry& book);
+  void handleSearchEntry();
+  std::string fetchOpenSearchTemplate(const std::string& url);
   std::string sanitizeFilename(const std::string& title) const;
 };

@@ -7,6 +7,7 @@
 #include "MappedInputManager.h"
 #include "ThemeManager.h"
 #include "activities/network/WifiSelectionActivity.h"
+#include "activities/util/KeyboardEntryActivity.h"
 #include "config.h"
 #include "network/HttpDownloader.h"
 
@@ -50,6 +51,62 @@ std::string buildUrl(const std::string& serverUrl, const std::string& path) {
 std::string truncateWithEllipsis(const std::string& str, size_t maxLen) {
   if (str.length() <= maxLen) return str;
   return str.substr(0, maxLen - 3) + "...";
+}
+
+std::string urlEncode(const std::string& input) {
+  std::string result;
+  result.reserve(input.size() * 3);  // Worst case: every char encoded
+
+  for (const unsigned char c : input) {
+    if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+        (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~') {
+      result += static_cast<char>(c);
+    } else {
+      char hex[4];
+      snprintf(hex, sizeof(hex), "%%%02X", c);
+      result += hex;
+    }
+  }
+  return result;
+}
+
+std::string stripOptionalParams(const std::string& tmpl) {
+  std::string result = tmpl;
+  // Remove optional params like {startPage?}, {count?} etc.
+  size_t pos = 0;
+  while ((pos = result.find("{", pos)) != std::string::npos) {
+    const size_t endPos = result.find("}", pos);
+    if (endPos == std::string::npos) break;
+
+    // Check if it's an optional param (ends with ?)
+    if (endPos > pos + 1 && result[endPos - 1] == '?') {
+      // Remove the parameter and any preceding &
+      // But NOT the ? (first param separator)
+      size_t removeStart = pos;
+      if (removeStart > 0 && result[removeStart - 1] == '&') {
+        removeStart--;
+      }
+      result.erase(removeStart, endPos - removeStart + 1);
+      pos = removeStart;
+    } else {
+      pos = endPos + 1;
+    }
+  }
+
+  // Clean up orphaned query separators (e.g., "?&" -> "?", trailing "?")
+  size_t qmark = result.find('?');
+  if (qmark != std::string::npos) {
+    // Remove ?& -> ?
+    while (qmark + 1 < result.size() && result[qmark + 1] == '&') {
+      result.erase(qmark + 1, 1);
+    }
+    // Remove trailing ?
+    if (qmark == result.size() - 1) {
+      result.erase(qmark, 1);
+    }
+  }
+
+  return result;
 }
 }  // namespace
 
@@ -98,6 +155,7 @@ void OpdsBookBrowserActivity::onEnter() {
   entries.clear();
   navigationHistory.clear();
   currentPath.clear();
+  currentSearchTemplate.clear();
   selectorIndex = 0;
   errorMessage.clear();
   statusMessage = "Connecting...";
@@ -403,6 +461,26 @@ void OpdsBookBrowserActivity::fetchFeed(const std::string& path) {
   Serial.printf("[%lu] [OPDS] [MEM] Free heap after parse: %d bytes\n", millis(), ESP.getFreeHeap());
 
   entries = parser.getEntries();
+
+  // Extract search template (prefer direct template over OpenSearch description)
+  currentSearchTemplate = parser.getSearchTemplate();
+  if (currentSearchTemplate.empty() && !parser.getOpenSearchUrl().empty()) {
+    // Need to fetch OpenSearch description
+    currentSearchTemplate = fetchOpenSearchTemplate(
+        buildUrl(serverConfig.url, parser.getOpenSearchUrl()));
+  }
+
+  // Inject search entry at top if search is available
+  if (!currentSearchTemplate.empty()) {
+    OpdsEntry searchEntry;
+    searchEntry.type = OpdsEntryType::NAVIGATION;
+    searchEntry.title = "Search...";
+    searchEntry.href = "__SEARCH__";
+    searchEntry.id = "__SEARCH__";
+    entries.insert(entries.begin(), searchEntry);
+    Serial.printf("[%lu] [OPDS] Injected search entry\n", millis());
+  }
+
   selectorIndex = 0;
 
   if (entries.empty()) {
@@ -417,6 +495,12 @@ void OpdsBookBrowserActivity::fetchFeed(const std::string& path) {
 }
 
 void OpdsBookBrowserActivity::navigateToEntry(const OpdsEntry& entry) {
+  // Special handling for search entry
+  if (entry.href == "__SEARCH__") {
+    handleSearchEntry();
+    return;
+  }
+
   navigationHistory.push_back(currentPath);
   currentPath = entry.href;
 
@@ -521,4 +605,97 @@ std::string OpdsBookBrowserActivity::sanitizeFilename(
   }
 
   return result.empty() ? "book" : result;
+}
+
+std::string OpdsBookBrowserActivity::fetchOpenSearchTemplate(const std::string& url) {
+  Serial.printf("[%lu] [OPDS] Fetching OpenSearch description: %s\n", millis(), url.c_str());
+
+  std::string content;
+  if (!HttpDownloader::fetchUrl(url, content, serverConfig.username, serverConfig.password)) {
+    Serial.printf("[%lu] [OPDS] Failed to fetch OpenSearch description\n", millis());
+    return "";
+  }
+
+  // Parse OpenSearch XML - look for <Url ... template="..." type="application/atom+xml"/>
+  const std::string typeMarker = "application/atom+xml";
+  const std::string templateMarker = "template=\"";
+
+  // Find Url element with atom+xml type
+  size_t urlPos = 0;
+  while ((urlPos = content.find("<Url", urlPos)) != std::string::npos) {
+    const size_t urlEnd = content.find(">", urlPos);
+    if (urlEnd == std::string::npos) break;
+
+    const std::string urlElement = content.substr(urlPos, urlEnd - urlPos + 1);
+
+    // Check if this Url element has the right type
+    if (urlElement.find(typeMarker) != std::string::npos) {
+      // Extract template attribute
+      const size_t tmplStart = urlElement.find(templateMarker);
+      if (tmplStart != std::string::npos) {
+        const size_t valueStart = tmplStart + templateMarker.length();
+        const size_t valueEnd = urlElement.find("\"", valueStart);
+        if (valueEnd != std::string::npos) {
+          std::string tmpl = urlElement.substr(valueStart, valueEnd - valueStart);
+          Serial.printf("[%lu] [OPDS] Extracted search template: %s\n", millis(), tmpl.c_str());
+          return tmpl;
+        }
+      }
+    }
+    urlPos = urlEnd;
+  }
+
+  Serial.printf("[%lu] [OPDS] No search template found in OpenSearch description\n", millis());
+  return "";
+}
+
+void OpdsBookBrowserActivity::handleSearchEntry() {
+  Serial.printf("[%lu] [OPDS] Opening search keyboard\n", millis());
+
+  enterNewActivity(new KeyboardEntryActivity(
+      renderer, mappedInput,
+      "Search",      // title
+      "",            // initialText
+      10,            // startY
+      100,           // maxLength
+      false,         // isPassword
+      [this](const std::string& searchTerm) {
+        // onComplete callback
+        exitActivity();
+
+        if (searchTerm.empty()) {
+          // User submitted empty search, just return to browsing
+          updateRequired = true;
+          return;
+        }
+
+        // Build search URL by replacing {searchTerms} with encoded input
+        std::string searchUrl = stripOptionalParams(currentSearchTemplate);
+        const std::string placeholder = "{searchTerms}";
+        const size_t pos = searchUrl.find(placeholder);
+
+        if (pos != std::string::npos) {
+          const std::string encoded = urlEncode(searchTerm);
+          searchUrl.replace(pos, placeholder.length(), encoded);
+        }
+
+        Serial.printf("[%lu] [OPDS] Search URL: %s\n", millis(), searchUrl.c_str());
+
+        // Navigate to search results
+        navigationHistory.push_back(currentPath);
+        currentPath = searchUrl;
+
+        state = BrowserState::LOADING;
+        statusMessage = "Searching...";
+        entries.clear();
+        selectorIndex = 0;
+        updateRequired = true;
+
+        fetchFeed(currentPath);
+      },
+      [this]() {
+        // onCancel callback
+        exitActivity();
+        updateRequired = true;
+      }));
 }
