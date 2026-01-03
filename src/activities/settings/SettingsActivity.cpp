@@ -158,9 +158,11 @@ void SettingsActivity::toggleCurrentSetting() {
     if (std::string(setting.name) == "Net Library") {
       SETTINGS.saveToFile();
       onOpdsLibraryOpen();
+      return;  // Activity has changed, don't continue
     } else if (std::string(setting.name) == "File transfer") {
       SETTINGS.saveToFile();
       onFileTransferOpen();
+      return;  // Activity has changed, don't continue
     } else if (std::string(setting.name) == "Check for updates") {
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       exitActivity();
@@ -242,7 +244,7 @@ void SettingsActivity::render() const {
                     pageHeight - 60, CROSSPOINT_VERSION, THEME.primaryTextBlack);
 
   // Draw help text
-  const auto labels = mappedInput.mapLabels("« Save", "Toggle", "", "");
+  const auto labels = mappedInput.mapLabels("Save", "Toggle", "", "");
   renderer.drawButtonHints(THEME.uiFontId, labels.btn1, labels.btn2, labels.btn3, labels.btn4, THEME.primaryTextBlack);
 
   // Always use standard refresh for settings screen

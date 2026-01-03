@@ -6,7 +6,6 @@
 #include "ThemeManager.h"
 #include "config.h"
 
-
 void OpdsServerListActivity::taskTrampoline(void* param) {
   auto* self = static_cast<OpdsServerListActivity*>(param);
   self->displayTaskLoop();
@@ -29,13 +28,21 @@ void OpdsServerListActivity::onEnter() {
 
   renderingMutex = xSemaphoreCreateMutex();
 
-  // Load servers from file
-  xSemaphoreTake(renderingMutex, portMAX_DELAY);
+  // Load servers - exactly like FileSelectionActivity::loadFiles()
+  serverNames.clear();
   OPDS_STORE.loadFromFile();
-  xSemaphoreGive(renderingMutex);
+  const auto& servers = OPDS_STORE.getServers();
+  for (const auto& server : servers) {
+    serverNames.push_back(server.name);
+  }
 
   selectedIndex = 0;
-  updateRequired = true;
+
+  // Do first render synchronously to ensure selectedIndex=0 is used
+  render();
+
+  // Task will handle subsequent updates
+  updateRequired = false;
 
   xTaskCreate(&OpdsServerListActivity::taskTrampoline, "OpdsListTask",
               4096,               // Stack size
@@ -55,6 +62,7 @@ void OpdsServerListActivity::onExit() {
   }
   vSemaphoreDelete(renderingMutex);
   renderingMutex = nullptr;
+  serverNames.clear();
 }
 
 void OpdsServerListActivity::render() const {
@@ -62,69 +70,53 @@ void OpdsServerListActivity::render() const {
 
   const auto pageWidth = renderer.getScreenWidth();
 
-  // Title
+  // Draw header (exactly like FileSelectionActivity)
   renderer.drawCenteredText(THEME.readerFontId, 10, "Net Library", THEME.primaryTextBlack, BOLD);
 
-  constexpr int startY = 60;
+  // Help text (exactly like FileSelectionActivity - draw before list)
+  const auto labels = mappedInput.mapLabels("Back", serverNames.empty() ? "" : "Connect", "", "");
+  renderer.drawButtonHints(THEME.uiFontId, labels.btn1, labels.btn2, labels.btn3, labels.btn4, THEME.primaryTextBlack);
 
-  const auto& servers = OPDS_STORE.getServers();
-
-  if (servers.empty()) {
-    // Show instructions when no servers configured
-    renderer.drawCenteredText(THEME.uiFontId, 150, "No servers configured", THEME.primaryTextBlack);
-    renderer.drawCenteredText(THEME.uiFontId, 180, "Edit /opds.ini on SD card", THEME.primaryTextBlack);
-    renderer.drawCenteredText(THEME.uiFontId, 210, "to add OPDS servers", THEME.primaryTextBlack);
-  } else {
-    // Draw selection highlight
-    renderer.fillRect(0, startY + selectedIndex * THEME.itemHeight - 2, pageWidth - 1, THEME.itemHeight, THEME.selectionFillBlack);
-
-    // Draw each server
-    for (size_t i = 0; i < servers.size(); i++) {
-      const int y = startY + static_cast<int>(i) * THEME.itemHeight;
-      const bool isSelected = (static_cast<int>(i) == selectedIndex);
-      const bool textColor = isSelected ? THEME.selectionTextBlack : THEME.primaryTextBlack;
-      const auto& server = servers[i];
-
-      if (isSelected) {
-        renderer.drawText(THEME.uiFontId, 5, y, ">", textColor);
-      }
-
-      renderer.drawText(THEME.uiFontId, 20, y, server.name.c_str(), textColor);
-    }
+  if (serverNames.empty()) {
+    renderer.drawText(THEME.uiFontId, 20, 60, "No servers configured", THEME.primaryTextBlack);
+    renderer.displayBuffer();
+    return;
   }
 
-  // Button hints
-  const auto labels = mappedInput.mapLabels("Back", servers.empty() ? "" : "Connect", "", "");
-  renderer.drawButtonHints(THEME.uiFontId, labels.btn1, labels.btn2, labels.btn3, labels.btn4, THEME.primaryTextBlack);
+  // Draw selection highlight and list (exactly like FileSelectionActivity)
+  renderer.fillRect(0, 60 + selectedIndex * THEME.itemHeight - 2, pageWidth - 1, THEME.itemHeight, THEME.selectionFillBlack);
+  for (size_t i = 0; i < serverNames.size(); i++) {
+    const bool textColor = (static_cast<int>(i) == selectedIndex) ? THEME.selectionTextBlack : THEME.primaryTextBlack;
+    renderer.drawText(THEME.uiFontId, 20, 60 + static_cast<int>(i) * THEME.itemHeight, serverNames[i].c_str(), textColor);
+  }
+
   renderer.displayBuffer();
 }
 
 void OpdsServerListActivity::loop() {
-  const auto& servers = OPDS_STORE.getServers();
-  const int maxIndex = servers.empty() ? 0 : static_cast<int>(servers.size()) - 1;
-
-  // Navigation - Up
-  if (mappedInput.wasPressed(MappedInputManager::Button::Up)) {
-    if (selectedIndex > 0) {
-      selectedIndex--;
-      updateRequired = true;
+  // Navigation - exactly like SettingsActivity (with wrap-around, always triggers update)
+  if (mappedInput.wasPressed(MappedInputManager::Button::Up) ||
+      mappedInput.wasPressed(MappedInputManager::Button::Left)) {
+    if (!serverNames.empty()) {
+      selectedIndex = (selectedIndex > 0) ? (selectedIndex - 1) : (static_cast<int>(serverNames.size()) - 1);
     }
-  }
-
-  // Navigation - Down
-  if (mappedInput.wasPressed(MappedInputManager::Button::Down)) {
-    if (selectedIndex < maxIndex) {
-      selectedIndex++;
-      updateRequired = true;
+    updateRequired = true;
+  } else if (mappedInput.wasPressed(MappedInputManager::Button::Down) ||
+             mappedInput.wasPressed(MappedInputManager::Button::Right)) {
+    if (!serverNames.empty()) {
+      selectedIndex = (selectedIndex + 1) % static_cast<int>(serverNames.size());
     }
+    updateRequired = true;
   }
 
   // Confirm - Select server
   if (mappedInput.wasPressed(MappedInputManager::Button::Confirm)) {
-    if (!servers.empty() && selectedIndex < static_cast<int>(servers.size())) {
-      const auto* server = OPDS_STORE.getServer(selectedIndex);
-      if (server && onServerSelected) {
-        onServerSelected(*server);
+    if (!serverNames.empty() && selectedIndex < static_cast<int>(serverNames.size())) {
+      const auto& servers = OPDS_STORE.getServers();
+      if (selectedIndex < static_cast<int>(servers.size())) {
+        if (onServerSelected) {
+          onServerSelected(servers[selectedIndex]);
+        }
       }
     }
   }

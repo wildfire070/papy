@@ -27,6 +27,7 @@ class OpdsServerListActivity final : public Activity {
   bool updateRequired = false;
 
   int selectedIndex = 0;
+  std::vector<std::string> serverNames;  // Like FileSelectionActivity::files
 
   const std::function<void()> onGoBack;
   const std::function<void(const OpdsServerConfig&)> onServerSelected;
