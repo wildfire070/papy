@@ -288,7 +288,7 @@ void OpdsBookBrowserActivity::render() const {
   // BROWSING state
   const char* confirmLabel = "Open";
   if (!entries.empty() && entries[selectorIndex].type == OpdsEntryType::BOOK) {
-    confirmLabel = "Download";
+    confirmLabel = "Save";
   }
   const auto labels = mappedInput.mapLabels("Back", confirmLabel, "Up", "Down");
   renderer.drawButtonHints(THEME.uiFontId, labels.btn1, labels.btn2,
@@ -359,31 +359,55 @@ void OpdsBookBrowserActivity::fetchFeed(const std::string& path) {
 
   std::string url = buildUrl(serverConfig.url, path);
   Serial.printf("[%lu] [OPDS] Fetching: %s\n", millis(), url.c_str());
+  Serial.printf("[%lu] [OPDS] [MEM] Free heap before fetch: %d bytes\n", millis(), ESP.getFreeHeap());
 
-  std::string content;
-  if (!HttpDownloader::fetchUrl(url, content,
-                                 serverConfig.username,
-                                 serverConfig.password)) {
+  OpdsParser parser;
+  if (!parser.startParsing()) {
+    state = BrowserState::ERROR;
+    errorMessage = "Parser init failed";
+    updateRequired = true;
+    return;
+  }
+
+  constexpr size_t MAX_ENTRIES = 50;
+  bool parseError = false;
+
+  const bool fetchOk = HttpDownloader::fetchUrlStreaming(
+      url,
+      [&parser, &parseError, MAX_ENTRIES](const char* chunk, size_t len) -> bool {
+        if (!parser.feedChunk(chunk, len)) {
+          parseError = true;
+          return false;  // Abort on parse error
+        }
+        // Stop early if we have enough entries
+        if (parser.getEntryCount() >= MAX_ENTRIES) {
+          Serial.printf("[%lu] [OPDS] Reached %zu entries, stopping early\n",
+                        millis(), parser.getEntryCount());
+          return false;
+        }
+        return true;
+      },
+      serverConfig.username,
+      serverConfig.password);
+
+  if (!fetchOk && !parseError && parser.getEntryCount() == 0) {
     state = BrowserState::ERROR;
     errorMessage = "Failed to fetch feed";
     updateRequired = true;
     return;
   }
 
-  OpdsParser parser;
-  if (!parser.parse(content.c_str(), content.size())) {
-    state = BrowserState::ERROR;
-    errorMessage = "Failed to parse feed";
-    updateRequired = true;
-    return;
-  }
+  // Finalize parsing (may fail if we aborted early, which is OK)
+  parser.finishParsing();
+
+  Serial.printf("[%lu] [OPDS] [MEM] Free heap after parse: %d bytes\n", millis(), ESP.getFreeHeap());
 
   entries = parser.getEntries();
   selectorIndex = 0;
 
   if (entries.empty()) {
     state = BrowserState::ERROR;
-    errorMessage = "No entries found";
+    errorMessage = parseError ? "Failed to parse feed" : "No entries found";
     updateRequired = true;
     return;
   }

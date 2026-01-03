@@ -26,9 +26,17 @@ class OpdsParser {
   OpdsParser(const OpdsParser&) = delete;
   OpdsParser& operator=(const OpdsParser&) = delete;
 
+  // Original batch parsing (loads entire XML into memory)
   bool parse(const char* xmlData, size_t length);
+
+  // Streaming parsing - call in order: startParsing() -> feedChunk()... -> finishParsing()
+  bool startParsing();
+  bool feedChunk(const char* data, size_t len);
+  bool finishParsing();
+
   const std::vector<OpdsEntry>& getEntries() const { return entries; }
   std::vector<OpdsEntry> getBooks() const;
+  size_t getEntryCount() const { return entries.size(); }
   void clear();
 
  private:

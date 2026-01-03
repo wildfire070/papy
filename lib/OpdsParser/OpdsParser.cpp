@@ -10,7 +10,7 @@ OpdsParser::~OpdsParser() {
   }
 }
 
-bool OpdsParser::parse(const char* xmlData, const size_t length) {
+bool OpdsParser::startParsing() {
   clear();
   parser = XML_ParserCreate(nullptr);
   if (!parser) {
@@ -22,31 +22,68 @@ bool OpdsParser::parse(const char* xmlData, const size_t length) {
   XML_SetUserData(parser, this);
   XML_SetElementHandler(parser, startElement, endElement);
   XML_SetCharacterDataHandler(parser, characterData);
+  return true;
+}
+
+bool OpdsParser::feedChunk(const char* data, const size_t len) {
+  if (!parser) {
+    Serial.printf("[%lu] [OPDS] Parser not initialized\n", millis());
+    return false;
+  }
+
+  void* const buf = XML_GetBuffer(parser, len);
+  if (!buf) {
+    Serial.printf("[%lu] [OPDS] Couldn't allocate memory for buffer\n",
+                  millis());
+    return false;
+  }
+
+  memcpy(buf, data, len);
+
+  if (XML_ParseBuffer(parser, static_cast<int>(len), 0) == XML_STATUS_ERROR) {
+    Serial.printf("[%lu] [OPDS] Parse error at line %lu: %s\n", millis(),
+                  XML_GetCurrentLineNumber(parser),
+                  XML_ErrorString(XML_GetErrorCode(parser)));
+    return false;
+  }
+
+  return true;
+}
+
+bool OpdsParser::finishParsing() {
+  if (!parser) {
+    return false;
+  }
+
+  // Send final empty buffer to signal end of parsing
+  if (XML_ParseBuffer(parser, 0, 1) == XML_STATUS_ERROR) {
+    Serial.printf("[%lu] [OPDS] Parse error at line %lu: %s\n", millis(),
+                  XML_GetCurrentLineNumber(parser),
+                  XML_ErrorString(XML_GetErrorCode(parser)));
+    XML_ParserFree(parser);
+    parser = nullptr;
+    return false;
+  }
+
+  XML_ParserFree(parser);
+  parser = nullptr;
+  Serial.printf("[%lu] [OPDS] Parsed %zu entries\n", millis(), entries.size());
+  return true;
+}
+
+bool OpdsParser::parse(const char* xmlData, const size_t length) {
+  if (!startParsing()) {
+    return false;
+  }
 
   const char* currentPos = xmlData;
   size_t remaining = length;
   constexpr size_t chunkSize = 1024;
 
   while (remaining > 0) {
-    void* const buf = XML_GetBuffer(parser, chunkSize);
-    if (!buf) {
-      Serial.printf("[%lu] [OPDS] Couldn't allocate memory for buffer\n",
-                    millis());
-      XML_ParserFree(parser);
-      parser = nullptr;
-      return false;
-    }
-
     const size_t toRead = remaining < chunkSize ? remaining : chunkSize;
-    memcpy(buf, currentPos, toRead);
-    const bool isFinal = (remaining == toRead);
 
-    if (XML_ParseBuffer(parser, static_cast<int>(toRead), isFinal) ==
-        XML_STATUS_ERROR) {
-      Serial.printf(
-          "[%lu] [OPDS] Parse error at line %lu: %s\n", millis(),
-          XML_GetCurrentLineNumber(parser),
-          XML_ErrorString(XML_GetErrorCode(parser)));
+    if (!feedChunk(currentPos, toRead)) {
       XML_ParserFree(parser);
       parser = nullptr;
       return false;
@@ -56,11 +93,7 @@ bool OpdsParser::parse(const char* xmlData, const size_t length) {
     remaining -= toRead;
   }
 
-  XML_ParserFree(parser);
-  parser = nullptr;
-  Serial.printf("[%lu] [OPDS] Parsed %zu entries\n", millis(),
-                entries.size());
-  return true;
+  return finishParsing();
 }
 
 void OpdsParser::clear() {
