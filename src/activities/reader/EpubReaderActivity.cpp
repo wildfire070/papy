@@ -394,11 +394,10 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
   }
 
   // Grayscale text rendering (anti-aliasing)
-  if (SETTINGS.textAntiAliasing) {
+  if (SETTINGS.textAntiAliasing && renderer.fontSupportsGrayscale(fontId)) {
     // Save bw buffer to reset buffer state after grayscale data sync
     renderer.storeBwBuffer();
 
-    // TODO: Only do this if font supports it
     renderer.clearScreen(0x00);
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_LSB);
     page->render(renderer, fontId, orientedMarginLeft, orientedMarginTop, THEME.primaryTextBlack);

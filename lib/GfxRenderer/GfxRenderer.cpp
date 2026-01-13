@@ -305,6 +305,15 @@ int GfxRenderer::getLineHeight(const int fontId) const {
   return fontMap.at(fontId).getData(EpdFontFamily::REGULAR)->advanceY;
 }
 
+bool GfxRenderer::fontSupportsGrayscale(const int fontId) const {
+  auto it = fontMap.find(fontId);
+  if (it == fontMap.end()) {
+    return false;
+  }
+  const EpdFontData* data = it->second.getData();
+  return data != nullptr && data->is2Bit;
+}
+
 void GfxRenderer::drawButtonHints(const int fontId, const char* btn1, const char* btn2, const char* btn3,
                                   const char* btn4, const bool black) const {
   const int pageHeight = getScreenHeight();
