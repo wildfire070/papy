@@ -1,5 +1,36 @@
 
 
+## v0.10.0 (2026-01-13)
+
+*  Fix BMP rendering gamma/brightness (#302) [[Jonas Diemer](mailto:jonasdiemer@gmail.com)]
+*  Add page turn on power button press (#286) [[David Fischer](mailto:85546373+fischer-hub@users.noreply.github.com)]
+*  Update documentation [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  ContentOpfParser: Use hash map for O(1) manifest item lookup [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  GfxRenderer: Add font grayscale support check for anti-aliasing [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  GfxRenderer: Add diagonal line support with Bresenham's algorithm [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  BookMetadataCache: Use hash map for O(1) TOC-to-spine lookup [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+
+
+## v0.9.0 (2026-01-07)
+
+*  Update changelog [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add soft hyphen support for improved text layout [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Update docs [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add text anti-aliasing toggle setting [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  dd plain text (.txt) file reading support [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Optimize EPUB indexing and XTC rendering performance [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add plain text (.txt, .text) file reading support [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Update version [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add "Never" option to auto-sleep timeout setting [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Update docs [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add case-insensitive file extension checks [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Support up to 500 character file names [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Fix conflicts after master merge [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Consolidate file type checks into StringUtils (DRY/KISS) [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Remove authentication type from hotspot QR code (#235) [[Dave Allie](mailto:dave@daveallie.com)]
+*  Remove HTML entity parsing (#274) [[Dave Allie](mailto:dave@daveallie.com)]
+
+
 ## v0.8.0 (2026-01-04)
 
 *  Update docs [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
