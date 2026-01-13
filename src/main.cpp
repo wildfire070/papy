@@ -251,6 +251,48 @@ void setupDisplayAndFonts() {
   Serial.printf("[%lu] [   ] Fonts setup\n", millis());
 }
 
+void applyThemeFonts() {
+  Theme& theme = THEME_MANAGER.mutableCurrent();
+
+  // Apply custom UI font if specified
+  if (theme.uiFontFamily[0] != '\0') {
+    int customUiFontId = FONT_MANAGER.getFontId(theme.uiFontFamily, UI_FONT_ID);
+    if (customUiFontId != UI_FONT_ID) {
+      theme.uiFontId = customUiFontId;
+      Serial.printf("[%lu] [FONT] UI font: %s (ID: %d)\n", millis(),
+                    theme.uiFontFamily, customUiFontId);
+    }
+  }
+
+  // Apply custom reader fonts for each size
+  if (theme.readerFontFamilySmall[0] != '\0') {
+    int customFontId = FONT_MANAGER.getFontId(theme.readerFontFamilySmall, READER_FONT_ID);
+    if (customFontId != READER_FONT_ID) {
+      theme.readerFontId = customFontId;
+      Serial.printf("[%lu] [FONT] Reader font (small): %s (ID: %d)\n", millis(),
+                    theme.readerFontFamilySmall, customFontId);
+    }
+  }
+
+  if (theme.readerFontFamilyMedium[0] != '\0') {
+    int customFontId = FONT_MANAGER.getFontId(theme.readerFontFamilyMedium, READER_FONT_ID_MEDIUM);
+    if (customFontId != READER_FONT_ID_MEDIUM) {
+      theme.readerFontIdMedium = customFontId;
+      Serial.printf("[%lu] [FONT] Reader font (medium): %s (ID: %d)\n", millis(),
+                    theme.readerFontFamilyMedium, customFontId);
+    }
+  }
+
+  if (theme.readerFontFamilyLarge[0] != '\0') {
+    int customFontId = FONT_MANAGER.getFontId(theme.readerFontFamilyLarge, READER_FONT_ID_LARGE);
+    if (customFontId != READER_FONT_ID_LARGE) {
+      theme.readerFontIdLarge = customFontId;
+      Serial.printf("[%lu] [FONT] Reader font (large): %s (ID: %d)\n", millis(),
+                    theme.readerFontFamilyLarge, customFontId);
+    }
+  }
+}
+
 void setup() {
   t1 = millis();
 
@@ -292,6 +334,7 @@ void setup() {
   Serial.printf("[%lu] [   ] Starting CrossPoint version " CROSSPOINT_VERSION "\n", millis());
 
   setupDisplayAndFonts();
+  applyThemeFonts();
 
   exitActivity();
   enterNewActivity(new BootActivity(renderer, mappedInputManager));

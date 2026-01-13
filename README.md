@@ -66,7 +66,7 @@ This project is **not affiliated with Xteink**; it's built as a community projec
 - [x] File explorer with nested folders
 - [x] Hidden system folders filtering (LOST.DIR, $RECYCLE.BIN, etc.)
 
-See [the user guide](docs/user_guide.md) for operating instructions, and the [customization guide](docs/customization.md) for themes and fonts.
+See [the user guide](docs/user_guide.md) for operating instructions, and the [customization guide](docs/customization.md) for themes and fonts. Example theme and font files are available in [`docs/examples/`](docs/examples/).
 
 ## Installing
 

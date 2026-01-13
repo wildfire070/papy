@@ -50,7 +50,9 @@ struct Theme {
 
   // External font family names (empty = use builtin)
   char uiFontFamily[32];
-  char readerFontFamily[32];
+  char readerFontFamilySmall[32];
+  char readerFontFamilyMedium[32];
+  char readerFontFamilyLarge[32];
 
   // UI Layout settings
   uint8_t frontButtonLayout;  // FrontButtonLayout enum: FRONT_BCLR or FRONT_LRBC
@@ -78,7 +80,9 @@ inline Theme getBuiltinLightTheme() {
   theme.readerFontIdMedium = READER_FONT_ID_MEDIUM;
   theme.readerFontIdLarge = READER_FONT_ID_LARGE;
   theme.uiFontFamily[0] = '\0';
-  theme.readerFontFamily[0] = '\0';
+  theme.readerFontFamilySmall[0] = '\0';
+  theme.readerFontFamilyMedium[0] = '\0';
+  theme.readerFontFamilyLarge[0] = '\0';
   theme.frontButtonLayout = FRONT_BCLR;
   return theme;
 }
@@ -105,7 +109,9 @@ inline Theme getBuiltinDarkTheme() {
   theme.readerFontIdMedium = READER_FONT_ID_MEDIUM;
   theme.readerFontIdLarge = READER_FONT_ID_LARGE;
   theme.uiFontFamily[0] = '\0';
-  theme.readerFontFamily[0] = '\0';
+  theme.readerFontFamilySmall[0] = '\0';
+  theme.readerFontFamilyMedium[0] = '\0';
+  theme.readerFontFamilyLarge[0] = '\0';
   theme.frontButtonLayout = FRONT_BCLR;
   return theme;
 }

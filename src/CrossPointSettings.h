@@ -3,6 +3,7 @@
 #include <iosfwd>
 
 #include "config.h"
+#include "ThemeManager.h"
 
 class CrossPointSettings {
  private:
@@ -107,11 +108,11 @@ class CrossPointSettings {
   int getReaderFontId() const {
     switch (fontSize) {
       case FONT_MEDIUM:
-        return READER_FONT_ID_MEDIUM;
+        return THEME.readerFontIdMedium;
       case FONT_LARGE:
-        return READER_FONT_ID_LARGE;
+        return THEME.readerFontIdLarge;
       default:
-        return READER_FONT_ID;
+        return THEME.readerFontId;
     }
   }
 

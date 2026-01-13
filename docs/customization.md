@@ -58,7 +58,9 @@ front_buttons = bclr      # bclr or lrbc (see below)
 
 [fonts]
 ui_font =                 # UI font family (empty = builtin)
-reader_font =             # Reader font family (empty = builtin)
+reader_font_small =       # Reader font for small size (empty = builtin)
+reader_font_medium =      # Reader font for medium size (empty = builtin)
+reader_font_large =       # Reader font for large size (empty = builtin)
 ```
 
 ### Configuration Options
@@ -103,7 +105,11 @@ reader_font =             # Reader font family (empty = builtin)
 
 - **ui_font** - Custom UI font family name
   - Leave empty to use builtin font
-- **reader_font** - Custom reader font family name
+- **reader_font_small** - Custom reader font for small size (14pt)
+  - Leave empty to use builtin font
+- **reader_font_medium** - Custom reader font for medium size (16pt)
+  - Leave empty to use builtin font
+- **reader_font_large** - Custom reader font for large size (18pt)
   - Leave empty to use builtin font
 
 ### Example: Dark Theme
@@ -130,7 +136,9 @@ front_buttons = bclr
 
 [fonts]
 ui_font =
-reader_font =
+reader_font_small =
+reader_font_medium =
+reader_font_large =
 ```
 
 ### Example: Compact Theme
@@ -157,8 +165,47 @@ front_buttons = bclr
 
 [fonts]
 ui_font =
-reader_font =
+reader_font_small =
+reader_font_medium =
+reader_font_large =
 ```
+
+### Example: Theme with Custom Fonts
+
+```ini
+[colors]
+inverted_mode = false
+background = white
+
+[selection]
+fill_color = black
+text_color = white
+
+[text]
+primary_color = black
+secondary_color = black
+
+[layout]
+margin_top = 9
+margin_side = 3
+item_height = 30
+item_spacing = 0
+front_buttons = bclr
+
+[fonts]
+ui_font = noto-sans
+reader_font_small = noto-serif-14
+reader_font_medium = noto-serif-16
+reader_font_large = noto-serif-18
+```
+
+This theme uses custom fonts:
+- UI: `/config/fonts/noto-sans/`
+- Reader (small): `/config/fonts/noto-serif-14/`
+- Reader (medium): `/config/fonts/noto-serif-16/`
+- Reader (large): `/config/fonts/noto-serif-18/`
+
+If any font directory doesn't exist, the device falls back to the builtin font for that size.
 
 ---
 
@@ -274,10 +321,12 @@ Once you've created your font files, reference them in your theme configuration:
 ```ini
 [fonts]
 ui_font = my-font
-reader_font = my-font
+reader_font_small = my-font-14
+reader_font_medium = my-font-16
+reader_font_large = my-font-18
 ```
 
-The font family name must match the directory name under `/config/fonts/`.
+Each font family name must match a directory name under `/config/fonts/`. You can use the same font for all sizes, or different fonts for each size.
 
 ### Supported Characters
 
@@ -335,3 +384,23 @@ Here's the complete SD card structure for customization:
     ├── image1.bmp
     └── image2.bmp
 ```
+
+---
+
+## Example Files
+
+The repository includes example theme and font files in [`docs/examples/`](examples/):
+
+- **`light-noto-serif.theme`** - Light theme with Noto Serif reader fonts
+- **`fonts/noto-serif-14/`** - Noto Serif font at 14pt (small)
+- **`fonts/noto-serif-16/`** - Noto Serif font at 16pt (medium)
+- **`fonts/noto-serif-18/`** - Noto Serif font at 18pt (large)
+
+To use:
+1. Copy `light-noto-serif.theme` to `/config/themes/` on your SD card
+2. Copy the `noto-serif-*` folders to `/config/fonts/` on your SD card
+3. Select "Light Noto Serif" in **Settings > Theme**
+
+### Font Attribution
+
+The example fonts use [Noto Serif](https://fonts.google.com/noto/specimen/Noto+Serif) from Google Fonts, licensed under the [SIL Open Font License (OFL)](https://openfontlicense.org/).
