@@ -2,6 +2,7 @@
 
 #include <GfxRenderer.h>
 
+#include "ClearCacheConfirmActivity.h"
 #include "CrossPointSettings.h"
 #include "MappedInputManager.h"
 #include "OtaUpdateActivity.h"
@@ -20,7 +21,7 @@ constexpr const char* autoSleepValues[] = {"5 min", "10 min", "15 min", "30 min"
 constexpr const char* paragraphAlignmentValues[] = {"Justified", "Left", "Center", "Right"};
 constexpr const char* shortPwrBtnValues[] = {"Ignore", "Sleep", "Page Turn"};
 
-constexpr int settingsCount = 17;
+constexpr int settingsCount = 18;
 const SettingInfo settingsList[settingsCount] = {
     // Theme
     {"Theme", SettingType::THEME_SELECT, nullptr, nullptr, 0},
@@ -43,6 +44,7 @@ const SettingInfo settingsList[settingsCount] = {
     {"Calibre Wireless", SettingType::ACTION, nullptr, nullptr, 0},
     {"File transfer", SettingType::ACTION, nullptr, nullptr, 0},
     {"Check for updates", SettingType::ACTION, nullptr, nullptr, 0},
+    {"Clear Cache", SettingType::ACTION, nullptr, nullptr, 0},
 };
 }  // namespace
 
@@ -175,6 +177,14 @@ void SettingsActivity::toggleCurrentSetting() {
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       exitActivity();
       enterNewActivity(new OtaUpdateActivity(renderer, mappedInput, [this] {
+        exitActivity();
+        updateRequired = true;
+      }));
+      xSemaphoreGive(renderingMutex);
+    } else if (std::string(setting.name) == "Clear Cache") {
+      xSemaphoreTake(renderingMutex, portMAX_DELAY);
+      exitActivity();
+      enterNewActivity(new ClearCacheConfirmActivity(renderer, mappedInput, [this](bool) {
         exitActivity();
         updateRequired = true;
       }));
