@@ -6,6 +6,7 @@
 #include "CrossPointSettings.h"
 #include "MappedInputManager.h"
 #include "OtaUpdateActivity.h"
+#include "SystemInfoActivity.h"
 #include "ThemeManager.h"
 #include "config.h"
 
@@ -21,7 +22,7 @@ constexpr const char* autoSleepValues[] = {"5 min", "10 min", "15 min", "30 min"
 constexpr const char* paragraphAlignmentValues[] = {"Justified", "Left", "Center", "Right"};
 constexpr const char* shortPwrBtnValues[] = {"Ignore", "Sleep", "Page Turn"};
 
-constexpr int settingsCount = 18;
+constexpr int settingsCount = 19;
 const SettingInfo settingsList[settingsCount] = {
     // Theme
     {"Theme", SettingType::THEME_SELECT, nullptr, nullptr, 0},
@@ -45,6 +46,7 @@ const SettingInfo settingsList[settingsCount] = {
     {"File transfer", SettingType::ACTION, nullptr, nullptr, 0},
     {"Check for updates", SettingType::ACTION, nullptr, nullptr, 0},
     {"Clear Cache", SettingType::ACTION, nullptr, nullptr, 0},
+    {"System Info", SettingType::ACTION, nullptr, nullptr, 0},
 };
 }  // namespace
 
@@ -161,7 +163,15 @@ void SettingsActivity::toggleCurrentSetting() {
       THEME_MANAGER.loadTheme(SETTINGS.themeName);
     }
   } else if (setting.type == SettingType::ACTION) {
-    if (std::string(setting.name) == "Net Library") {
+    if (std::string(setting.name) == "System Info") {
+      xSemaphoreTake(renderingMutex, portMAX_DELAY);
+      exitActivity();
+      enterNewActivity(new SystemInfoActivity(renderer, mappedInput, [this] {
+        exitActivity();
+        updateRequired = true;
+      }));
+      xSemaphoreGive(renderingMutex);
+    } else if (std::string(setting.name) == "Net Library") {
       SETTINGS.saveToFile();
       onOpdsLibraryOpen();
       return;  // Activity has changed, don't continue
