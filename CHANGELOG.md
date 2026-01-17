@@ -1,5 +1,33 @@
 
 
+## v0.14.0 (2026-01-17)
+
+*  GfxRenderer: Add clearArea for partial framebuffer clearing [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add CJK font support with memory-optimized single-style loading [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Remove bold_italic fonts to save ~234KB flash, use bold fallback instead [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Epub: Add HTML5 void element normalizer to fix parsing errors [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Replace Python build scripts with Node.js for faster CJK font conversion [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add Settings menu with Cleanup and System Info screens [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Update docs [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Home: Add book cover thumbnail display with 1-bit BMP conversion [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add text wrapping with hyphenation and multi-line chapter titles [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+
+
+## v0.13.0 (2026-01-15)
+
+*  Update CHANGELOG.md [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Fix code style [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add Nix shell for reproducible dev environment and CI builds [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Store PlatformIO packages in local project directory [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add System Info screen and display MAC address on WiFi selection [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add UTF-8 safe string truncation to prevent corrupting multi-byte characters [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Skip BOM characters in HTML parser to prevent rendering as question marks [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Show table omitted placeholder instead of silently dropping content [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Show image alt text as placeholder instead of skipping silently [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add explicit author prefixes to library dependencies [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Bump version [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+
+
 ## v0.12.0 (2026-01-13)
 
 *  Settings: Add Clear Cache option to delete all book caches [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
