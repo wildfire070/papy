@@ -5,7 +5,6 @@
 #include "CrossPointSettings.h"
 #include "FontManager.h"
 #include "MappedInputManager.h"
-#include "OtaUpdateActivity.h"
 #include "StorageActivity.h"
 #include "SystemInfoActivity.h"
 #include "ThemeManager.h"
@@ -23,7 +22,7 @@ constexpr const char* autoSleepValues[] = {"5 min", "10 min", "15 min", "30 min"
 constexpr const char* paragraphAlignmentValues[] = {"Justified", "Left", "Center", "Right"};
 constexpr const char* shortPwrBtnValues[] = {"Ignore", "Sleep", "Page Turn"};
 
-constexpr int settingsCount = 18;
+constexpr int settingsCount = 17;
 const SettingInfo settingsList[settingsCount] = {
     // Theme
     {"Theme", SettingType::THEME_SELECT, nullptr, nullptr, 0},
@@ -44,7 +43,6 @@ const SettingInfo settingsList[settingsCount] = {
     {"Net Library", SettingType::ACTION, nullptr, nullptr, 0},
     {"Calibre Wireless", SettingType::ACTION, nullptr, nullptr, 0},
     {"File transfer", SettingType::ACTION, nullptr, nullptr, 0},
-    {"Check for updates", SettingType::ACTION, nullptr, nullptr, 0},
     {"Cleanup", SettingType::ACTION, nullptr, nullptr, 0},
     {"System Info", SettingType::ACTION, nullptr, nullptr, 0},
 };
@@ -191,14 +189,6 @@ void SettingsActivity::toggleCurrentSetting() {
       SETTINGS.saveToFile();
       onFileTransferOpen();
       return;  // Activity has changed, don't continue
-    } else if (std::string(setting.name) == "Check for updates") {
-      xSemaphoreTake(renderingMutex, portMAX_DELAY);
-      exitActivity();
-      enterNewActivity(new OtaUpdateActivity(renderer, mappedInput, [this] {
-        exitActivity();
-        updateRequired = true;
-      }));
-      xSemaphoreGive(renderingMutex);
     } else if (std::string(setting.name) == "Cleanup") {
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       exitActivity();

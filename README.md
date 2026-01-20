@@ -59,7 +59,6 @@ This project is **not affiliated with Xteink**; it's built as a community projec
 - [x] WiFi file transfer (web server)
 - [x] Net Library (OPDS) - Browse and download from OPDS servers
 - [x] Calibre Wireless Device - Send books from Calibre desktop
-- [x] OTA firmware updates
 
 ### Maintenance
 - [x] Cleanup menu (clear caches, fonts, factory reset)
@@ -258,7 +257,7 @@ Papyrix is pretty aggressive about caching data down to the SD card to minimise 
 
 ### WiFi and memory
 
-The ESP32 WiFi stack allocates ~100KB and fragments heap memory in a way that cannot be recovered at runtime. After using WiFi features (File Transfer or OTA updates), XTC books require ~96KB of contiguous memory for page rendering. To ensure reliable operation, the device automatically restarts after exiting WiFi mode to reclaim memory.
+The ESP32 WiFi stack allocates ~100KB and fragments heap memory in a way that cannot be recovered at runtime. After using WiFi features (File Transfer, Calibre Wireless, or Net Library), XTC books require ~96KB of contiguous memory for page rendering. To ensure reliable operation, the device automatically restarts after exiting WiFi mode to reclaim memory.
 
 ### Performance optimizations
 
