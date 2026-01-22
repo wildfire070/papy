@@ -3,17 +3,16 @@
 #include <cstdint>
 
 // Brightness/Contrast adjustments for e-ink display optimization:
-constexpr int BRIGHTNESS_BOOST = 10;         // Brightness offset (0-50)
-constexpr float CONTRAST_FACTOR = 1.15f;     // Contrast multiplier (1.0 = no change, >1 = more contrast)
+constexpr int BRIGHTNESS_BOOST = 0;          // Brightness offset (0-50)
+constexpr float CONTRAST_FACTOR = 1.35f;     // Contrast multiplier (1.0 = no change, >1 = more contrast)
+constexpr bool USE_GAMMA_CORRECTION = false; // Gamma brightens midtones - disable for more contrast
 constexpr bool USE_NOISE_DITHERING = false;  // Hash-based noise dithering
 
 // Integer approximation of gamma correction (brightens midtones)
 // Uses a simple curve: out = 255 * sqrt(in/255) ≈ sqrt(in * 255)
-static inline int applyGamma(int gray) {
-  // Fast integer square root approximation for gamma ~0.5 (brightening)
-  // This brightens dark/mid tones while preserving highlights
+// Kept for tuning - enable via USE_GAMMA_CORRECTION
+[[maybe_unused]] static inline int applyGamma(int gray) {
   const int product = gray * 255;
-  // Newton-Raphson integer sqrt (2 iterations for good accuracy)
   int x = gray;
   if (x > 0) {
     x = (x + product / x) >> 1;
@@ -41,8 +40,9 @@ int adjustPixel(int gray) {
   gray += BRIGHTNESS_BOOST;
   if (gray > 255) gray = 255;
   if (gray < 0) gray = 0;
-  gray = applyGamma(gray);
-
+  if (USE_GAMMA_CORRECTION) {
+    gray = applyGamma(gray);
+  }
   return gray;
 }
 // Simple quantization without dithering - divide into 4 levels
