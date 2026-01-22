@@ -88,6 +88,8 @@ class CrossPointSettings {
   uint8_t showImages = 1;
   // Startup behavior: 0 = Last Document (default), 1 = Home
   uint8_t startupBehavior = STARTUP_LAST_DOCUMENT;
+  // Cover dithering: 1 = use 1-bit dithering (no grayscale LUT), 0 = use 2-bit grayscale
+  uint8_t coverDithering = 0;
   // Theme name (loaded from /themes/<name>.theme)
   char themeName[32] = "light";
 

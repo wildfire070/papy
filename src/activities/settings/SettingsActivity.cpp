@@ -24,7 +24,7 @@ constexpr const char* textLayoutValues[] = {"Compact", "Standard", "Large"};
 constexpr const char* shortPwrBtnValues[] = {"Ignore", "Sleep", "Page Turn"};
 constexpr const char* startupBehaviorValues[] = {"Last Document", "Home"};
 
-constexpr int settingsCount = 19;
+constexpr int settingsCount = 20;
 const SettingInfo settingsList[settingsCount] = {
     // Theme
     {"Theme", SettingType::THEME_SELECT, nullptr, nullptr, 0},
@@ -35,6 +35,7 @@ const SettingInfo settingsList[settingsCount] = {
     {"Hyphenation", SettingType::TOGGLE, &CrossPointSettings::hyphenation, nullptr, 0},
     {"Text Anti-Aliasing", SettingType::TOGGLE, &CrossPointSettings::textAntiAliasing, nullptr, 0},
     {"Show Images", SettingType::TOGGLE, &CrossPointSettings::showImages, nullptr, 0},
+    {"Cover Dithering", SettingType::TOGGLE, &CrossPointSettings::coverDithering, nullptr, 0},
     {"Reading Orientation", SettingType::ENUM, &CrossPointSettings::orientation, orientationValues, 4},
     {"Status Bar", SettingType::ENUM, &CrossPointSettings::statusBar, statusBarValues, 3},
     // Device Settings

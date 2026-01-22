@@ -6,6 +6,7 @@
 
 #include "Txt.h"
 
+#include <CrossPointSettings.h>
 #include <FsHelpers.h>
 #include <HardwareSerial.h>
 #include <JpegToBmpConverter.h>
@@ -176,7 +177,9 @@ bool Txt::generateCoverBmp() const {
     return false;
   }
 
-  bool success = JpegToBmpConverter::jpegFileToBmpStream(jpegFile, bmpFile);
+  const bool use1Bit = SETTINGS.coverDithering != 0;
+  const bool success = use1Bit ? JpegToBmpConverter::jpegFileTo1BitBmpStream(jpegFile, bmpFile)
+                               : JpegToBmpConverter::jpegFileToBmpStream(jpegFile, bmpFile);
 
   jpegFile.close();
   bmpFile.close();

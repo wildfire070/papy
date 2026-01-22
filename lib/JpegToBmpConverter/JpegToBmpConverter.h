@@ -14,6 +14,8 @@ class JpegToBmpConverter {
   static bool jpegFileToBmpStream(FsFile& jpegFile, Print& bmpOut);
   // Convert with custom target size (for thumbnails)
   static bool jpegFileToBmpStreamWithSize(FsFile& jpegFile, Print& bmpOut, int targetMaxWidth, int targetMaxHeight);
-  // Convert to 1-bit BMP (black and white only, no grays) for fast home screen rendering
+  // Convert to 1-bit BMP (black and white only, no grays)
+  static bool jpegFileTo1BitBmpStream(FsFile& jpegFile, Print& bmpOut);
+  // Convert to 1-bit BMP with custom target size (for thumbnails)
   static bool jpegFileTo1BitBmpStreamWithSize(FsFile& jpegFile, Print& bmpOut, int targetMaxWidth, int targetMaxHeight);
 };

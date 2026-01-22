@@ -1,5 +1,6 @@
 #include "Epub.h"
 
+#include <CrossPointSettings.h>
 #include <FsHelpers.h>
 #include <HardwareSerial.h>
 #include <JpegToBmpConverter.h>
@@ -527,7 +528,9 @@ bool Epub::generateCoverBmp() const {
       coverJpg.close();
       return false;
     }
-    const bool success = JpegToBmpConverter::jpegFileToBmpStream(coverJpg, coverBmp);
+    const bool use1Bit = SETTINGS.coverDithering != 0;
+    const bool success = use1Bit ? JpegToBmpConverter::jpegFileTo1BitBmpStream(coverJpg, coverBmp)
+                                 : JpegToBmpConverter::jpegFileToBmpStream(coverJpg, coverBmp);
     coverJpg.close();
     coverBmp.close();
     SdMan.remove(coverJpgTempPath.c_str());
