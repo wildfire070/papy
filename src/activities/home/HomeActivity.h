@@ -29,6 +29,7 @@ class HomeActivity final : public Activity {
   // Cover image state
   bool hasCoverImage = false;
   bool coverRendered = false;
+  bool coverLoadFailed = false;
   bool coverBufferStored = false;
   uint8_t* coverBuffer = nullptr;
   std::string coverBmpPath;

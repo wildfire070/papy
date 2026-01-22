@@ -438,6 +438,7 @@ bool Epub::generateThumbBmp() const {
   if (FsHelpers::isJpegFile(coverImageHref)) {
     Serial.printf("[%lu] [EBP] Generating 1-bit thumb BMP from JPG cover image\n", millis());
     const auto coverJpgTempPath = getCachePath() + "/.cover.jpg";
+    const auto thumbTempPath = thumbPath + ".tmp";
 
     FsFile coverJpg;
     if (!SdMan.openFileForWrite("EBP", coverJpgTempPath, coverJpg)) {
@@ -454,7 +455,7 @@ bool Epub::generateThumbBmp() const {
     }
 
     FsFile thumbBmp;
-    if (!SdMan.openFileForWrite("EBP", thumbPath, thumbBmp)) {
+    if (!SdMan.openFileForWrite("EBP", thumbTempPath, thumbBmp)) {
       coverJpg.close();
       return false;
     }
@@ -464,9 +465,16 @@ bool Epub::generateThumbBmp() const {
     thumbBmp.close();
     SdMan.remove(coverJpgTempPath.c_str());
 
-    if (!success) {
+    if (success) {
+      // Atomic rename: readers see either no file or complete file
+      FsFile tempFile = SdMan.open(thumbTempPath.c_str(), O_RDWR);
+      if (tempFile) {
+        tempFile.rename(thumbPath.c_str());
+        tempFile.close();
+      }
+    } else {
       Serial.printf("[%lu] [EBP] Failed to generate thumb BMP from JPG cover image\n", millis());
-      SdMan.remove(thumbPath.c_str());
+      SdMan.remove(thumbTempPath.c_str());
       // Create failure marker so we don't retry
       FsFile marker;
       if (SdMan.openFileForWrite("EBP", failedMarkerPath, marker)) {
@@ -482,6 +490,7 @@ bool Epub::generateThumbBmp() const {
   if (FsHelpers::isPngFile(coverImageHref)) {
     Serial.printf("[%lu] [EBP] Generating thumb BMP from PNG cover image\n", millis());
     const auto coverPngTempPath = getCachePath() + "/.cover.png";
+    const auto thumbTempPath = thumbPath + ".tmp";
 
     FsFile coverPng;
     if (!SdMan.openFileForWrite("EBP", coverPngTempPath, coverPng)) {
@@ -498,7 +507,7 @@ bool Epub::generateThumbBmp() const {
     }
 
     FsFile thumbBmp;
-    if (!SdMan.openFileForWrite("EBP", thumbPath, thumbBmp)) {
+    if (!SdMan.openFileForWrite("EBP", thumbTempPath, thumbBmp)) {
       coverPng.close();
       return false;
     }
@@ -509,9 +518,16 @@ bool Epub::generateThumbBmp() const {
     thumbBmp.close();
     SdMan.remove(coverPngTempPath.c_str());
 
-    if (!success) {
+    if (success) {
+      // Atomic rename: readers see either no file or complete file
+      FsFile tempFile = SdMan.open(thumbTempPath.c_str(), O_RDWR);
+      if (tempFile) {
+        tempFile.rename(thumbPath.c_str());
+        tempFile.close();
+      }
+    } else {
       Serial.printf("[%lu] [EBP] Failed to generate thumb BMP from PNG cover image\n", millis());
-      SdMan.remove(thumbPath.c_str());
+      SdMan.remove(thumbTempPath.c_str());
       // Create failure marker so we don't retry
       FsFile marker;
       if (SdMan.openFileForWrite("EBP", failedMarkerPath, marker)) {

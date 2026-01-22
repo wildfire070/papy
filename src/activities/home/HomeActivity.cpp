@@ -266,7 +266,7 @@ void HomeActivity::render() {
 
   // Draw cover image as background if available (inside the box)
   // Only load from SD on first render, then use stored buffer
-  if (hasContinueReading && hasCoverImage && !coverBmpPath.empty() && !coverRendered) {
+  if (hasContinueReading && hasCoverImage && !coverBmpPath.empty() && !coverRendered && !coverLoadFailed) {
     // First time: load cover from SD and render
     FsFile file;
     if (SdMan.openFileForRead("HOME", coverBmpPath, file)) {
@@ -291,10 +291,18 @@ void HomeActivity::render() {
           renderer.drawRect(cardX + 1, cardY + 1, cardWidth - 2, cardHeight - 2, THEME.primaryTextBlack);
           renderer.drawRect(cardX + 2, cardY + 2, cardWidth - 4, cardHeight - 4, THEME.primaryTextBlack);
         }
+      } else {
+        coverLoadFailed = true;
+        Serial.printf("[%lu] [HOME] Failed to parse cover BMP: %s\n", millis(), coverBmpPath.c_str());
       }
       file.close();
+    } else {
+      coverLoadFailed = true;
+      Serial.printf("[%lu] [HOME] Failed to open cover BMP: %s\n", millis(), coverBmpPath.c_str());
     }
-  } else if (!bufferRestored && !coverRendered) {
+  }
+
+  if (!bufferRestored && !coverRendered) {
     // No cover image: draw border or fill, plus bookmark as visual flair
     if (cardSelected) {
       renderer.fillRect(cardX, cardY, cardWidth, cardHeight, THEME.primaryTextBlack);
