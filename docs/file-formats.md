@@ -30,11 +30,11 @@ Offset  Size        Description
 
 ### `cover.bmp`
 
-Optional cover image, discovered by searching for:
-1. `<filename>.jpg` or `<filename>.bmp` (matching the TXT filename)
-2. `cover.jpg` or `cover.bmp` in the same directory
+Optional cover image, discovered by searching for (case-insensitive):
+1. `<filename>.jpg`, `<filename>.jpeg`, `<filename>.png`, or `<filename>.bmp` (matching the TXT filename)
+2. `cover.jpg`, `cover.jpeg`, `cover.png`, or `cover.bmp` in the same directory
 
-The image is converted to BMP format for display.
+The image is converted to BMP format for display. The **Cover Dithering** setting controls whether covers use 1-bit dithering (crisp black/white) or grayscale rendering.
 
 ---
 
@@ -79,11 +79,11 @@ The page data uses the same `Page` structure as EPUB section files (see below).
 
 ### `cover.bmp`
 
-Optional cover image, discovered by searching for:
-1. `<filename>.jpg` or `<filename>.bmp` (matching the Markdown filename)
-2. `cover.jpg` or `cover.bmp` in the same directory
+Optional cover image, discovered by searching for (case-insensitive):
+1. `<filename>.jpg`, `<filename>.jpeg`, `<filename>.png`, or `<filename>.bmp` (matching the Markdown filename)
+2. `cover.jpg`, `cover.jpeg`, `cover.png`, or `cover.bmp` in the same directory
 
-The image is converted to BMP format for display.
+The image is converted to BMP format for display. The **Cover Dithering** setting controls whether covers use 1-bit dithering (crisp black/white) or grayscale rendering.
 
 ### Supported Markdown Features
 

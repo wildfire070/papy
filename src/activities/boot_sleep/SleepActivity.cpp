@@ -1,5 +1,6 @@
 #include "SleepActivity.h"
 
+#include <CoverHelpers.h>
 #include <Epub.h>
 #include <FsHelpers.h>
 #include <GfxRenderer.h>
@@ -131,45 +132,26 @@ void SleepActivity::renderDefaultSleepScreen() const {
 }
 
 void SleepActivity::renderBitmapSleepScreen(const Bitmap& bitmap) const {
-  int x, y;
   const auto pageWidth = renderer.getScreenWidth();
   const auto pageHeight = renderer.getScreenHeight();
 
-  if (bitmap.getWidth() > pageWidth || bitmap.getHeight() > pageHeight) {
-    // image will scale, make sure placement is right
-    const float ratio = static_cast<float>(bitmap.getWidth()) / static_cast<float>(bitmap.getHeight());
-    const float screenRatio = static_cast<float>(pageWidth) / static_cast<float>(pageHeight);
-
-    if (ratio > screenRatio) {
-      // image wider than viewport ratio, scaled down image needs to be centered vertically
-      x = 0;
-      y = (pageHeight - pageWidth / ratio) / 2;
-    } else {
-      // image taller than viewport ratio, scaled down image needs to be centered horizontally
-      x = (pageWidth - pageHeight * ratio) / 2;
-      y = 0;
-    }
-  } else {
-    // center the image
-    x = (pageWidth - bitmap.getWidth()) / 2;
-    y = (pageHeight - bitmap.getHeight()) / 2;
-  }
+  auto rect = CoverHelpers::calculateCenteredRect(bitmap.getWidth(), bitmap.getHeight(), 0, 0, pageWidth, pageHeight);
 
   renderer.clearScreen();
-  renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight);
+  renderer.drawBitmap(bitmap, rect.x, rect.y, rect.width, rect.height);
   renderer.displayBuffer(EInkDisplay::HALF_REFRESH);
 
   if (bitmap.hasGreyscale()) {
     bitmap.rewindToData();
     renderer.clearScreen(0x00);
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_LSB);
-    renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight);
+    renderer.drawBitmap(bitmap, rect.x, rect.y, rect.width, rect.height);
     renderer.copyGrayscaleLsbBuffers();
 
     bitmap.rewindToData();
     renderer.clearScreen(0x00);
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_MSB);
-    renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight);
+    renderer.drawBitmap(bitmap, rect.x, rect.y, rect.width, rect.height);
     renderer.copyGrayscaleMsbBuffers();
 
     renderer.displayGrayBuffer();

@@ -1,6 +1,7 @@
 #include "HomeActivity.h"
 
 #include <Bitmap.h>
+#include <CoverHelpers.h>
 #include <Epub.h>
 #include <GfxRenderer.h>
 #include <SDCardManager.h>
@@ -232,26 +233,11 @@ void HomeActivity::render() {
       Bitmap bitmap(file);
       if (bitmap.parseHeaders() == BmpReaderError::Ok) {
         // Calculate position to center image within the book card
-        int coverX, coverY;
-
-        if (bitmap.getWidth() > cardWidth || bitmap.getHeight() > cardHeight) {
-          const float imgRatio = static_cast<float>(bitmap.getWidth()) / static_cast<float>(bitmap.getHeight());
-          const float boxRatio = static_cast<float>(cardWidth) / static_cast<float>(cardHeight);
-
-          if (imgRatio > boxRatio) {
-            coverX = cardX;
-            coverY = cardY + (cardHeight - static_cast<int>(cardWidth / imgRatio)) / 2;
-          } else {
-            coverX = cardX + (cardWidth - static_cast<int>(cardHeight * imgRatio)) / 2;
-            coverY = cardY;
-          }
-        } else {
-          coverX = cardX + (cardWidth - bitmap.getWidth()) / 2;
-          coverY = cardY + (cardHeight - bitmap.getHeight()) / 2;
-        }
+        auto rect = CoverHelpers::calculateCenteredRect(bitmap.getWidth(), bitmap.getHeight(), cardX, cardY, cardWidth,
+                                                        cardHeight);
 
         // Draw the cover image centered within the book card
-        renderer.drawBitmap(bitmap, coverX, coverY, cardWidth, cardHeight);
+        renderer.drawBitmap(bitmap, rect.x, rect.y, rect.width, rect.height);
 
         // Draw border around the card
         renderer.drawRect(cardX, cardY, cardWidth, cardHeight, THEME.primaryTextBlack);

@@ -138,6 +138,11 @@ The Settings screen allows you to configure the device's behavior:
   - Display inline images within EPUB content and book covers
   - Disable for faster page rendering (images show "[Image]" placeholder)
 
+- **Cover Dithering** (default: OFF)
+  - Use 1-bit dithering for book cover images instead of grayscale
+  - Creates a crisp black-and-white pattern that looks clean on e-ink
+  - Disable for smoother grayscale gradients in cover artwork
+
 - **Pages Per Refresh** (default: 15)
   - Options: 1, 5, 10, 15, 30
   - Number of pages to turn before performing a full e-paper refresh (clears ghosting)

@@ -7,6 +7,7 @@
 
 #include "TxtReaderActivity.h"
 
+#include <CoverHelpers.h>
 #include <FsHelpers.h>
 #include <GfxRenderer.h>
 #include <SDCardManager.h>
@@ -240,6 +241,18 @@ void TxtReaderActivity::renderScreen() {
   }
 
   renderer.clearScreen(THEME.backgroundColor);
+
+  // Show cover on first page if available
+  if (currentPage == 0 && SETTINGS.showImages && txt->generateCoverBmp()) {
+    Serial.printf("[%lu] [TXR] Rendering cover page from BMP\n", millis());
+    if (CoverHelpers::renderCoverFromBmp(renderer, txt->getCoverBmpPath(), orientedMarginTop, orientedMarginRight,
+                                         orientedMarginBottom, orientedMarginLeft, pagesUntilFullRefresh)) {
+      saveProgress();
+      return;
+    }
+    // Fall through to render text if cover failed
+  }
+
   renderPage();
   saveProgress();
 }

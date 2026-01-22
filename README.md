@@ -38,7 +38,7 @@ This project is **not affiliated with Xteink**; it's built as a community projec
 - [x] Markdown (.md, .markdown) file support with formatting
 - [x] Plain text (.txt, .text) file support
 - [x] Saved reading position
-- [x] Book cover display
+- [x] Book cover display (JPG/JPEG/PNG/BMP, case-insensitive)
 - [x] Table of contents navigation
 - [x] Image support within EPUB (JPEG/PNG)
 
@@ -49,6 +49,7 @@ This project is **not affiliated with Xteink**; it's built as a community projec
 - [x] Soft hyphen support for text layout
 - [x] CJK (Chinese/Japanese/Korean) text layout
 - [x] Text anti-aliasing toggle (grayscale text rendering)
+- [x] Cover dithering toggle (1-bit black/white vs grayscale covers)
 - [x] Pages per refresh setting (1/5/10/15/30)
 - [x] 4 screen orientations
 
@@ -302,12 +303,12 @@ The first time chapters of a book are loaded, they are cached to the SD card. Su
 ├── txt_98765432/        # Each TXT file is cached to a subdirectory named `txt_<hash>`
 │   ├── progress.bin     # Stores current page number (4-byte uint32)
 │   ├── index.bin        # Page index (byte offsets for each page start)
-│   └── cover.bmp        # Cover image (if found in same directory as TXT file)
+│   └── cover.bmp        # Cover image (converted from book.jpg/png/bmp or cover.jpg/png/bmp)
 │
 ├── md_12345678/         # Each Markdown file is cached to a subdirectory named `md_<hash>`
 │   ├── progress.bin     # Stores current page number (2-byte uint16)
 │   ├── section.bin      # Parsed pages (same format as EPUB sections)
-│   └── cover.bmp        # Cover image (if found in same directory as MD file)
+│   └── cover.bmp        # Cover image (converted from README.jpg/png/bmp or cover.jpg/png/bmp)
 │
 └── epub_189013891/
 ```

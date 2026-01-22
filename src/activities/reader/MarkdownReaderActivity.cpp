@@ -6,6 +6,7 @@
 
 #include "MarkdownReaderActivity.h"
 
+#include <CoverHelpers.h>
 #include <Epub/Page.h>
 #include <FsHelpers.h>
 #include <GfxRenderer.h>
@@ -260,8 +261,36 @@ void MarkdownReaderActivity::renderScreen() {
 
   if (section->pageCount == 0) {
     Serial.printf("[%lu] [MDR] No pages to render\n", millis());
+    // Try to show cover if available, otherwise show title
+    if (SETTINGS.showImages && markdown->generateCoverBmp()) {
+      Serial.printf("[%lu] [MDR] Rendering cover page from BMP\n", millis());
+      if (CoverHelpers::renderCoverFromBmp(renderer, markdown->getCoverBmpPath(), orientedMarginTop,
+                                           orientedMarginRight, orientedMarginBottom, orientedMarginLeft,
+                                           pagesUntilFullRefresh)) {
+        return;
+      }
+    }
     renderTitlePage(orientedMarginTop, orientedMarginRight, orientedMarginBottom, orientedMarginLeft);
     return;
+  }
+
+  // Show cover on first page if available
+  if (section->currentPage == 0 && SETTINGS.showImages && markdown->generateCoverBmp()) {
+    Serial.printf("[%lu] [MDR] Rendering cover page from BMP\n", millis());
+    if (CoverHelpers::renderCoverFromBmp(renderer, markdown->getCoverBmpPath(), orientedMarginTop, orientedMarginRight,
+                                         orientedMarginBottom, orientedMarginLeft, pagesUntilFullRefresh)) {
+      // Save progress
+      FsFile f;
+      if (SdMan.openFileForWrite("MDR", markdown->getCachePath() + "/progress.bin", f)) {
+        uint8_t data[2];
+        data[0] = section->currentPage & 0xFF;
+        data[1] = (section->currentPage >> 8) & 0xFF;
+        f.write(data, 2);
+        f.close();
+      }
+      return;
+    }
+    // Fall through to render text if cover failed
   }
 
   if (section->currentPage < 0) {

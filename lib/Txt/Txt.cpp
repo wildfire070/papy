@@ -6,10 +6,9 @@
 
 #include "Txt.h"
 
-#include <CrossPointSettings.h>
+#include <CoverHelpers.h>
 #include <FsHelpers.h>
 #include <HardwareSerial.h>
-#include <JpegToBmpConverter.h>
 #include <SDCardManager.h>
 
 Txt::Txt(std::string filepath, const std::string& cacheDir)
@@ -93,29 +92,7 @@ std::string Txt::findCoverImage() const {
   std::string dirPath = (lastSlash == std::string::npos) ? "/" : filepath.substr(0, lastSlash);
   if (dirPath.empty()) dirPath = "/";
 
-  // Extract base filename without extension
-  std::string baseName = title;
-
-  // Priority 1: Image matching TXT filename (e.g., book.jpg for book.txt)
-  const char* extensions[] = {".jpg", ".jpeg", ".bmp"};
-  for (const char* ext : extensions) {
-    std::string imagePath = dirPath + "/" + baseName + ext;
-    if (SdMan.exists(imagePath.c_str())) {
-      Serial.printf("[%lu] [TXT] Found cover image: %s\n", millis(), imagePath.c_str());
-      return imagePath;
-    }
-  }
-
-  // Priority 2: Generic cover image in same directory
-  for (const char* ext : extensions) {
-    std::string imagePath = dirPath + "/cover" + ext;
-    if (SdMan.exists(imagePath.c_str())) {
-      Serial.printf("[%lu] [TXT] Found cover image: %s\n", millis(), imagePath.c_str());
-      return imagePath;
-    }
-  }
-
-  return "";
+  return CoverHelpers::findCoverImage(dirPath, title);
 }
 
 bool Txt::generateCoverBmp() const {
@@ -134,64 +111,8 @@ bool Txt::generateCoverBmp() const {
   // Setup cache directory
   setupCacheDir();
 
-  // Check if it's a BMP file (just copy)
-  if (coverImagePath.length() >= 4) {
-    std::string ext = coverImagePath.substr(coverImagePath.length() - 4);
-    if (ext == ".bmp") {
-      // Copy BMP file
-      FsFile src, dst;
-      if (!SdMan.openFileForRead("TXT", coverImagePath, src)) {
-        Serial.printf("[%lu] [TXT] Failed to open source BMP\n", millis());
-        return false;
-      }
-      if (!SdMan.openFileForWrite("TXT", getCoverBmpPath(), dst)) {
-        src.close();
-        Serial.printf("[%lu] [TXT] Failed to create destination BMP\n", millis());
-        return false;
-      }
-
-      uint8_t buffer[512];
-      while (src.available()) {
-        size_t bytesRead = src.read(buffer, sizeof(buffer));
-        dst.write(buffer, bytesRead);
-      }
-
-      src.close();
-      dst.close();
-      Serial.printf("[%lu] [TXT] Copied cover BMP: %s\n", millis(), getCoverBmpPath().c_str());
-      return true;
-    }
-  }
-
-  // Convert JPG to BMP
-  FsFile jpegFile;
-  if (!SdMan.openFileForRead("TXT", coverImagePath, jpegFile)) {
-    Serial.printf("[%lu] [TXT] Failed to open JPEG file\n", millis());
-    return false;
-  }
-
-  FsFile bmpFile;
-  if (!SdMan.openFileForWrite("TXT", getCoverBmpPath(), bmpFile)) {
-    jpegFile.close();
-    Serial.printf("[%lu] [TXT] Failed to create BMP file\n", millis());
-    return false;
-  }
-
-  const bool use1Bit = SETTINGS.coverDithering != 0;
-  const bool success = use1Bit ? JpegToBmpConverter::jpegFileTo1BitBmpStream(jpegFile, bmpFile)
-                               : JpegToBmpConverter::jpegFileToBmpStream(jpegFile, bmpFile);
-
-  jpegFile.close();
-  bmpFile.close();
-
-  if (success) {
-    Serial.printf("[%lu] [TXT] Generated cover BMP: %s\n", millis(), getCoverBmpPath().c_str());
-  } else {
-    Serial.printf("[%lu] [TXT] Failed to convert JPEG to BMP\n", millis());
-    SdMan.remove(getCoverBmpPath().c_str());
-  }
-
-  return success;
+  // Convert to BMP using shared helper
+  return CoverHelpers::convertImageToBmp(coverImagePath, getCoverBmpPath(), "TXT");
 }
 
 size_t Txt::readContent(uint8_t* buffer, size_t offset, size_t length) const {
