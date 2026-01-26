@@ -17,6 +17,7 @@
 class GfxRenderer;
 class PageCache;
 class Page;
+struct RenderConfig;
 
 namespace papyrix {
 
@@ -100,6 +101,14 @@ class ReaderState : public State {
   bool ensurePageCached(Core& core, uint16_t pageNum);
   void loadCacheFromDisk(Core& core);
   void createOrExtendCache(Core& core);
+
+  // Template helper for cache creation/extension (reduces duplication)
+  template <typename ParserT>
+  void createOrExtendCacheImpl(ParserT& parser, const std::string& cachePath, const RenderConfig& config);
+
+  // Background caching template helper
+  template <typename ParserT>
+  void backgroundCacheImpl(ParserT& parser, const std::string& cachePath, const RenderConfig& config);
 
   // Display helpers
   void displayWithRefresh(Core& core);

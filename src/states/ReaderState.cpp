@@ -26,7 +26,58 @@ namespace papyrix {
 namespace {
 constexpr int horizontalPadding = 5;
 constexpr int statusBarMargin = 19;
+
+// Cache path helpers
+inline std::string epubSectionCachePath(const std::string& epubCachePath, int spineIndex) {
+  return epubCachePath + "/sections/" + std::to_string(spineIndex) + ".bin";
+}
+
+inline std::string contentCachePath(const char* cacheDir) { return std::string(cacheDir) + "/pages.bin"; }
 }  // namespace
+
+// Template implementation for cache creation/extension
+template <typename ParserT>
+void ReaderState::createOrExtendCacheImpl(ParserT& parser, const std::string& cachePath, const RenderConfig& config) {
+  xSemaphoreTake(cacheMutex_, portMAX_DELAY);
+  if (!pageCache_) {
+    pageCache_.reset(new PageCache(cachePath));
+    if (pageCache_->load(config)) {
+      if (pageCache_->isPartial()) {
+        pageCache_->extend(parser, PageCache::DEFAULT_CACHE_CHUNK);
+      }
+      xSemaphoreGive(cacheMutex_);
+      return;
+    }
+  }
+  if (pageCache_->isPartial()) {
+    pageCache_->extend(parser, PageCache::DEFAULT_CACHE_CHUNK);
+  } else {
+    pageCache_->create(parser, config, PageCache::DEFAULT_CACHE_CHUNK);
+  }
+  xSemaphoreGive(cacheMutex_);
+}
+
+// Template implementation for background caching (handles stop request checks)
+template <typename ParserT>
+void ReaderState::backgroundCacheImpl(ParserT& parser, const std::string& cachePath, const RenderConfig& config) {
+  xSemaphoreTake(cacheMutex_, portMAX_DELAY);
+  pageCache_.reset(new PageCache(cachePath));
+  bool loaded = pageCache_->load(config);
+  bool needsExtend = loaded && pageCache_->needsExtension(currentSectionPage_);
+  xSemaphoreGive(cacheMutex_);
+
+  if (!loaded || needsExtend) {
+    xSemaphoreTake(cacheMutex_, portMAX_DELAY);
+    if (!cacheTaskStopRequested_) {
+      if (needsExtend) {
+        pageCache_->extend(parser, PageCache::DEFAULT_CACHE_CHUNK);
+      } else {
+        pageCache_->create(parser, config, PageCache::DEFAULT_CACHE_CHUNK);
+      }
+    }
+    xSemaphoreGive(cacheMutex_);
+  }
+}
 
 ReaderState::ReaderState(GfxRenderer& renderer)
     : renderer_(renderer),
@@ -550,10 +601,9 @@ void ReaderState::loadCacheFromDisk(Core& core) {
       Serial.println("[READER] loadCacheFromDisk: no epub provider");
       return;
     }
-    auto epub = provider->getEpubShared();
-    cachePath = epub->getCachePath() + "/sections/" + std::to_string(currentSpineIndex_) + ".bin";
+    cachePath = epubSectionCachePath(provider->getEpub()->getCachePath(), currentSpineIndex_);
   } else if (type == ContentType::Markdown || type == ContentType::Txt) {
-    cachePath = std::string(core.content.cacheDir()) + "/pages.bin";
+    cachePath = contentCachePath(core.content.cacheDir());
   } else {
     Serial.printf("[READER] loadCacheFromDisk: unsupported content type %d\n", static_cast<int>(type));
     return;
@@ -582,70 +632,17 @@ void ReaderState::createOrExtendCache(Core& core) {
 
     auto epub = provider->getEpubShared();
     std::string imageCachePath = core.settings.showImages ? (epub->getCachePath() + "/images") : "";
-    std::string cachePath = epub->getCachePath() + "/sections/" + std::to_string(currentSpineIndex_) + ".bin";
-
+    std::string cachePath = epubSectionCachePath(epub->getCachePath(), currentSpineIndex_);
     EpubChapterParser parser(epub, currentSpineIndex_, renderer_, config, imageCachePath);
-
-    xSemaphoreTake(cacheMutex_, portMAX_DELAY);
-    if (!pageCache_) {
-      pageCache_.reset(new PageCache(cachePath));
-      if (pageCache_->load(config)) {
-        if (pageCache_->isPartial()) {
-          pageCache_->extend(parser, PageCache::DEFAULT_CACHE_CHUNK);
-        }
-        xSemaphoreGive(cacheMutex_);
-        return;
-      }
-    }
-    if (pageCache_->isPartial()) {
-      pageCache_->extend(parser, PageCache::DEFAULT_CACHE_CHUNK);
-    } else {
-      pageCache_->create(parser, config, PageCache::DEFAULT_CACHE_CHUNK);
-    }
-    xSemaphoreGive(cacheMutex_);
+    createOrExtendCacheImpl(parser, cachePath, config);
   } else if (type == ContentType::Markdown) {
-    std::string cachePath = std::string(core.content.cacheDir()) + "/pages.bin";
+    std::string cachePath = contentCachePath(core.content.cacheDir());
     MarkdownParser parser(contentPath_, renderer_, config);
-
-    xSemaphoreTake(cacheMutex_, portMAX_DELAY);
-    if (!pageCache_) {
-      pageCache_.reset(new PageCache(cachePath));
-      if (pageCache_->load(config)) {
-        if (pageCache_->isPartial()) {
-          pageCache_->extend(parser, PageCache::DEFAULT_CACHE_CHUNK);
-        }
-        xSemaphoreGive(cacheMutex_);
-        return;
-      }
-    }
-    if (pageCache_->isPartial()) {
-      pageCache_->extend(parser, PageCache::DEFAULT_CACHE_CHUNK);
-    } else {
-      pageCache_->create(parser, config, PageCache::DEFAULT_CACHE_CHUNK);
-    }
-    xSemaphoreGive(cacheMutex_);
+    createOrExtendCacheImpl(parser, cachePath, config);
   } else {
-    // TXT only
-    std::string cachePath = std::string(core.content.cacheDir()) + "/pages.bin";
+    std::string cachePath = contentCachePath(core.content.cacheDir());
     PlainTextParser parser(contentPath_, renderer_, config);
-
-    xSemaphoreTake(cacheMutex_, portMAX_DELAY);
-    if (!pageCache_) {
-      pageCache_.reset(new PageCache(cachePath));
-      if (pageCache_->load(config)) {
-        if (pageCache_->isPartial()) {
-          pageCache_->extend(parser, PageCache::DEFAULT_CACHE_CHUNK);
-        }
-        xSemaphoreGive(cacheMutex_);
-        return;
-      }
-    }
-    if (pageCache_->isPartial()) {
-      pageCache_->extend(parser, PageCache::DEFAULT_CACHE_CHUNK);
-    } else {
-      pageCache_->create(parser, config, PageCache::DEFAULT_CACHE_CHUNK);
-    }
-    xSemaphoreGive(cacheMutex_);
+    createOrExtendCacheImpl(parser, cachePath, config);
   }
 }
 
@@ -814,71 +811,22 @@ void ReaderState::cacheTaskLoop() {
         const auto config = coreRef.settings.getRenderConfig(theme, vp.width, vp.height);
         std::string imageCachePath =
             coreRef.settings.showImages ? (provider->getEpub()->getCachePath() + "/images") : "";
-        std::string cachePath =
-            provider->getEpub()->getCachePath() + "/sections/" + std::to_string(currentSpineIndex_) + ".bin";
-
-        xSemaphoreTake(cacheMutex_, portMAX_DELAY);
-        pageCache_.reset(new PageCache(cachePath));
-        bool loaded = pageCache_->load(config);
-        bool needsExtend = loaded && pageCache_->needsExtension(currentSectionPage_);
-        xSemaphoreGive(cacheMutex_);
-        if (!loaded || needsExtend) {
-          EpubChapterParser parser(provider->getEpubShared(), currentSpineIndex_, renderer_, config, imageCachePath);
-          xSemaphoreTake(cacheMutex_, portMAX_DELAY);
-          if (!cacheTaskStopRequested_) {
-            if (needsExtend) {
-              pageCache_->extend(parser, PageCache::DEFAULT_CACHE_CHUNK);
-            } else {
-              pageCache_->create(parser, config, PageCache::DEFAULT_CACHE_CHUNK);
-            }
-          }
-          xSemaphoreGive(cacheMutex_);
-        }
+        std::string cachePath = epubSectionCachePath(provider->getEpub()->getCachePath(), currentSpineIndex_);
+        EpubChapterParser parser(provider->getEpubShared(), currentSpineIndex_, renderer_, config, imageCachePath);
+        backgroundCacheImpl(parser, cachePath, config);
       }
     } else if (type == ContentType::Markdown && !cacheTaskStopRequested_) {
       const auto vp = getReaderViewport();
       const auto config = coreRef.settings.getRenderConfig(theme, vp.width, vp.height);
-      std::string cachePath = std::string(coreRef.content.cacheDir()) + "/pages.bin";
-
-      xSemaphoreTake(cacheMutex_, portMAX_DELAY);
-      pageCache_.reset(new PageCache(cachePath));
-      bool loaded = pageCache_->load(config);
-      bool needsExtend = loaded && pageCache_->needsExtension(currentSectionPage_);
-      xSemaphoreGive(cacheMutex_);
-      if (!loaded || needsExtend) {
-        MarkdownParser parser(contentPath_, renderer_, config);
-        xSemaphoreTake(cacheMutex_, portMAX_DELAY);
-        if (!cacheTaskStopRequested_) {
-          if (needsExtend) {
-            pageCache_->extend(parser, PageCache::DEFAULT_CACHE_CHUNK);
-          } else {
-            pageCache_->create(parser, config, PageCache::DEFAULT_CACHE_CHUNK);
-          }
-        }
-        xSemaphoreGive(cacheMutex_);
-      }
+      std::string cachePath = contentCachePath(coreRef.content.cacheDir());
+      MarkdownParser parser(contentPath_, renderer_, config);
+      backgroundCacheImpl(parser, cachePath, config);
     } else if (type == ContentType::Txt && !cacheTaskStopRequested_) {
       const auto vp = getReaderViewport();
       const auto config = coreRef.settings.getRenderConfig(theme, vp.width, vp.height);
-      std::string cachePath = std::string(coreRef.content.cacheDir()) + "/pages.bin";
-
-      xSemaphoreTake(cacheMutex_, portMAX_DELAY);
-      pageCache_.reset(new PageCache(cachePath));
-      bool loaded = pageCache_->load(config);
-      bool needsExtend = loaded && pageCache_->needsExtension(currentSectionPage_);
-      xSemaphoreGive(cacheMutex_);
-      if (!loaded || needsExtend) {
-        PlainTextParser parser(contentPath_, renderer_, config);
-        xSemaphoreTake(cacheMutex_, portMAX_DELAY);
-        if (!cacheTaskStopRequested_) {
-          if (needsExtend) {
-            pageCache_->extend(parser, PageCache::DEFAULT_CACHE_CHUNK);
-          } else {
-            pageCache_->create(parser, config, PageCache::DEFAULT_CACHE_CHUNK);
-          }
-        }
-        xSemaphoreGive(cacheMutex_);
-      }
+      std::string cachePath = contentCachePath(coreRef.content.cacheDir());
+      PlainTextParser parser(contentPath_, renderer_, config);
+      backgroundCacheImpl(parser, cachePath, config);
     }
   }
 
