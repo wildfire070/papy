@@ -312,8 +312,9 @@ void initUIMode() {
   setupDisplayAndFonts();
   applyThemeFonts();
 
-  // Show boot splash
-  {
+  // Show boot splash only on cold boot (not mode transition)
+  const auto& preInitTransition = papyrix::getTransition();
+  if (!preInitTransition.isValid()) {
     ui::BootView bootView;
     bootView.setLogo(PapyrixLogo, 128, 128);
     bootView.setVersion(PAPYRIX_VERSION);

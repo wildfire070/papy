@@ -26,6 +26,14 @@ BootMode detectBootMode() {
   // Check settings for pending UI transition (1=UI mode)
   if (core.settings.pendingTransition == 1) {
     Serial.printf("[BOOT] Pending UI transition, returnTo=%d\n", core.settings.transitionReturnTo);
+
+    // Cache transition info before clearing (so initUIMode can detect mode transition)
+    cachedTransition.magic = ModeTransition::MAGIC;
+    cachedTransition.mode = BootMode::UI;
+    cachedTransition.returnTo = static_cast<ReturnTo>(core.settings.transitionReturnTo);
+    cachedTransition.bookPath[0] = '\0';
+    transitionCached = true;
+
     clearTransition();
     return BootMode::UI;
   }
