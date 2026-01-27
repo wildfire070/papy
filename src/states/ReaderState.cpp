@@ -779,7 +779,7 @@ void ReaderState::startBackgroundCaching(Core& core) {
   coreForCacheTask_ = &core;
   cacheTaskComplete_ = false;
 
-  xTaskCreate(&ReaderState::cacheTaskTrampoline, "PageCache", 4096, this, 0, &cacheTaskHandle_);
+  xTaskCreate(&ReaderState::cacheTaskTrampoline, "PageCache", 8192, this, 0, &cacheTaskHandle_);
 }
 
 void ReaderState::cacheTaskTrampoline(void* param) { static_cast<ReaderState*>(param)->cacheTaskLoop(); }
