@@ -8,6 +8,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <string>
 
 /**
@@ -76,4 +77,8 @@ class Markdown {
 
   // Check if file is loaded
   bool isLoaded() const { return loaded; }
+
+ private:
+  bool extractTitleFromContent();
+  std::string getTitleCachePath() const { return cachePath + "/title.txt"; }
 };

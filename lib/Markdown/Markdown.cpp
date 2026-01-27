@@ -51,6 +51,10 @@ bool Markdown::load() {
   file.close();
 
   loaded = true;
+
+  // Try to extract title from content (updates title member if found)
+  extractTitleFromContent();
+
   Serial.printf("[%lu] [MD ] Loaded Markdown: %s (%zu bytes)\n", millis(), filepath.c_str(), fileSize);
   return true;
 }
@@ -189,4 +193,84 @@ size_t Markdown::readContent(uint8_t* buffer, size_t offset, size_t length) cons
   file.close();
 
   return bytesRead;
+}
+
+bool Markdown::extractTitleFromContent() {
+  // Check cache first
+  std::string titleCachePath = getTitleCachePath();
+  if (SdMan.exists(titleCachePath.c_str())) {
+    FsFile file;
+    if (SdMan.openFileForRead("MD ", titleCachePath, file)) {
+      char buf[128];
+      int len = file.read(buf, sizeof(buf) - 1);
+      file.close();
+      if (len > 0) {
+        buf[len] = '\0';
+        title = buf;
+        return true;
+      }
+    }
+  }
+
+  // Read first 4KB - use heap instead of stack to avoid overflow on ESP32-C3
+  constexpr size_t SCAN_SIZE = 4096;
+  std::unique_ptr<uint8_t[]> buffer(new (std::nothrow) uint8_t[SCAN_SIZE]);
+  if (!buffer) return false;
+
+  size_t bytesRead = readContent(buffer.get(), 0, SCAN_SIZE);
+  if (bytesRead == 0) return false;
+
+  // Scan for ATX header (# Title)
+  std::string extracted;
+  const char* p = reinterpret_cast<const char*>(buffer.get());
+  const char* end = p + bytesRead;
+
+  while (p < end) {
+    // Skip to start of line
+    while (p < end && (*p == '\n' || *p == '\r')) p++;
+    if (p >= end) break;
+
+    const char* lineStart = p;
+    // Find end of line
+    while (p < end && *p != '\n' && *p != '\r') p++;
+    size_t lineLen = static_cast<size_t>(p - lineStart);
+
+    // Check for ATX header
+    if (lineLen > 1 && lineStart[0] == '#') {
+      size_t hashCount = 0;
+      while (hashCount < lineLen && lineStart[hashCount] == '#') hashCount++;
+
+      if (hashCount <= 6 && hashCount < lineLen && lineStart[hashCount] == ' ') {
+        // Extract title text - skip all leading whitespace after #
+        size_t start = hashCount;
+        while (start < lineLen && lineStart[start] == ' ') start++;
+        size_t titleEnd = lineLen;
+        // Strip trailing # and spaces
+        while (titleEnd > start && (lineStart[titleEnd - 1] == '#' || lineStart[titleEnd - 1] == ' ')) titleEnd--;
+
+        if (titleEnd > start) {
+          extracted = std::string(lineStart + start, titleEnd - start);
+          break;
+        }
+      }
+    }
+  }
+
+  if (extracted.empty()) return false;
+
+  // Truncate to fit buffer
+  if (extracted.length() > 127) extracted.resize(127);
+
+  // Update title
+  title = extracted;
+
+  // Cache to SD
+  setupCacheDir();
+  FsFile file;
+  if (SdMan.openFileForWrite("MD ", titleCachePath, file)) {
+    file.write(reinterpret_cast<const uint8_t*>(title.c_str()), title.length());
+    file.close();
+  }
+
+  return true;
 }
