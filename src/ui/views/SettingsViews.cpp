@@ -4,7 +4,6 @@ namespace ui {
 
 // Static definitions for constexpr arrays
 constexpr const char* const SettingsMenuView::ITEMS[];
-constexpr const char* const ToolsMenuView::ITEMS[];
 constexpr const char* const CleanupMenuView::ITEMS[];
 
 // ReaderSettingsView static definitions
@@ -54,22 +53,6 @@ void render(const GfxRenderer& r, const Theme& t, const SettingsMenuView& v) {
   }
 
   buttonBar(r, t, "Back", "Open", "", "");
-
-  r.displayBuffer();
-}
-
-void render(const GfxRenderer& r, const Theme& t, const ToolsMenuView& v) {
-  r.clearScreen(t.backgroundColor);
-
-  title(r, t, t.screenMarginTop, "Tools");
-
-  const int startY = 60;
-  for (int i = 0; i < ToolsMenuView::ITEM_COUNT; i++) {
-    const int y = startY + i * (t.itemHeight + t.itemSpacing);
-    menuItem(r, t, y, ToolsMenuView::ITEMS[i], i == v.selected);
-  }
-
-  buttonBar(r, t, "Back", "Run", "", "");
 
   r.displayBuffer();
 }

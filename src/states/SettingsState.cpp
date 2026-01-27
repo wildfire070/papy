@@ -36,8 +36,6 @@ void SettingsState::enter(Core& core) {
   if (currentScreen_ == SettingsScreen::Menu) {
     menuView_.selected = 0;
     menuView_.needsRender = true;
-  } else if (currentScreen_ == SettingsScreen::Tools) {
-    toolsView_.needsRender = true;
   }
   needsRender_ = true;
   goHome_ = false;
@@ -69,9 +67,6 @@ StateTransition SettingsState::update(Core& core) {
               case SettingsScreen::Device:
                 deviceView_.moveUp();
                 break;
-              case SettingsScreen::Tools:
-                toolsView_.moveUp();
-                break;
               case SettingsScreen::Cleanup:
                 cleanupView_.moveUp();
                 break;
@@ -94,9 +89,6 @@ StateTransition SettingsState::update(Core& core) {
                 break;
               case SettingsScreen::Device:
                 deviceView_.moveDown();
-                break;
-              case SettingsScreen::Tools:
-                toolsView_.moveDown();
                 break;
               case SettingsScreen::Cleanup:
                 cleanupView_.moveDown();
@@ -189,9 +181,6 @@ void SettingsState::render(Core& core) {
       case SettingsScreen::Device:
         viewNeedsRender = deviceView_.needsRender;
         break;
-      case SettingsScreen::Tools:
-        viewNeedsRender = toolsView_.needsRender;
-        break;
       case SettingsScreen::Cleanup:
         viewNeedsRender = cleanupView_.needsRender;
         break;
@@ -218,10 +207,6 @@ void SettingsState::render(Core& core) {
     case SettingsScreen::Device:
       ui::render(renderer_, THEME, deviceView_);
       deviceView_.needsRender = false;
-      break;
-    case SettingsScreen::Tools:
-      ui::render(renderer_, THEME, toolsView_);
-      toolsView_.needsRender = false;
       break;
     case SettingsScreen::Cleanup:
       ui::render(renderer_, THEME, cleanupView_);
@@ -255,10 +240,10 @@ void SettingsState::openSelected() {
       deviceView_.needsRender = true;
       currentScreen_ = SettingsScreen::Device;
       break;
-    case 2:  // Tools
-      toolsView_.selected = 0;
-      toolsView_.needsRender = true;
-      currentScreen_ = SettingsScreen::Tools;
+    case 2:  // Cleanup
+      cleanupView_.selected = 0;
+      cleanupView_.needsRender = true;
+      currentScreen_ = SettingsScreen::Cleanup;
       break;
     case 3:  // System Info
       populateSystemInfo();
@@ -281,15 +266,10 @@ void SettingsState::goBack(Core& core) {
       currentScreen_ = SettingsScreen::Menu;
       menuView_.needsRender = true;
       break;
-    case SettingsScreen::Tools:
+    case SettingsScreen::Cleanup:
     case SettingsScreen::SystemInfo:
       currentScreen_ = SettingsScreen::Menu;
       menuView_.needsRender = true;
-      break;
-    case SettingsScreen::Cleanup:
-      // Cleanup is a submenu of Tools
-      currentScreen_ = SettingsScreen::Tools;
-      toolsView_.needsRender = true;
       break;
     case SettingsScreen::ConfirmDialog:
       pendingAction_ = 0;
@@ -318,10 +298,6 @@ void SettingsState::handleConfirm(Core& core) {
       deviceView_.cycleValue(1);
       saveDeviceSettings();
       needsRender_ = true;
-      break;
-
-    case SettingsScreen::Tools:
-      executeToolsAction(toolsView_.selected, core);
       break;
 
     case SettingsScreen::Cleanup:
@@ -568,35 +544,6 @@ void SettingsState::populateSystemInfo() {
 
   // SD Card status
   infoView_.addField("SD Card", SdMan.ready() ? "Ready" : "Not available");
-}
-
-void SettingsState::executeToolsAction(int action, Core& core) {
-  switch (action) {
-    case 0:  // File Transfer
-      // TODO: Transition to file transfer mode (CrossPoint web server)
-      returnScreen_ = currentScreen_;
-      goNetwork_ = true;
-      break;
-
-    case 1:  // Net Library
-      // TODO: Transition to OPDS library browser
-      returnScreen_ = currentScreen_;
-      goNetwork_ = true;
-      break;
-
-    case 2:  // Calibre Wireless
-      // TODO: Transition to Calibre connection
-      returnScreen_ = currentScreen_;
-      goNetwork_ = true;
-      break;
-
-    case 3:  // Cleanup submenu
-      cleanupView_.selected = 0;
-      cleanupView_.needsRender = true;
-      currentScreen_ = SettingsScreen::Cleanup;
-      needsRender_ = true;
-      break;
-  }
 }
 
 void SettingsState::clearCache(int type, Core& core) {

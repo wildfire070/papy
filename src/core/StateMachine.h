@@ -26,7 +26,7 @@ class StateMachine {
   StateId currentId_ = StateId::Startup;
 
   // State registry - pointers to pre-allocated state instances
-  static constexpr size_t MAX_STATES = 8;
+  static constexpr size_t MAX_STATES = 10;
   State* states_[MAX_STATES] = {};
   size_t stateCount_ = 0;
 };

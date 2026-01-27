@@ -32,10 +32,19 @@ enum class StateId : uint8_t {
   FileList,
   Reader,
   Settings,
+  Sync,
   Network,
   CalibreSync,
   Error,
   Sleep,
+};
+
+// Sync operation mode
+enum class SyncMode : uint8_t {
+  None,
+  FileTransfer,
+  NetLibrary,
+  CalibreWireless,
 };
 
 // Common buffer sizes

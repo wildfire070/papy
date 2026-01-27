@@ -42,6 +42,7 @@
 #include "states/SettingsState.h"
 #include "states/SleepState.h"
 #include "states/StartupState.h"
+#include "states/SyncState.h"
 #include "ui/views/BootSleepViews.h"
 
 #define SPI_FQ 40000000
@@ -80,6 +81,7 @@ static papyrix::HomeState homeState(renderer);
 static papyrix::FileListState fileListState(renderer);
 static papyrix::ReaderState readerState(renderer);
 static papyrix::SettingsState settingsState(renderer);
+static papyrix::SyncState syncState(renderer);
 static papyrix::NetworkState networkState(renderer);
 static papyrix::SleepState sleepState(renderer);
 static papyrix::ErrorState errorState(renderer);
@@ -330,6 +332,7 @@ void initUIMode() {
   stateMachine.registerState(&fileListState);
   stateMachine.registerState(&readerState);
   stateMachine.registerState(&settingsState);
+  stateMachine.registerState(&syncState);
   stateMachine.registerState(&networkState);
   stateMachine.registerState(&sleepState);
   stateMachine.registerState(&errorState);

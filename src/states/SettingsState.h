@@ -13,7 +13,6 @@ enum class SettingsScreen : uint8_t {
   Menu,
   Reader,
   Device,
-  Tools,
   Cleanup,
   SystemInfo,
   ConfirmDialog,
@@ -48,7 +47,6 @@ class SettingsState : public State {
   ui::SettingsMenuView menuView_;
   ui::ReaderSettingsView readerView_;
   ui::DeviceSettingsView deviceView_;
-  ui::ToolsMenuView toolsView_;
   ui::CleanupMenuView cleanupView_;
   ui::SystemInfoView infoView_;
   ui::ConfirmDialogView confirmView_;
@@ -67,7 +65,6 @@ class SettingsState : public State {
   void populateSystemInfo();
 
   // Actions
-  void executeToolsAction(int action, Core& core);
   void clearCache(int type, Core& core);
 };
 

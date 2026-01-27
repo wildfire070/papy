@@ -35,6 +35,9 @@ struct Core {
     uint8_t decompress[BufferSize::Decompress];
   } buf;
 
+  // === Pending operations ===
+  SyncMode pendingSync = SyncMode::None;
+
   // === Lifecycle ===
   Result<void> init();
   void shutdown();

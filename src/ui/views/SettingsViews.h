@@ -15,7 +15,7 @@ namespace ui {
 // ============================================================================
 
 struct SettingsMenuView {
-  static constexpr const char* const ITEMS[] = {"Reader", "Device", "Tools", "System Info"};
+  static constexpr const char* const ITEMS[] = {"Reader", "Device", "Cleanup", "System Info"};
   static constexpr int ITEM_COUNT = 4;
 
   int8_t selected = 0;
@@ -33,30 +33,6 @@ struct SettingsMenuView {
 };
 
 void render(const GfxRenderer& r, const Theme& t, const SettingsMenuView& v);
-
-// ============================================================================
-// ToolsMenuView - Tools settings (actions)
-// ============================================================================
-
-struct ToolsMenuView {
-  static constexpr const char* const ITEMS[] = {"File Transfer", "Net Library", "Calibre Wireless", "Cleanup"};
-  static constexpr int ITEM_COUNT = 4;
-
-  int8_t selected = 0;
-  bool needsRender = true;
-
-  void moveUp() {
-    selected = (selected == 0) ? ITEM_COUNT - 1 : selected - 1;
-    needsRender = true;
-  }
-
-  void moveDown() {
-    selected = (selected + 1) % ITEM_COUNT;
-    needsRender = true;
-  }
-};
-
-void render(const GfxRenderer& r, const Theme& t, const ToolsMenuView& v);
 
 // ============================================================================
 // CleanupMenuView - Storage cleanup options

@@ -139,8 +139,8 @@ StateTransition HomeState::update(Core& core) {
             return StateTransition::to(StateId::FileList);
 
           case Button::Left:
-            // btn3: Network
-            return StateTransition::to(StateId::Network);
+            // btn3: Sync
+            return StateTransition::to(StateId::Sync);
 
           case Button::Right:
             // btn4: Settings
