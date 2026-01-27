@@ -238,12 +238,9 @@ void HomeState::renderCoverToCard() {
   }
 
   const auto card = ui::CardDimensions::calculate(renderer_.getScreenWidth(), renderer_.getScreenHeight());
-
-  // Calculate centered position within card (with small padding)
-  constexpr int padding = 10;
-  auto rect =
-      CoverHelpers::calculateCenteredRect(bitmap.getWidth(), bitmap.getHeight(), card.x + padding, card.y + padding,
-                                          card.width - 2 * padding, card.height - 2 * padding - 60);
+  const auto coverArea = card.getCoverArea();
+  auto rect = CoverHelpers::calculateCenteredRect(bitmap.getWidth(), bitmap.getHeight(), coverArea.x, coverArea.y,
+                                                  coverArea.width, coverArea.height);
 
   renderer_.drawBitmap(bitmap, rect.x, rect.y, rect.width, rect.height);
   file.close();

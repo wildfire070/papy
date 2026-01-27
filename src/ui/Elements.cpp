@@ -532,10 +532,17 @@ void centeredMessage(const GfxRenderer& r, const Theme& t, int fontId, const cha
 }
 
 void bookPlaceholder(const GfxRenderer& r, const Theme& t, int x, int y, int width, int height) {
-  // Minimum size check - need enough space for the icon to be visible
+  if (width <= 0 || height <= 0) {
+    return;
+  }
+
+  const bool bgColor = t.primaryTextBlack;
+  const bool fgColor = !t.primaryTextBlack;
+
+  r.fillRect(x, y, width, height, bgColor);
+
   constexpr int minSize = 50;
   if (width < minSize || height < minSize) {
-    r.drawRect(x, y, width, height, t.primaryTextBlack);
     return;
   }
 
@@ -549,12 +556,11 @@ void bookPlaceholder(const GfxRenderer& r, const Theme& t, int x, int y, int wid
   const int iconY = y + (height - iconHeight) / 2;
 
   // Book outline
-  r.drawRect(iconX, iconY, iconWidth, iconHeight, t.primaryTextBlack);
+  r.drawRect(iconX, iconY, iconWidth, iconHeight, fgColor);
 
   // Spine (filled rectangle on left)
   const int spineWidth = static_cast<int>(16 * scale);
-  r.fillRect(iconX, iconY, spineWidth, iconHeight, !t.primaryTextBlack);
-  r.drawRect(iconX, iconY, spineWidth, iconHeight, t.primaryTextBlack);
+  r.fillRect(iconX, iconY, spineWidth, iconHeight, fgColor);
 
   // "No Cover" text box
   const char* noCoverText = "No Cover";
@@ -565,8 +571,8 @@ void bookPlaceholder(const GfxRenderer& r, const Theme& t, int x, int y, int wid
   const int boxHeight = r.getLineHeight(t.smallFontId) + boxPadding;
   const int boxX = iconX + spineWidth + (availableWidth - boxWidth) / 2;
   const int boxY = iconY + static_cast<int>(30 * scale);
-  r.drawRect(boxX, boxY, boxWidth, boxHeight, t.primaryTextBlack);
-  r.drawText(t.smallFontId, boxX + boxPadding, boxY + boxPadding / 2, noCoverText, t.primaryTextBlack);
+  r.drawRect(boxX, boxY, boxWidth, boxHeight, fgColor);
+  r.drawText(t.smallFontId, boxX + boxPadding, boxY + boxPadding / 2, noCoverText, fgColor);
 
   // Horizontal lines (text placeholder)
   const int lineStartX = iconX + spineWidth + static_cast<int>(20 * scale);
@@ -576,7 +582,7 @@ void bookPlaceholder(const GfxRenderer& r, const Theme& t, int x, int y, int wid
                              static_cast<int>(100 * scale), static_cast<int>(70 * scale)};
   for (int i = 0; i < 4; i++) {
     r.drawLine(lineStartX, lineStartY + i * lineSpacing, lineStartX + lineLengths[i], lineStartY + i * lineSpacing,
-               t.primaryTextBlack);
+               fgColor);
   }
 }
 

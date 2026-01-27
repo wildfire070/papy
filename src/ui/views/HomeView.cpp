@@ -1,5 +1,6 @@
 #include "HomeView.h"
 
+#include <CoverHelpers.h>
 #include <EpdFontFamily.h>
 
 #include <algorithm>
@@ -38,19 +39,16 @@ void render(const GfxRenderer& r, const Theme& t, const HomeView& v) {
     }
 
     // Draw cover image if available (in-memory version; BMP cover rendered by HomeState)
+    const auto coverArea = card.getCoverArea();
     if (v.coverData != nullptr && v.coverWidth > 0 && v.coverHeight > 0) {
-      // Simple centered draw (scaling is complex for 1-bit)
-      const int coverX = cardX + (cardWidth - v.coverWidth) / 2;
-      const int coverY = cardY + 10;
-      r.drawImage(v.coverData, coverX, coverY, v.coverWidth, v.coverHeight);
+      const auto rect = CoverHelpers::calculateCenteredRect(v.coverWidth, v.coverHeight, coverArea.x, coverArea.y,
+                                                            coverArea.width, coverArea.height);
+      r.drawImage(v.coverData, rect.x, rect.y, v.coverWidth, v.coverHeight);
     }
 
     // Draw book placeholder when no cover available (same area as real covers)
     if (!hasCover) {
-      constexpr int padding = 10;
-      constexpr int continueAreaHeight = 60;  // Reserve space for "Continue Reading" at bottom
-      bookPlaceholder(r, t, cardX + padding, cardY + padding, cardWidth - 2 * padding,
-                      cardHeight - 2 * padding - continueAreaHeight);
+      bookPlaceholder(r, t, coverArea.x, coverArea.y, coverArea.width, coverArea.height);
     }
 
     const int titleLineHeight = r.getLineHeight(t.uiFontId);

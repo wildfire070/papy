@@ -17,12 +17,22 @@ namespace ui {
 struct CardDimensions {
   int x, y, width, height;
 
+  struct CoverArea {
+    int x, y, width, height;
+  };
+
   static CardDimensions calculate(int screenWidth, int screenHeight) {
     const int w = screenWidth * 7 / 10;  // 70% width for larger cover
     const int h = screenHeight / 2 + 100;
     const int x = (screenWidth - w) / 2;
     constexpr int y = 50;
     return {x, y, w, h};
+  }
+
+  CoverArea getCoverArea() const {
+    constexpr int padding = 10;
+    constexpr int continueAreaHeight = 60;
+    return {x + padding, y + padding, width - 2 * padding, height - 2 * padding - continueAreaHeight};
   }
 };
 
