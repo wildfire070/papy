@@ -3,7 +3,7 @@
 #include <Epub.h>
 #include <GfxRenderer.h>
 #include <InputManager.h>
-#include <LittleFS.h>  // Must be first to avoid FILE_READ/FILE_WRITE redefinition with SdFat
+#include <LittleFS.h>  // Must be before SdFat includes to avoid FILE_READ/FILE_WRITE redefinition
 #include <SDCardManager.h>
 #include <SPI.h>
 #include <builtinFonts/reader_2b.h>

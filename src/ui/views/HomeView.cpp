@@ -17,7 +17,7 @@ void render(const GfxRenderer& r, const Theme& t, const HomeView& v) {
   const int pageHeight = r.getScreenHeight();
 
   // Title "Papyrix Reader" at top
-  r.drawCenteredText(t.readerFontId, 10, "Papyrix Reader", t.primaryTextBlack, EpdFontFamily::BOLD);
+  r.drawCenteredText(t.readerFontId, 10, "Papyrix", t.primaryTextBlack, EpdFontFamily::BOLD);
 
   // Battery indicator - top right
   battery(r, t, pageWidth - 80, 10, v.batteryPercent);
@@ -45,70 +45,7 @@ void render(const GfxRenderer& r, const Theme& t, const HomeView& v) {
       r.drawImage(v.coverData, coverX, coverY, v.coverWidth, v.coverHeight);
     }
 
-    // Text color on card
-    const bool textOnCard = t.primaryTextBlack;
-
-    // Title and author centered in card
-    const int maxTextWidth = cardWidth - 40;
     const int titleLineHeight = r.getLineHeight(t.uiFontId);
-
-    // Wrap title to max 3 lines
-    const auto titleLines = r.wrapTextWithHyphenation(t.uiFontId, v.bookTitle, maxTextWidth, 3);
-
-    // Text area boundaries (leaving space for bookmark and "Continue Reading")
-    const int textAreaTop = cardY + 70;
-    const int textAreaBottom = cardY + cardHeight - 50;
-
-    // Calculate total text height
-    int totalTextHeight = static_cast<int>(titleLines.size()) * titleLineHeight;
-    if (v.bookAuthor[0] != '\0') {
-      totalTextHeight += titleLineHeight * 3 / 2;  // Author line + spacing
-    }
-
-    // Calculate vertical position for text (centered in text area, clamped to top)
-    int textY = textAreaTop + std::max(0, (textAreaBottom - textAreaTop - totalTextHeight) / 2);
-
-    // Draw white background box with black border when cover is present
-    if (hasCover) {
-      // Calculate max text width for box sizing
-      int maxLineWidth = 0;
-      for (const auto& line : titleLines) {
-        int lineWidth = r.getTextWidth(t.uiFontId, line.c_str());
-        if (lineWidth > maxLineWidth) maxLineWidth = lineWidth;
-      }
-      if (v.bookAuthor[0] != '\0') {
-        const auto truncAuthor = r.truncatedText(t.uiFontId, v.bookAuthor, maxTextWidth);
-        int authorWidth = r.getTextWidth(t.uiFontId, truncAuthor.c_str());
-        if (authorWidth > maxLineWidth) maxLineWidth = authorWidth;
-      }
-
-      constexpr int boxPadding = 8;
-      int boxWidth = maxLineWidth + boxPadding * 2;
-      int boxHeight = totalTextHeight + boxPadding * 2;
-      int boxX = (pageWidth - boxWidth) / 2;
-      int boxY = textY - boxPadding;
-
-      // Draw white filled box with black border
-      r.fillRect(boxX, boxY, boxWidth, boxHeight, !t.primaryTextBlack);
-      r.drawRect(boxX, boxY, boxWidth, boxHeight, t.primaryTextBlack);
-    }
-
-    // Draw title lines centered
-    for (const auto& line : titleLines) {
-      const int lineWidth = r.getTextWidth(t.uiFontId, line.c_str());
-      const int lineX = cardX + (cardWidth - lineWidth) / 2;
-      r.drawText(t.uiFontId, lineX, textY, line.c_str(), textOnCard);
-      textY += titleLineHeight;
-    }
-
-    // Draw author if available
-    if (v.bookAuthor[0] != '\0') {
-      textY += titleLineHeight / 2;  // Extra spacing before author
-      const auto truncAuthor = r.truncatedText(t.uiFontId, v.bookAuthor, maxTextWidth);
-      const int authorWidth = r.getTextWidth(t.uiFontId, truncAuthor.c_str());
-      const int authorX = cardX + (cardWidth - authorWidth) / 2;
-      r.drawText(t.uiFontId, authorX, textY, truncAuthor.c_str(), textOnCard);
-    }
 
     // "Continue Reading" at bottom of card
     const char* continueText = "Continue Reading";
@@ -127,7 +64,52 @@ void render(const GfxRenderer& r, const Theme& t, const HomeView& v) {
       r.drawRect(continueBoxX, continueBoxY, continueBoxWidth, continueBoxHeight, t.primaryTextBlack);
     }
 
-    r.drawText(t.uiFontId, continueX, continueY, continueText, textOnCard);
+    r.drawText(t.uiFontId, continueX, continueY, continueText, t.primaryTextBlack);
+
+    // Title/author block below the card
+    constexpr int blockSpacing = 10;
+    constexpr int blockPadding = 8;
+    constexpr int buttonBarHeight = 50;
+    const int maxTextWidth = cardWidth - 2 * blockPadding;
+
+    // Calculate available height for block (between card and button bar)
+    const int blockY = cardY + cardHeight + blockSpacing;
+    const int availableHeight = pageHeight - blockY - buttonBarHeight - blockSpacing;
+    const int authorHeight = (v.bookAuthor[0] != '\0') ? titleLineHeight * 3 / 2 : 0;
+    const int maxTitleHeight = availableHeight - 2 * blockPadding - authorHeight;
+    const int maxTitleLines = std::max(1, maxTitleHeight / titleLineHeight);
+
+    const auto titleLines =
+        r.wrapTextWithHyphenation(t.uiFontId, v.bookTitle, maxTextWidth, std::min(3, maxTitleLines));
+
+    // Calculate total text height for the block
+    int totalTextHeight = static_cast<int>(titleLines.size()) * titleLineHeight;
+    if (v.bookAuthor[0] != '\0') {
+      totalTextHeight += titleLineHeight * 3 / 2;  // Author line + spacing
+    }
+
+    const int blockHeight = totalTextHeight + 2 * blockPadding;
+
+    // Draw bordered block for title/author
+    r.drawRect(cardX, blockY, cardWidth, blockHeight, t.primaryTextBlack);
+
+    // Draw title lines centered in block
+    int textY = blockY + blockPadding;
+    for (const auto& line : titleLines) {
+      const int lineWidth = r.getTextWidth(t.uiFontId, line.c_str());
+      const int lineX = cardX + (cardWidth - lineWidth) / 2;
+      r.drawText(t.uiFontId, lineX, textY, line.c_str(), t.primaryTextBlack);
+      textY += titleLineHeight;
+    }
+
+    // Draw author if available
+    if (v.bookAuthor[0] != '\0') {
+      textY += titleLineHeight / 2;  // Extra spacing before author
+      const auto truncAuthor = r.truncatedText(t.uiFontId, v.bookAuthor, maxTextWidth);
+      const int authorWidth = r.getTextWidth(t.uiFontId, truncAuthor.c_str());
+      const int authorX = cardX + (cardWidth - authorWidth) / 2;
+      r.drawText(t.uiFontId, authorX, textY, truncAuthor.c_str(), t.primaryTextBlack);
+    }
 
   } else {
     // No book open - show bordered placeholder with hint
@@ -149,9 +131,9 @@ void render(const GfxRenderer& r, const Theme& t, const HomeView& v) {
 
   // Button hints - direct shortcuts (no menu navigation)
   if (v.hasBook) {
-    buttonBar(r, t, "Read", "Files", "Network", "Settings");
+    buttonBar(r, t, "Read", "Files", "Sync", "Settings");
   } else {
-    buttonBar(r, t, "", "Files", "Network", "Settings");
+    buttonBar(r, t, "", "Files", "Sync", "Settings");
   }
 
   // Note: displayBuffer() is NOT called here; HomeState will call it

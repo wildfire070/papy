@@ -287,8 +287,8 @@ void FontManager::logFontInfo() const {
   Serial.println("[FONT] Built-in UI font: ui_12 (FLASH)");
 
   // Log loaded custom fonts
-  for (const auto& [id, family] : loadedFamilies) {
-    Serial.printf("[FONT] Custom: ID %d from SD (loaded)\n", id);
+  for (const auto& entry : loadedFamilies) {
+    Serial.printf("[FONT] Custom: ID %d from SD (loaded)\n", entry.first);
   }
 
   // Log external CJK font
