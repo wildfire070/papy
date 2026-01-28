@@ -43,6 +43,30 @@ bool matches(const char* tag_name, const char* possible_tags[], const int possib
   return false;
 }
 
+void ChapterHtmlSlimParser::flushPartWordBuffer() {
+  if (!currentTextBlock || partWordBufferIndex == 0) {
+    partWordBufferIndex = 0;
+    return;
+  }
+
+  // Determine font style from HTML tags and CSS
+  const bool isBold = boldUntilDepth < depth || cssBoldUntilDepth < depth;
+  const bool isItalic = italicUntilDepth < depth || cssItalicUntilDepth < depth;
+
+  EpdFontFamily::Style fontStyle = EpdFontFamily::REGULAR;
+  if (isBold && isItalic) {
+    fontStyle = EpdFontFamily::BOLD_ITALIC;
+  } else if (isBold) {
+    fontStyle = EpdFontFamily::BOLD;
+  } else if (isItalic) {
+    fontStyle = EpdFontFamily::ITALIC;
+  }
+
+  partWordBuffer[partWordBufferIndex] = '\0';
+  currentTextBlock->addWord(partWordBuffer, fontStyle);
+  partWordBufferIndex = 0;
+}
+
 // start a new text block if needed
 void ChapterHtmlSlimParser::startNewTextBlock(const TextBlock::BLOCK_STYLE style) {
   if (currentTextBlock) {
@@ -208,7 +232,10 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
     self->boldUntilDepth = min(self->boldUntilDepth, self->depth);
   } else if (matches(name, BLOCK_TAGS, NUM_BLOCK_TAGS)) {
     if (strcmp(name, "br") == 0) {
-      self->startNewTextBlock(self->currentTextBlock->getStyle());
+      self->flushPartWordBuffer();
+      const auto style = self->currentTextBlock ? self->currentTextBlock->getStyle()
+                                                : static_cast<TextBlock::BLOCK_STYLE>(self->config.paragraphAlignment);
+      self->startNewTextBlock(style);
     } else {
       // Determine block style: CSS text-align takes precedence
       TextBlock::BLOCK_STYLE blockStyle = static_cast<TextBlock::BLOCK_STYLE>(self->config.paragraphAlignment);
@@ -249,19 +276,6 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
     return;
   }
 
-  // Determine font style from HTML tags and CSS
-  const bool isBold = self->boldUntilDepth < self->depth || self->cssBoldUntilDepth < self->depth;
-  const bool isItalic = self->italicUntilDepth < self->depth || self->cssItalicUntilDepth < self->depth;
-
-  EpdFontFamily::Style fontStyle = EpdFontFamily::REGULAR;
-  if (isBold && isItalic) {
-    fontStyle = EpdFontFamily::BOLD_ITALIC;
-  } else if (isBold) {
-    fontStyle = EpdFontFamily::BOLD;
-  } else if (isItalic) {
-    fontStyle = EpdFontFamily::ITALIC;
-  }
-
   // Zero Width No-Break Space / BOM (U+FEFF) = 0xEF 0xBB 0xBF
   const XML_Char FEFF_BYTE_1 = static_cast<XML_Char>(0xEF);
   const XML_Char FEFF_BYTE_2 = static_cast<XML_Char>(0xBB);
@@ -271,9 +285,7 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
     if (isWhitespace(s[i])) {
       // Currently looking at whitespace, if there's anything in the partWordBuffer, flush it
       if (self->partWordBufferIndex > 0) {
-        self->partWordBuffer[self->partWordBufferIndex] = '\0';
-        self->currentTextBlock->addWord(self->partWordBuffer, fontStyle);
-        self->partWordBufferIndex = 0;
+        self->flushPartWordBuffer();
       }
       // Skip the whitespace char
       continue;
@@ -291,9 +303,7 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
 
     // If we're about to run out of space, then cut the word off and start a new one
     if (self->partWordBufferIndex >= MAX_WORD_SIZE) {
-      self->partWordBuffer[self->partWordBufferIndex] = '\0';
-      self->currentTextBlock->addWord(self->partWordBuffer, fontStyle);
-      self->partWordBufferIndex = 0;
+      self->flushPartWordBuffer();
     }
 
     self->partWordBuffer[self->partWordBufferIndex++] = s[i];
@@ -303,7 +313,7 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
   // There should be enough here to build out 1-2 full pages and doing this will free up a lot of
   // memory.
   // Spotted when reading Intermezzo, there are some really long text blocks in there.
-  if (self->currentTextBlock->size() > 750) {
+  if (self->currentTextBlock && self->currentTextBlock->size() > 750) {
     Serial.printf("[%lu] [EHP] Text block too long, splitting into multiple pages\n", millis());
     self->currentTextBlock->layoutAndExtractLines(
         self->renderer, self->config.fontId, self->config.viewportWidth,
@@ -325,22 +335,7 @@ void XMLCALL ChapterHtmlSlimParser::endElement(void* userData, const XML_Char* n
         matches(name, BOLD_TAGS, NUM_BOLD_TAGS) || matches(name, ITALIC_TAGS, NUM_ITALIC_TAGS) || self->depth == 1;
 
     if (shouldBreakText) {
-      // Determine font style from HTML tags and CSS
-      const bool isBold = self->boldUntilDepth < self->depth || self->cssBoldUntilDepth < self->depth;
-      const bool isItalic = self->italicUntilDepth < self->depth || self->cssItalicUntilDepth < self->depth;
-
-      EpdFontFamily::Style fontStyle = EpdFontFamily::REGULAR;
-      if (isBold && isItalic) {
-        fontStyle = EpdFontFamily::BOLD_ITALIC;
-      } else if (isBold) {
-        fontStyle = EpdFontFamily::BOLD;
-      } else if (isItalic) {
-        fontStyle = EpdFontFamily::ITALIC;
-      }
-
-      self->partWordBuffer[self->partWordBufferIndex] = '\0';
-      self->currentTextBlock->addWord(self->partWordBuffer, fontStyle);
-      self->partWordBufferIndex = 0;
+      self->flushPartWordBuffer();
     }
   }
 

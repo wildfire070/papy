@@ -53,6 +53,7 @@ class ChapterHtmlSlimParser {
   bool stopRequested_ = false;
 
   void startNewTextBlock(TextBlock::BLOCK_STYLE style);
+  void flushPartWordBuffer();
   void makePages();
   std::string cacheImage(const std::string& src);
   void addImageToPage(std::shared_ptr<ImageBlock> image);
