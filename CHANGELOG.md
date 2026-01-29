@@ -1,5 +1,42 @@
 
 
+## v1.0.0 (2026-01-29)
+
+*  Bump version [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Update changelog [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Settings: Validate enum values on load to prevent crashes [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  System and UI refactoring [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Rewrite font manager for CJK and Thai [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add boot mode system for memory-optimized Reader mode [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  ReaderState: Extract cache helpers to reduce code duplication [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Skip boot splash when returning from Reader mode to UI mode [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Fix off-by-one validation bounds for transition settings [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add NetworkState with WiFi scanning, AP mode, and web file transfer [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  HomeView: Replace menu navigation with direct button shortcuts [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  HomeView: Move title/author block below book cover [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  SyncState: Store selected sync mode in Core before network transition [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  PageCache: Fix stack overflow when caching EPUB images [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  ImageConverter: Extract unified image conversion with factory pattern [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Elements: Add bookPlaceholder for missing book covers [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Markdown: Extract title from ATX headers with SD caching [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  HomeView: Extract cover area calculation and fix placeholder rendering [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  StatusBar: Simplify to 2 modes and fix null cache display [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Markdown: Replace md4c with streaming line-based parser [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add bounds checking and defensive guards across parsers and utilities [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add memory safety guards and compress HomeState cover thumbnail [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  ZipFile: Add batch size lookup for large EPUBs [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  ReaderState: Use EPUB guide text-start for initial content navigation [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  XTC: Add author metadata parsing and display [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  ChapterHtmlSlimParser: Extract flushPartWordBuffer and add null guards [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add Calibre wireless sync support [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Fix sync screens to navigate back to Sync menu instead of Settings [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Calibre: Implement wireless book sync with Calibre desktop [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  UI: Redesign book placeholder with new layout and bookmark ribbon [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add ButtonBar struct and integrate into UI views for consistent button hints [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Remove OPDS catalog support and related views [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Update docs [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+
+
 ## v0.18.2 (2026-01-23)
 
 *  Bump version [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
