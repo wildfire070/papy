@@ -2,6 +2,133 @@
 
 This document describes the internal architecture and subsystems of Papyrix.
 
+## Overview
+
+Papyrix is organized around a **state machine** architecture with **singleton managers** and **content providers** for multi-format ebook support. The system is optimized for the ESP32-C3's ~380KB RAM constraint.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         Application                             │
+├─────────────────────────────────────────────────────────────────┤
+│  StateMachine (10 States)  │  Managers (Font, Theme, Input)     │
+├─────────────────────────────────────────────────────────────────┤
+│  ContentHandle (EPUB, XTC, TXT, Markdown)  │  PageCache         │
+├─────────────────────────────────────────────────────────────────┤
+│  GfxRenderer  │  EpdFont  │  ThaiShaper  │  ScriptDetector      │
+├─────────────────────────────────────────────────────────────────┤
+│  EInkDisplay  │  Storage  │  Input  │  Network                  │
+├─────────────────────────────────────────────────────────────────┤
+│                    ESP32-C3 Hardware                            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## State Machine
+
+Papyrix uses a finite state machine (FSM) with pre-allocated state instances. This avoids heap allocation during state transitions, preventing memory fragmentation.
+
+### States
+
+- **Startup** — Initial boot, system initialization
+- **Home** — Main hub with book card and navigation
+- **FileList** — File browser for book selection
+- **Reader** — Unified reader for all formats
+- **Settings** — User preferences and device settings
+- **Sync** — WiFi file transfer
+- **Network** — WiFi network selection and connection
+- **CalibreSync** — Calibre wireless device sync
+- **Error** — Error display and recovery
+- **Sleep** — Deep sleep with custom screens
+
+### State Lifecycle
+
+```cpp
+class State {
+  virtual void enter(const StateTransition& transition);
+  virtual StateTransition update();
+  virtual void exit();
+  virtual void render(GfxRenderer& gfx);
+  virtual StateId id() const;
+};
+```
+
+States use `StateTransition` to navigate between screens:
+- `StateTransition::to(StateId)` - Navigate to another state
+- `StateTransition::stay(StateId)` - Remain in current state
+
+### Dual-Boot System
+
+To maximize available RAM in reader mode, Papyrix implements a dual-boot system:
+
+- **UI Mode**: Full feature set with all 10 states, theme switching, multiple font sizes
+- **Reader Mode**: Minimal reader with only Reader/Sleep/Error states, single font size
+
+The boot mode is stored in RTC memory and persists across ESP restarts. When launching a book from UI mode, the device restarts into Reader mode for maximum memory efficiency.
+
+---
+
+## Content System
+
+### ContentHandle
+
+`ContentHandle` is a tagged union that manages one content provider at a time, supporting:
+
+- **EPUB** — `EpubProvider` — `.epub`
+- **XTC** — `XtcProvider` — `.xtc`, `.xtch`
+- **TXT** — `TxtProvider` — `.txt`, `.text`
+- **Markdown** — `MarkdownProvider` — `.md`, `.markdown`
+
+The unified interface provides:
+- `open(path, cacheDir)` - Auto-detect format and open
+- `pageCount()`, `spineCount()` - Navigation info
+- `getTocEntry()` - Table of contents access
+- `generateThumbnail()` - Cover image generation
+
+### PageCache
+
+Unified page caching system for all content types:
+
+- **Partial caching**: Caches N pages at a time to save RAM
+- **Extend-on-demand**: Automatically extends cache when near end
+- **Background caching**: FreeRTOS task for pre-rendering pages
+- **Serialization**: Writes cached pages to SD card for instant reload
+
+### Progress Manager
+
+Saves and restores reading position per book:
+- Spine index (EPUB chapter)
+- Section page (page within chapter)
+- Flat page (XTC absolute page)
+
+Cache location: `/.papyrix/<format>_<hash>/progress.bin`
+
+---
+
+## Memory Management
+
+The ESP32-C3 has ~380KB usable RAM with ~100-150KB available after system overhead. Papyrix employs several strategies:
+
+### Allocation Strategies
+
+- **Pre-allocated states**: All 10 states allocated at startup, not during transitions
+- **Fixed-size buffers**: Path (256), Text (512), Decompress (8192) in global Core struct
+- **Tagged unions**: ContentHandle uses one provider at a time
+- **Chunked buffers**: GfxRenderer splits display buffer into 8KB chunks for non-contiguous allocation
+
+### WiFi Memory
+
+The ESP32 WiFi stack allocates ~100KB and fragments heap memory. After using WiFi features, the device automatically restarts to reclaim memory before entering Reader mode.
+
+### Caching
+
+- **Compressed thumbnails**: 2-4KB vs 48KB uncompressed
+- **Glyph caches**: 64-entry direct-mapped cache per font
+- **Word width cache**: 512-entry FNV-1a hash cache in GfxRenderer
+- **SD card caching**: All parsed content cached to SD card
+
+---
+
 ## Font System
 
 ### Pipeline
@@ -115,3 +242,189 @@ Lines exceeding page width get infinite penalty. Oversized words that can't fit 
 ### Reference
 
 - Knuth, D. E., & Plass, M. F. (1981). *Breaking paragraphs into lines.* Software: Practice and Experience, 11(11), 1119-1184. [DOI:10.1002/spe.4380111102](https://doi.org/10.1002/spe.4380111102)
+
+---
+
+## Multi-Script Support
+
+Papyrix supports multiple writing systems through script detection and specialized rendering.
+
+### ScriptDetector
+
+Classifies text by Unicode codepoint ranges:
+
+- **LATIN** — Latin, Cyrillic, Greek — Word-based line breaking
+- **CJK** — Chinese, Japanese, Korean (U+4E00–U+9FFF, etc.) — Character-based line breaking
+- **THAI** — Thai script (U+0E00–U+0E7F) — Word segmentation
+- **OTHER** — Symbols, digits, punctuation — Contextual line breaking
+
+### Thai Text Rendering
+
+Thai script requires special handling due to:
+- **Vowel marks** above/below consonants
+- **Tone marks** stacking above vowels
+- **No spaces** between words
+
+The ThaiShaper library provides:
+- **ThaiCluster**: Groups consonants with marks into grapheme clusters
+- **ThaiWordBreak**: Dictionary-based word segmentation for line breaking
+- **Mark positioning**: Proper vertical ordering of diacritics
+
+### CJK Rendering
+
+CJK text uses ExternalFont for large character set support:
+- **LRU cache**: 256-entry cache (~52KB) for glyph bitmaps
+- **Binary search**: O(log n) glyph lookup in large fonts
+- **Character-level breaking**: No word boundaries needed
+
+---
+
+## Rendering Pipeline
+
+### Flow
+
+```
+Content → ContentParser → Page → GfxRenderer → EInkDisplay
+```
+
+1. **ContentParser**: Converts format-specific content to `Page` objects
+2. **Page**: Contains `PageLine` (text) and `PageImage` elements
+3. **GfxRenderer**: Renders pages using fonts and themes
+4. **EInkDisplay**: Final output with refresh mode control
+
+### GfxRenderer Features
+
+- **Render modes**: BW (1-bit), Grayscale LSB, Grayscale MSB
+- **Orientation**: Portrait, Landscape CW/CCW, Inverted
+- **Word caching**: 512-entry hash cache for repeated word widths
+- **Row buffers**: Pre-allocated to avoid per-line allocation
+
+### Refresh Modes
+
+- **Full** — Complete redraw, clears ghosting (no ghosting)
+- **Partial** — Fast page turns (some ghosting)
+- **Fast** — Animation, menus (more ghosting)
+
+The "Pages Per Refresh" setting controls how often full refresh occurs (1/5/10/15/30 pages).
+
+---
+
+## UI System
+
+Papyrix uses a view-based UI architecture with reusable elements and state-driven rendering.
+
+### Directory Structure
+
+```
+src/ui/
+├── Elements.h/cpp          # Reusable UI components
+├── Views.h                 # Unified header for all views
+└── views/                  # Screen-specific views
+    ├── HomeView.h/cpp      # Home screen with book card
+    ├── ReaderViews.h/cpp   # Reader UI (TOC, status bar)
+    ├── SettingsViews.h/cpp # Settings screens
+    ├── NetworkViews.h/cpp  # WiFi configuration
+    ├── SyncViews.h/cpp     # File transfer status
+    ├── CalibreViews.h/cpp  # Calibre sync UI
+    ├── UtilityViews.h/cpp  # Common elements
+    └── BootSleepViews.h/cpp# Boot splash, sleep screen
+```
+
+### UI Elements
+
+The `ui::` namespace provides reusable rendering components:
+
+- **`ButtonBar`** — 4-button hint bar at screen bottom
+- **`title()`** — Centered bold heading
+- **`menuItem()`** — Selectable menu entry
+- **`toggle()`** — On/Off setting row
+- **`enumValue()`** — Setting with value display
+- **`keyboard()`** — On-screen keyboard (10x10 grid)
+- **`battery()`** — Battery icon with percentage
+- **`bookCard()`** — Cover + title + author
+- **`fileEntry()`** — File name with directory indicator
+- **`chapterItem()`** — TOC entry with depth indentation
+- **`wifiEntry()`** — Network + signal + lock icon
+- **`dialog()`** — Yes/No confirmation
+- **`readerStatusBar()`** — Battery, title, page numbers
+
+### ButtonBar Pattern
+
+Views use `ButtonBar` to define which buttons are active and their labels:
+
+```cpp
+ui::ButtonBar buttons("Back", "Select", "", "");  // 2 active buttons
+ui::buttonBar(renderer, theme, buttons);
+```
+
+### View Pattern
+
+Views are stateless rendering functions. States own the data and call views:
+
+```cpp
+// State owns data
+class HomeState : public State {
+    BookMetadata currentBook_;
+    int selectedIndex_;
+
+    void render(GfxRenderer& gfx) override {
+        HomeView::render(gfx, theme, currentBook_, selectedIndex_);
+    }
+};
+```
+
+---
+
+## Key Files
+
+### Core (`/src/core/`)
+
+- **`Core.h`** — Global state, drivers, buffers
+- **`StateMachine.h`** — FSM implementation
+- **`Types.h`** — Enums and constants
+- **`BootMode.h`** — Dual-boot system
+- **`PapyrixSettings.h`** — User preferences
+
+### States (`/src/states/`)
+
+- **`State.h`** — Base state interface
+- **`ReaderState.h`** — Unified reader (largest state)
+- **`HomeState.h`** — Main hub with async cover loading
+- **`SettingsState.h`** — Preferences UI
+
+### Content (`/src/content/`)
+
+- **`ContentHandle.h`** — Tagged union for providers
+- **`EpubProvider.h`** — EPUB format support
+- **`XtcProvider.h`** — XTC/XTCH format support
+- **`TxtProvider.h`** — Plain text support
+- **`MarkdownProvider.h`** — Markdown format support
+- **`ProgressManager.h`** — Reading position persistence
+- **`ReaderNavigation.h`** — Page/chapter traversal
+
+### UI (`/src/ui/`)
+
+- **`Elements.h`** — Reusable UI components (ButtonBar, keyboard, etc.)
+- **`Views.h`** — Unified header for all view types
+- **`views/HomeView.h`** — Home screen rendering
+- **`views/ReaderViews.h`** — Reader UI (TOC, status bar)
+- **`views/SettingsViews.h`** — Settings screen rendering
+
+### Libraries (`/lib/`)
+
+- **`Epub/`** — EPUB parsing, CSS, TOC
+- **`Xtc/`** — XTC/XTCH native format
+- **`Txt/`** — Plain text file handling
+- **`Markdown/`** — Markdown format support
+- **`PageCache/`** — Unified page caching
+- **`GfxRenderer/`** — Graphics rendering
+- **`EpdFont/`** — Font loading and glyph cache
+- **`ExternalFont/`** — CJK font support
+- **`ScriptDetector/`** — Script classification
+- **`ThaiShaper/`** — Thai text shaping
+- **`Utf8/`** — UTF-8 string utilities
+- **`ZipFile/`** — EPUB ZIP extraction
+- **`Group5/`** — 1-bit image compression
+- **`Calibre/`** — Calibre wireless sync protocol
+- **`ImageConverter/`** — JPEG/PNG to BMP conversion
+- **`Serialization/`** — Binary serialization utilities

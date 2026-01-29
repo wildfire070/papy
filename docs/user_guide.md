@@ -73,11 +73,11 @@ The Files screen acts as a folder and file browser.
 
 See [4. Reading Mode](#4-reading-mode) below for more information.
 
-### 3.4 File Transfer
+### 3.4 File Transfer (Sync)
 
 ![File Transfer](images/file-transfer.jpg)
 
-File transfer is accessible from **Settings > Tools > File Transfer**. This allows you to upload new e-books to the device over WiFi.
+File transfer is accessible from the Home screen by pressing the **Left** button (or from the file browser, select **Sync**). This allows you to upload new e-books to the device over WiFi or connect to Calibre.
 
 When you enter the screen, you'll be prompted to choose a network mode:
 
@@ -174,21 +174,13 @@ Power and device behavior settings:
   - Options: 1, 5, 10, 15, 30
   - Number of pages to turn before performing a full e-paper refresh (clears ghosting)
 
-#### Tools
+#### Cleanup
 
-Network and maintenance actions:
+Maintenance actions for the device:
 
-- **File Transfer**
-  - Upload e-books to the device via WiFi web server
-
-- **Calibre Wireless**
-  - Connect directly to Calibre desktop to send/receive books
-  - See [3.6 Calibre Wireless](#36-calibre-wireless) below
-
-- **Cleanup**
-  - **Clear Book Caches** — Delete all cached book data and reading progress
-  - **Clear Device Storage** — Erase internal flash storage (requires restart)
-  - **Factory Reset** — Erase ALL data (caches, settings, WiFi credentials, fonts) and restart device
+- **Clear Book Cache** — Delete all cached book data and reading progress
+- **Clear Device Storage** — Erase internal flash storage (requires restart)
+- **Factory Reset** — Erase ALL data (caches, settings, WiFi credentials, fonts) and restart device
 
 #### System Info
 
@@ -205,7 +197,7 @@ Calibre Wireless allows you to send books directly from **Calibre** (the popular
 
 #### Connecting to Calibre
 
-1. Go to **Settings > Tools > Calibre Wireless**
+1. From the Home screen, press **Left** to access **Sync**, then select **Calibre Wireless**
 2. Connect to your WiFi network (same as your computer)
 3. The device will show its IP address and port (e.g., `192.168.1.42:9090`)
 4. The screen displays "Waiting for Calibre..."

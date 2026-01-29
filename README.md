@@ -3,6 +3,7 @@
 [![Changelog](https://img.shields.io/badge/changelog-CHANGELOG.md-blue)](CHANGELOG.md)
 [![User Guide](https://img.shields.io/badge/docs-User_Guide-green)](docs/user_guide.md)
 [![Customization](https://img.shields.io/badge/docs-Customization-green)](docs/customization.md)
+[![Architecture](https://img.shields.io/badge/docs-Architecture-green)](docs/architecture.md)
 [![Device Specs](https://img.shields.io/badge/docs-Device_Specs-green)](docs/device-specifications.md)
 [![File Formats](https://img.shields.io/badge/docs-File_Formats-green)](docs/file-formats.md)
 [![SSD1677 Driver](https://img.shields.io/badge/docs-SSD1677_Driver-green)](docs/ssd1677-driver.md)
@@ -48,6 +49,8 @@ This project is **not affiliated with Xteink**; it's built as a community projec
 - [x] Text layout presets (Compact/Standard/Large) for indentation and spacing
 - [x] Soft hyphen support for text layout
 - [x] CJK (Chinese/Japanese/Korean) text layout
+- [x] Thai text rendering with proper mark positioning
+- [x] Knuth-Plass line breaking algorithm (TeX-quality justified text)
 - [x] Text anti-aliasing toggle (grayscale text rendering)
 - [x] Cover dithering toggle (1-bit black/white vs grayscale covers)
 - [x] Pages per refresh setting (1/5/10/15/30)
@@ -200,14 +203,11 @@ node convert-fonts.mjs roboto-bold -r Roboto-VariableFont_wdth,wght.ttf --var wg
 # Generate HTML preview to check font rendering
 node convert-fonts.mjs my-font -r MyFont-Regular.ttf --preview
 
-# CJK fonts - minimal set (fits in device RAM, covers 99%+ Japanese text)
-node convert-fonts.mjs noto-sans-jp -r NotoSansJP-Regular.ttf --all-sizes --cjk-2500
-
-# CJK fonts - full set (requires pre-rendering to XTC format)
-node convert-fonts.mjs noto-sans-jp -r NotoSansJP-Regular.ttf --all-sizes --cjk-common
+# CJK/Thai fonts - use .bin format (streamed from SD card)
+node convert-fonts.mjs noto-sans-cjk -r NotoSansSC-Regular.ttf --bin --size 24
 ```
 
-Options: `-r/--regular`, `-b/--bold`, `-i/--italic`, `-o/--output`, `-s/--size`, `--2bit`, `--all-sizes`, `--cjk-2500`, `--cjk-common`, `--var`, `--preview`
+Options: `-r/--regular`, `-b/--bold`, `-i/--italic`, `-o/--output`, `-s/--size`, `--2bit`, `--all-sizes`, `--bin`, `--var`, `--preview`
 
 See [customization guide](docs/customization.md) for detailed font conversion instructions.
 
@@ -242,6 +242,22 @@ cd scripts && node convert-logo.mjs logo.png ../src/images/PapyrixLogo.h
 
 Options: `--invert`, `--threshold <0-255>`, `--rotate <0|90|180|270>`
 
+#### Calibre simulators (development/testing)
+
+Two simulators are provided for testing the Calibre Wireless Device feature without real hardware:
+
+```bash
+cd scripts
+
+# Simulate a Papyrix device (for testing Calibre desktop connection)
+node device-simulator.mjs
+
+# Simulate Calibre desktop (for testing device firmware)
+node calibre-simulator.mjs
+```
+
+The device simulator listens for Calibre broadcasts and can receive books (saved to `scripts/received_books/`). The Calibre simulator broadcasts discovery packets and sends test books to connected devices.
+
 ### Creating a GitHub release
 
 ```sh
@@ -264,21 +280,30 @@ This creates a changelog grouped by version tags, with commit messages and autho
 
 ## Internals
 
-Papyrix is pretty aggressive about caching data down to the SD card to minimise RAM usage. The ESP32-C3 only has ~380KB of usable RAM, so we have to be careful. A lot of the decisions made in the design of the firmware were based on this constraint.
+Papyrix is designed for the ESP32-C3's ~380KB RAM constraint. See [docs/architecture.md](docs/architecture.md) for detailed architecture documentation.
 
-### WiFi and memory
+### Core Architecture
 
-The ESP32 WiFi stack allocates ~100KB and fragments heap memory in a way that cannot be recovered at runtime. After using WiFi features (File Transfer or Calibre Wireless), XTC books require ~96KB of contiguous memory for page rendering. To ensure reliable operation, the device automatically restarts after exiting WiFi mode to reclaim memory.
+- **State Machine**: 10 pre-allocated states (Home, Reader, Settings, etc.) with lifecycle hooks
+- **Dual-Boot System**: UI mode (full features) vs Reader mode (minimal, maximum RAM) - device restarts between modes
+- **Content Providers**: Unified `ContentHandle` interface for EPUB, XTC, TXT, and Markdown formats
+- **PageCache**: Partial page caching with background pre-rendering
 
-### Performance optimizations
+### WiFi and Memory
 
-Papyrix includes several performance optimizations for the constrained ESP32-C3 environment:
+The ESP32 WiFi stack allocates ~100KB and fragments heap memory in a way that cannot be recovered at runtime. After using WiFi features (File Transfer or Calibre Wireless), the device automatically restarts to reclaim memory.
 
-**EPUB indexing**: Manifest item lookup uses an in-memory hash map for O(1) resolution of spine itemrefs. TOC-to-spine mapping also uses a hash map for O(1) href-to-index resolution. This reduces indexing time from O(n²) disk operations to O(n) memory lookups.
+### Performance Optimizations
 
-**XTC rendering**: 1-bit monochrome pages use byte-level processing instead of pixel-by-pixel iteration. All-white bytes (common in margins) are skipped entirely, and all-black bytes are processed in bulk.
+**Hash-based lookups**: EPUB spine/TOC and glyph caches use FNV-1a hashing for O(1) lookups.
 
-**Group5 compression**: 1-bit image data uses CCITT Group5 compression for fast decompression and reduced SD card I/O. Ordered dithering converts grayscale images to 1-bit with minimal visual artifacts.
+**EPUB indexing**: Manifest item lookup uses an in-memory hash map for O(1) resolution of spine itemrefs. TOC-to-spine mapping also uses a hash map for O(1) href-to-index resolution.
+
+**XTC rendering**: 1-bit monochrome pages use byte-level processing. All-white bytes (common in margins) are skipped entirely.
+
+**Group5 compression**: 1-bit image data uses CCITT Group5 compression for fast decompression and reduced SD card I/O.
+
+**Word width caching**: 512-entry cache in GfxRenderer avoids repeated font measurements.
 
 ### Data caching
 
@@ -312,9 +337,9 @@ The first time chapters of a book are loaded, they are cached to the SD card. Su
 └── epub_189013891/
 ```
 
-To clear cached data, use **Settings > Tools > Cleanup**:
-- **Clear Book Caches** — Delete all cached book data and reading progress
-- **Clear Installed Font** — Remove custom font from internal flash
+To clear cached data, use **Settings > Cleanup**:
+- **Clear Book Cache** — Delete all cached book data and reading progress
+- **Clear Device Storage** — Erase internal flash storage (requires restart)
 - **Factory Reset** — Erase all data (caches, settings, WiFi, fonts) and restart
 
 Alternatively, deleting the `.papyrix` directory manually will clear the book cache.

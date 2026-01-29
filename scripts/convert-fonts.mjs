@@ -29,6 +29,8 @@ const INTERVALS_BASE = [
   [0x0000, 0x007f], // Basic Latin (ASCII)
   [0x0080, 0x00ff], // Latin-1 Supplement
   [0x0100, 0x017f], // Latin Extended-A
+  [0x0180, 0x024f], // Latin Extended-B (Vietnamese Ơ, Ư)
+  [0x1e00, 0x1eff], // Latin Extended Additional (Vietnamese tones)
   [0x2000, 0x206f], // General Punctuation
   [0x2010, 0x203a], // Dashes, quotes, prime marks
   [0x2040, 0x205f], // Misc punctuation
@@ -37,16 +39,6 @@ const INTERVALS_BASE = [
   [0x0400, 0x04ff], // Cyrillic
   [0x2200, 0x22ff], // Math operators
   [0x2190, 0x21ff], // Arrows
-];
-
-const INTERVALS_CJK_BASE = [
-  [0x3000, 0x303f], // CJK Symbols and Punctuation
-  [0x3040, 0x309f], // Hiragana
-  [0x30a0, 0x30ff], // Katakana
-  [0x4e00, 0x9fff], // CJK Unified Ideographs (20,992 chars)
-  [0x1100, 0x11ff], // Hangul Jamo
-  [0x3130, 0x318f], // Hangul Compatibility Jamo
-  [0xac00, 0xd7af], // Hangul Syllables (11,172 chars)
 ];
 
 // CJK intervals for --bin format (includes Vietnamese/Thai)
@@ -675,8 +667,6 @@ function main() {
       size: { type: "string", short: "s", default: "16" },
       "2bit": { type: "boolean", default: false },
       "all-sizes": { type: "boolean", default: false },
-      "cjk-common": { type: "boolean", default: false },
-      "cjk-2500": { type: "boolean", default: false },
       header: { type: "boolean", default: false },
       bin: { type: "boolean", default: false },
       var: { type: "string", multiple: true },
@@ -700,10 +690,8 @@ Options:
   -s, --size     Font size in points (default: 16)
   --2bit         Generate 2-bit grayscale (smoother but larger)
   --all-sizes    Generate all reader sizes (14, 16, 18pt)
-  --cjk-common   Use full CJK (20,992) + Hangul (11,172), reduced fullwidth
-  --cjk-2500     Use minimal CJK (~2500 chars): Joyo kanji + kana + punctuation
+  --bin          Output raw .bin format for CJK/Thai (streamed from SD card)
   --header       Output C header file instead of binary .epdfont
-  --bin          Output raw .bin format for ExternalFont (direct Unicode indexing)
   --var          Variable font axis value (e.g., --var wght=700 --var wdth=100)
   --preview      Generate HTML preview of rendered glyphs
   -h, --help     Show this help message
@@ -711,8 +699,7 @@ Options:
 Examples:
   node convert-fonts.mjs my-font -r MyFont-Regular.ttf -b MyFont-Bold.ttf -i MyFont-Italic.ttf
   node convert-fonts.mjs roboto -r Roboto-VariableFont_wdth,wght.ttf --var wght=400
-  node convert-fonts.mjs noto-sans-jp -r NotoSansJP-Regular.ttf --all-sizes --cjk-2500
-  node convert-fonts.mjs NotoSansCJK -r NotoSansSC-Regular.ttf --bin --size 24 --cjk-common
+  node convert-fonts.mjs noto-sans-cjk -r NotoSansSC-Regular.ttf --bin --size 24
 `);
     process.exit(0);
   }
@@ -721,28 +708,6 @@ Examples:
   if (!values.regular) {
     console.error("Error: Regular font (-r) is required");
     process.exit(1);
-  }
-
-  // Build interval set
-  let intervals = [...INTERVALS_BASE];
-  if (values["cjk-2500"]) {
-    const joyoPath = path.join(__dirname, "joyo-kanji.json");
-    if (!fs.existsSync(joyoPath)) {
-      console.error(`Error: Joyo kanji file not found: ${joyoPath}`);
-      process.exit(1);
-    }
-    const joyoKanji = JSON.parse(fs.readFileSync(joyoPath, "utf-8")).codepoints;
-    intervals.push(
-      [0x3000, 0x303f], [0x3040, 0x309f], [0x30a0, 0x30ff],
-      ...joyoKanji.map(cp => [cp, cp]),
-      [0xff01, 0xff5e]
-    );
-    console.log(`Using minimal CJK: ${joyoKanji.length} Joyo kanji + kana (~2500 chars)`);
-  } else if (values["cjk-common"]) {
-    intervals.push(...INTERVALS_CJK_BASE, [0xff00, 0xff5f]);
-    console.log("Using full CJK (20,992 chars) + full Hangul (11,172 chars)");
-  } else {
-    intervals.push(...INTERVALS_CJK_BASE, [0xff00, 0xffef]);
   }
 
   // Parse variations
@@ -774,10 +739,7 @@ Examples:
     if (variations) console.log(`Variable font: ${Object.entries(variations).map(([k, v]) => `${k}=${v}`).join(", ")}`);
     console.log();
 
-    // Use CJK intervals for .bin format
-    const binIntervals = values["cjk-common"] ? INTERVALS_BIN_CJK : intervals;
-
-    const success = convertFontToBin(values.regular, outputBase, baseSize, binIntervals, variations);
+    const success = convertFontToBin(values.regular, outputBase, baseSize, INTERVALS_BIN_CJK, variations);
 
     if (success) {
       console.log("\nTo use this font:");
@@ -787,6 +749,9 @@ Examples:
 
     process.exit(success ? 0 : 1);
   }
+
+  // .epdfont mode - use base Latin character set
+  const intervals = [...INTERVALS_BASE];
 
   console.log(`Converting font family: ${family}`);
   console.log(`Output directory: ${outputBase}`);

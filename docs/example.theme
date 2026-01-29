@@ -2,6 +2,10 @@
 # Copy this file to /config/themes/ on your SD card and rename it
 # Edit values below and restart device to apply
 
+[theme]
+# Display name shown in the Settings UI (optional, defaults to filename)
+name = My Custom Theme
+
 [colors]
 # Enable dark mode (inverted colors): true or false
 inverted_mode = false

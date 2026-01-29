@@ -37,6 +37,9 @@ Theme files use a simple INI format:
 # Papyrix Theme Configuration
 # Edit values and restart device to apply
 
+[theme]
+name = My Custom Theme    # Display name shown in Settings UI (optional)
+
 [colors]
 inverted_mode = false     # true = dark mode, false = light mode
 background = white        # white or black
@@ -47,7 +50,7 @@ text_color = white        # Text on selection
 
 [text]
 primary_color = black     # Normal text color
-secondary_color = black   # Secondary/dimmed text
+secondary_color = black   # Secondary/dimmed text color
 
 [layout]
 margin_top = 9            # Top margin in pixels
@@ -64,6 +67,14 @@ reader_font_large =       # Reader font for large size (empty = builtin)
 ```
 
 ### Configuration Options
+
+#### Theme Section
+
+Optional metadata for the theme:
+
+- **name** - Display name shown in the Settings UI
+  - If not specified, the filename (without extension) is used
+  - Example: `name = Dark Noto Serif`
 
 #### Colors Section
 
@@ -266,8 +277,7 @@ node convert-fonts.mjs my-font -r MyFont-Regular.ttf
 - **-s, --size** - Font size in points (default: 16)
 - **--2bit** - Generate 2-bit grayscale (smoother but larger)
 - **--all-sizes** - Generate all reader sizes (14, 16, 18pt)
-- **--cjk-2500** - Use minimal CJK (~2,500 chars): Jōyō kanji + kana + punctuation (fits in ESP32 RAM, covers 99%+ of Japanese text)
-- **--cjk-common** - Use full CJK (20,992) + Hangul (11,172), reduced fullwidth forms
+- **--bin** - Output raw .bin format for CJK/Thai/Vietnamese (streamed from SD card)
 - **--var** - Variable font axis value (e.g., `--var wght=700 --var wdth=100`). Can be specified multiple times for different axes
 - **--preview** - Generate HTML preview of rendered glyphs for debugging
 
@@ -293,12 +303,6 @@ node convert-fonts.mjs roboto-condensed -r Roboto-VariableFont_wdth,wght.ttf --v
 
 # Generate HTML preview to verify font rendering
 node convert-fonts.mjs my-font -r Font.ttf --preview
-
-# Generate CJK fonts for device (fits in ESP32 RAM)
-node convert-fonts.mjs noto-sans-jp -r NotoSansJP-Regular.ttf --all-sizes --cjk-2500
-
-# Generate full CJK fonts (requires XTC pre-rendering due to size)
-node convert-fonts.mjs noto-sans-jp -r NotoSansJP-Regular.ttf --all-sizes --cjk-common
 ```
 
 The script creates a font family directory structure:
@@ -350,17 +354,6 @@ Converting: Roboto-VariableFont_wdth,wght.ttf -> regular.epdfont
 - **Reader font (Large setting):** 18pt
 - **UI font:** 14-16pt
 
-#### Advanced: Using fontconvert.py Directly
-
-For more control, use the low-level `fontconvert.py` script:
-
-```bash
-python3 lib/EpdFont/scripts/fontconvert.py FontName 16 font.ttf --binary -o output.epdfont
-```
-
-Additional options:
-- **--additional-intervals min,max** - Add extra Unicode code point ranges (e.g., `--additional-intervals 0x0400,0x04FF` for Cyrillic)
-
 ### Using Custom Fonts in Themes
 
 Once you've created your font files, reference them in your theme configuration:
@@ -381,45 +374,29 @@ By default, the font converter includes:
 
 - Basic Latin (ASCII) - letters, digits, punctuation
 - Latin-1 Supplement - Western European accented characters
-- Latin Extended-A - Eastern European languages
+- Latin Extended-A/B - Eastern European languages
+- Latin Extended Additional - Vietnamese characters
 - General punctuation - smart quotes, dashes, ellipsis
 - Common currency symbols
+- Cyrillic characters
+- Combining diacritical marks
+- Math operators and arrows
 
-Use `--additional-intervals` to add more Unicode ranges if needed. For example, to add Cyrillic:
+Vietnamese fonts work with standard `.epdfont` format since they use Latin script with additional diacritics.
 
-```bash
-python3 fontconvert.py MyFont 16 font.ttf --binary --additional-intervals 0x0400,0x04FF -o output.epdfont
-```
+### CJK and Thai Fonts
 
-### CJK Fonts (Japanese, Korean, Chinese)
-
-The ESP32-C3 has limited RAM (~380KB), which affects CJK font loading. There are two approaches:
-
-#### Option 1: Minimal CJK (`--cjk-2500`) - Recommended
-
-Uses the Jōyō kanji set (~2,500 characters) which covers 99%+ of typical Japanese text:
+The ESP32-C3 has limited RAM (~380KB), so CJK and Thai fonts must use the `.bin` format which streams glyphs from SD card:
 
 ```bash
-node convert-fonts.mjs noto-sans-jp -r NotoSansJP-Regular.ttf --all-sizes --cjk-2500
+# CJK font (Chinese/Japanese/Korean)
+node convert-fonts.mjs noto-sans-cjk -r NotoSansSC-Regular.ttf --bin --size 24
+
+# Thai font
+node convert-fonts.mjs noto-sans-thai -r NotoSansThai-Regular.ttf --bin --size 16
 ```
 
-**File sizes:** 14pt ~376KB, 16pt ~456KB, 18pt ~556KB
-
-This fits in ESP32 RAM and works directly on the device.
-
-#### Option 2: Full CJK (`--cjk-common`)
-
-Uses the complete CJK character set (20,992 characters):
-
-```bash
-node convert-fonts.mjs noto-sans-jp -r NotoSansJP-Regular.ttf --all-sizes --cjk-common
-```
-
-**File sizes:** 16pt ~1.86MB
-
-This exceeds ESP32 RAM. Use with the [EPUB to XTC Converter](https://github.com/bigbag/epub-to-xtc-converter) to pre-render books to XTC format.
-
-See [Jōyō Kanji Character Set](joyo-kanji.md) for details on the minimal character set.
+External `.bin` fonts use ~52KB RAM for glyph caching regardless of character set size.
 
 ### Fallback Behavior
 
@@ -466,16 +443,29 @@ Here's the complete SD card structure for customization:
 
 The repository includes example theme and font files in [`docs/examples/`](examples/):
 
-- **`light-noto-serif.theme`** - Light theme with Noto Serif reader fonts
-- **`fonts/noto-serif-14/`** - Noto Serif font at 14pt (small)
-- **`fonts/noto-serif-16/`** - Noto Serif font at 16pt (medium)
-- **`fonts/noto-serif-18/`** - Noto Serif font at 18pt (large)
+**Themes:**
+- **`light-noto-serif.theme`** - Light theme with Noto Serif reader fonts (Latin script)
+- **`light-thai.theme`** - Light theme with Noto Sans Thai fonts
+- **`light-vietnamese.theme`** - Light theme with Noto Serif Vietnamese fonts
+- **`light-cjk-external.theme`** - Light theme with CJK external (.bin) fonts
 
-To use:
-1. Copy `light-noto-serif.theme` to `/config/themes/` on your SD card
-2. Copy the `noto-serif-*` folders to `/config/fonts/` on your SD card
-3. Select "Light Noto Serif" in **Settings > Reader > Theme**
+**Fonts:**
+- **`fonts/noto-serif-*/`** - Noto Serif at 14pt, 16pt, 18pt (Latin script)
+- **`fonts/noto-sans-thai-*/`** - Noto Sans Thai at 14pt, 16pt, 18pt
+- **`fonts/noto-serif-vn-*/`** - Noto Serif Vietnamese at 14pt, 16pt, 18pt
+- **`fonts/*.bin`** - CJK external fonts (Source Han Sans CN, KingHwaOldSong)
+
+To use a theme:
+1. Copy the `.theme` file to `/config/themes/` on your SD card
+2. Copy the corresponding font folders to `/config/fonts/` on your SD card
+3. Select the theme in **Settings > Reader > Theme**
 
 ### Font Attribution
 
-The example fonts use [Noto Serif](https://fonts.google.com/noto/specimen/Noto+Serif) from Google Fonts, licensed under the [SIL Open Font License (OFL)](https://openfontlicense.org/).
+The example fonts use:
+- [Noto Serif](https://fonts.google.com/noto/specimen/Noto+Serif) from Google Fonts (SIL OFL)
+- [Noto Sans Thai](https://fonts.google.com/noto/specimen/Noto+Sans+Thai) from Google Fonts (SIL OFL)
+- [Source Han Sans CN](https://github.com/adobe-fonts/source-han-sans) from Adobe (SIL OFL)
+- KingHwaOldSong (traditional Chinese font)
+
+All fonts are licensed under the [SIL Open Font License (OFL)](https://openfontlicense.org/).
