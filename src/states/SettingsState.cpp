@@ -24,6 +24,11 @@ SettingsState::SettingsState(GfxRenderer& renderer)
       themeWasChanged_(false),
       returnScreen_(SettingsScreen::Menu),
       pendingAction_(0),
+      menuView_{},
+      readerView_{},
+      deviceView_{},
+      cleanupView_{},
+      confirmView_{},
       infoView_{} {}
 
 SettingsState::~SettingsState() = default;
@@ -33,10 +38,20 @@ void SettingsState::enter(Core& core) {
   core_ = &core;  // Store for helper methods
   currentScreen_ = returnScreen_;
   returnScreen_ = SettingsScreen::Menu;  // Reset for next normal entry
-  if (currentScreen_ == SettingsScreen::Menu) {
-    menuView_.selected = 0;
-    menuView_.needsRender = true;
-  }
+
+  // Reset all views to ensure clean state
+  menuView_.selected = 0;
+  menuView_.needsRender = true;
+  readerView_.selected = 0;
+  readerView_.needsRender = true;
+  deviceView_.selected = 0;
+  deviceView_.needsRender = true;
+  cleanupView_.selected = 0;
+  cleanupView_.needsRender = true;
+  confirmView_.needsRender = true;
+  infoView_.clear();
+  infoView_.needsRender = true;
+
   needsRender_ = true;
   goHome_ = false;
   goNetwork_ = false;
@@ -202,6 +217,7 @@ void SettingsState::render(Core& core) {
         viewNeedsRender = infoView_.needsRender;
         break;
       case SettingsScreen::ConfirmDialog:
+        viewNeedsRender = confirmView_.needsRender;
         break;
     }
     if (!viewNeedsRender) {

@@ -74,7 +74,7 @@ struct SystemInfoView {
 
   static constexpr int MAX_FIELDS = 8;
   ButtonBar buttons{"Back", "", "", ""};
-  InfoField fields[MAX_FIELDS];
+  InfoField fields[MAX_FIELDS] = {};
   uint8_t fieldCount = 0;
   bool needsRender = true;
 
