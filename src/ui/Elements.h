@@ -11,7 +11,7 @@ namespace ui {
 struct ButtonBar {
   const char* labels[4] = {"", "", "", ""};
 
-  constexpr ButtonBar(const char* b1 = "", const char* b2 = "", const char* b3 = "", const char* b4 = "")
+  explicit constexpr ButtonBar(const char* b1 = "", const char* b2 = "", const char* b3 = "", const char* b4 = "")
       : labels{b1 ? b1 : "", b2 ? b2 : "", b3 ? b3 : "", b4 ? b4 : ""} {}
 
   bool isActive(int idx) const { return idx >= 0 && idx < 4 && labels[idx] && labels[idx][0] != '\0'; }

@@ -30,8 +30,10 @@ NetworkState::NetworkState(GfxRenderer& renderer)
 }
 
 NetworkState::~NetworkState() {
-  delete server_;
-  server_ = nullptr;
+  if (server_) {
+    server_->stop();
+    server_.reset();
+  }
 }
 
 void NetworkState::enter(Core& core) {
@@ -483,7 +485,7 @@ void NetworkState::startWebServer(Core& core) {
   Serial.println("[NET-STATE] Starting web server");
 
   if (!server_) {
-    server_ = new (std::nothrow) PapyrixWebServer();
+    server_.reset(new PapyrixWebServer());
     if (!server_) {
       Serial.println("[NET-STATE] Failed to allocate web server");
       goBack_ = true;
@@ -512,8 +514,7 @@ void NetworkState::stopWebServer(Core& /* core */) {
   if (server_) {
     Serial.println("[NET-STATE] Stopping web server");
     server_->stop();
-    delete server_;
-    server_ = nullptr;
+    server_.reset();
   }
 
   serverView_.setStopped();

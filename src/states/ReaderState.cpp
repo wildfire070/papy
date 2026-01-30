@@ -195,9 +195,10 @@ void ReaderState::enter(Core& core) {
     case ContentType::Epub: {
       auto* provider = core.content.asEpub();
       if (provider && provider->getEpub()) {
-        provider->getEpub()->setupCacheDir();
+        const auto* epub = provider->getEpub();
+        epub->setupCacheDir();
         // Get the spine index for the first text content (from <guide> element)
-        textStartIndex_ = provider->getEpub()->getSpineIndexForTextReference();
+        textStartIndex_ = epub->getSpineIndexForTextReference();
         Serial.printf("[READER] Text starts at spine index %d\n", textStartIndex_);
       }
       break;
@@ -341,7 +342,10 @@ void ReaderState::navigateNext(Core& core) {
   // From cover (-1) -> first text content page
   if (currentSpineIndex_ == 0 && currentSectionPage_ == -1) {
     auto* provider = core.content.asEpub();
-    size_t spineCount = (provider && provider->getEpub()) ? provider->getEpub()->getSpineItemsCount() : 1;
+    size_t spineCount = 1;
+    if (provider && provider->getEpub()) {
+      spineCount = provider->getEpub()->getSpineItemsCount();
+    }
     int firstContentSpine = calcFirstContentSpine(hasCover_, textStartIndex_, spineCount);
 
     if (firstContentSpine != currentSpineIndex_) {
@@ -370,7 +374,10 @@ void ReaderState::navigateNext(Core& core) {
 
 void ReaderState::navigatePrev(Core& core) {
   auto* provider = core.content.asEpub();
-  size_t spineCount = (provider && provider->getEpub()) ? provider->getEpub()->getSpineItemsCount() : 1;
+  size_t spineCount = 1;
+  if (provider && provider->getEpub()) {
+    spineCount = provider->getEpub()->getSpineItemsCount();
+  }
   int firstContentSpine = calcFirstContentSpine(hasCover_, textStartIndex_, spineCount);
 
   // At first page of text content
@@ -441,8 +448,11 @@ void ReaderState::renderCurrentPage(Core& core) {
       if (textStartIndex_ == 0) {
         // Only skip to spine 1 if it exists
         auto* provider = core.content.asEpub();
-        if (provider && provider->getEpub() && provider->getEpub()->getSpineItemsCount() > 1) {
-          currentSpineIndex_ = 1;
+        if (provider && provider->getEpub()) {
+          const auto* epub = provider->getEpub();
+          if (epub->getSpineItemsCount() > 1) {
+            currentSpineIndex_ = 1;
+          }
         }
       }
       // Fall through to render content
@@ -815,7 +825,9 @@ void ReaderState::startBackgroundCaching(Core& core) {
   xTaskCreate(&ReaderState::cacheTaskTrampoline, "PageCache", 8192, this, 0, &cacheTaskHandle_);
 }
 
-void ReaderState::cacheTaskTrampoline(void* param) { static_cast<ReaderState*>(param)->cacheTaskLoop(); }
+void ReaderState::cacheTaskTrampoline(void* param) {
+  static_cast<ReaderState*>(param)->cacheTaskLoop();
+}
 
 void ReaderState::cacheTaskLoop() {
   const Theme& theme = THEME_MANAGER.current();
@@ -847,14 +859,14 @@ void ReaderState::cacheTaskLoop() {
       if (provider && provider->getEpub() && !cacheTaskStopRequested_) {
         const auto vp = getReaderViewport();
         const auto config = coreRef.settings.getRenderConfig(theme, vp.width, vp.height);
-        std::string imageCachePath =
-            coreRef.settings.showImages ? (provider->getEpub()->getCachePath() + "/images") : "";
+        const auto* epub = provider->getEpub();
+        std::string imageCachePath = coreRef.settings.showImages ? (epub->getCachePath() + "/images") : "";
         // When on cover page (sectionPage=-1), cache the first content spine
         int spineToCache = spineIndex;
         if (sectionPage == -1) {
-          spineToCache = calcFirstContentSpine(coverExists, textStart, provider->getEpub()->getSpineItemsCount());
+          spineToCache = calcFirstContentSpine(coverExists, textStart, epub->getSpineItemsCount());
         }
-        std::string cachePath = epubSectionCachePath(provider->getEpub()->getCachePath(), spineToCache);
+        std::string cachePath = epubSectionCachePath(epub->getCachePath(), spineToCache);
         EpubChapterParser parser(provider->getEpubShared(), spineToCache, renderer_, config, imageCachePath);
         backgroundCacheImpl(parser, cachePath, config);
       }

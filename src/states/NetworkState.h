@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 
 #include "../ui/views/NetworkViews.h"
 #include "../ui/views/UtilityViews.h"
@@ -47,7 +48,7 @@ class NetworkState : public State {
   ui::WebServerView serverView_ = {};
 
   // WebServer: heap-allocated ONLY when running
-  PapyrixWebServer* server_;
+  std::unique_ptr<PapyrixWebServer> server_;
 
   // State tracking
   char selectedSSID_[33];
