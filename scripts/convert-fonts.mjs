@@ -41,6 +41,11 @@ const INTERVALS_BASE = [
   [0x2190, 0x21ff], // Arrows
 ];
 
+// Thai script intervals
+const INTERVALS_THAI = [
+  [0x0e00, 0x0e7f], // Thai
+];
+
 // CJK intervals for --bin format (includes Vietnamese/Thai)
 const INTERVALS_BIN_CJK = [
   [0x0000, 0x007f], // Basic Latin (ASCII)
@@ -96,9 +101,10 @@ class GlyphRasterizer {
 
     const x1 = Math.floor(bbox.x1 * this.scale);
     const x2 = Math.ceil(bbox.x2 * this.scale);
+    const y1 = Math.floor(bbox.y1 * this.scale);
     const y2 = Math.ceil(bbox.y2 * this.scale);
     const width = Math.max(1, x2 - x1);
-    const height = Math.max(1, Math.ceil(bbox.y2 * this.scale) - Math.floor(bbox.y1 * this.scale));
+    const height = Math.max(1, y2 - y1);
 
     // 4x supersampling
     const ssScale = 4;
@@ -108,6 +114,7 @@ class GlyphRasterizer {
 
     const pathOptions = this.variations ? { variation: this.variations } : {};
     const glyphPath = glyph.getPath(0, 0, this.fontSize * DPI / 72, pathOptions);
+    // offsetX shifts glyph left edge to 0; offsetY positions top of glyph at buffer top (with Y-flip)
     this.rasterizePath(glyphPath, ssBuffer, ssWidth, ssHeight, -x1 * ssScale, y2 * ssScale);
 
     // Downsample
@@ -130,28 +137,29 @@ class GlyphRasterizer {
   rasterizePath(glyphPath, buffer, width, height, offsetX, offsetY) {
     const edges = [];
     let currentX = 0, currentY = 0, startX = 0, startY = 0;
+    const ssScale = 4; // Must match supersampling scale
 
     for (const cmd of glyphPath.commands) {
       switch (cmd.type) {
         case "M":
-          currentX = startX = cmd.x + offsetX;
-          currentY = startY = offsetY - cmd.y;
+          currentX = startX = cmd.x * ssScale + offsetX;
+          currentY = startY = cmd.y * ssScale + offsetY;
           break;
         case "L": {
-          const x = cmd.x + offsetX, y = offsetY - cmd.y;
+          const x = cmd.x * ssScale + offsetX, y = cmd.y * ssScale + offsetY;
           this.addEdge(edges, currentX, currentY, x, y);
           currentX = x; currentY = y;
           break;
         }
         case "Q": {
-          const x = cmd.x + offsetX, y = offsetY - cmd.y;
-          this.addCurve(edges, currentX, currentY, cmd.x1 + offsetX, offsetY - cmd.y1, x, y, 8);
+          const x = cmd.x * ssScale + offsetX, y = cmd.y * ssScale + offsetY;
+          this.addCurve(edges, currentX, currentY, cmd.x1 * ssScale + offsetX, cmd.y1 * ssScale + offsetY, x, y, 8);
           currentX = x; currentY = y;
           break;
         }
         case "C": {
-          const x = cmd.x + offsetX, y = offsetY - cmd.y;
-          this.addCubicCurve(edges, currentX, currentY, cmd.x1 + offsetX, offsetY - cmd.y1, cmd.x2 + offsetX, offsetY - cmd.y2, x, y);
+          const x = cmd.x * ssScale + offsetX, y = cmd.y * ssScale + offsetY;
+          this.addCubicCurve(edges, currentX, currentY, cmd.x1 * ssScale + offsetX, cmd.y1 * ssScale + offsetY, cmd.x2 * ssScale + offsetX, cmd.y2 * ssScale + offsetY, x, y);
           currentX = x; currentY = y;
           break;
         }
@@ -473,14 +481,19 @@ function convertFontToHeader(fontPath, outputPath, size, is2Bit, intervals, head
   }
 }
 
-function generatePreview(fontPath, outputPath, size, variations = null) {
+// Sample characters for different scripts
+const SAMPLE_CHARS_LATIN = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:!?'\"()-";
+const SAMPLE_CHARS_VIETNAMESE = "ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝàáâãèéêìíòóôõùúýĂăĐđĨĩŨũƠơƯưẠạẢảẤấẦầẨẩẪẫẬậẮắẰằẲẳẴẵẶặẸẹẺẻẼẽẾếỀềỂểỄễỆệỈỉỊịỌọỎỏỐốỒồỔổỖỗỘộỚớỜờỞởỠỡỢợỤụỦủỨứỪừỬửỮữỰựỲỳỴỵỶỷỸỹ";
+const SAMPLE_CHARS_THAI = "กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮฤฦะัาำิีึืุูเแโใไๅๆ็่้๊๋์ํ๎๏๐๑๒๓๔๕๖๗๘๙";
+
+function generatePreview(fontPath, outputPath, size, variations = null, extraChars = "") {
   if (!fs.existsSync(fontPath)) return false;
 
   try {
     const font = opentype.loadSync(fontPath);
     const rasterizer = new GlyphRasterizer(font, size, variations);
 
-    const sampleChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*()";
+    const sampleChars = SAMPLE_CHARS_LATIN + extraChars;
     const glyphs = [...sampleChars]
       .map(char => {
         const glyph = rasterizer.renderGlyph(char.codePointAt(0));
@@ -511,7 +524,7 @@ function generatePreview(fontPath, outputPath, size, variations = null) {
   <div class="info">Size: ${size}pt | Glyphs: ${glyphs.length}</div>
   <div class="glyphs">
 ${glyphs.map(g => `    <div class="glyph">
-      <canvas width="${g.width}" height="${g.height}" data-pixels="data:application/octet-stream;base64,${g.data.toString("base64")}" style="width: ${g.width * 2}px; height: ${g.height * 2}px;"></canvas>
+      <canvas width="${g.width}" height="${g.height}" data-top="${g.top}" data-pixels="data:application/octet-stream;base64,${g.data.toString("base64")}" style="width: ${g.width * 2}px; height: ${g.height * 2}px;"></canvas>
       <span class="char">${escapeHtml(g.char)}</span>
       <span class="metrics">${g.width}x${g.height}</span>
     </div>`).join("\n")}
@@ -671,6 +684,7 @@ function main() {
       bin: { type: "boolean", default: false },
       var: { type: "string", multiple: true },
       preview: { type: "boolean", default: false },
+      thai: { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
   });
@@ -694,11 +708,13 @@ Options:
   --header       Output C header file instead of binary .epdfont
   --var          Variable font axis value (e.g., --var wght=700 --var wdth=100)
   --preview      Generate HTML preview of rendered glyphs
+  --thai         Include Thai script characters (U+0E00-0E7F)
   -h, --help     Show this help message
 
 Examples:
   node convert-fonts.mjs my-font -r MyFont-Regular.ttf -b MyFont-Bold.ttf -i MyFont-Italic.ttf
   node convert-fonts.mjs roboto -r Roboto-VariableFont_wdth,wght.ttf --var wght=400
+  node convert-fonts.mjs noto-sans-thai -r NotoSansThai-Regular.ttf --thai --all-sizes
   node convert-fonts.mjs noto-sans-cjk -r NotoSansSC-Regular.ttf --bin --size 24
 `);
     process.exit(0);
@@ -750,8 +766,12 @@ Examples:
     process.exit(success ? 0 : 1);
   }
 
-  // .epdfont mode - use base Latin character set
+  // .epdfont mode - use base Latin character set, optionally with Thai
   const intervals = [...INTERVALS_BASE];
+  if (values.thai) {
+    intervals.push(...INTERVALS_THAI);
+    console.log("Including Thai script (U+0E00-0E7F)");
+  }
 
   console.log(`Converting font family: ${family}`);
   console.log(`Output directory: ${outputBase}`);
@@ -784,7 +804,11 @@ Examples:
       if (success) {
         successCount++;
         if (doPreview) {
-          generatePreview(fontPath, outputFile.replace(/\.(epdfont|h)$/, ".html"), size, variations);
+          // Include extra characters for Thai/Vietnamese fonts
+          let extraChars = "";
+          if (values.thai) extraChars += SAMPLE_CHARS_THAI;
+          if (family.includes("vn") || family.includes("viet")) extraChars += SAMPLE_CHARS_VIETNAMESE;
+          generatePreview(fontPath, outputFile.replace(/\.(epdfont|h)$/, ".html"), size, variations, extraChars);
         }
       }
     }

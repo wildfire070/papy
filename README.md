@@ -3,6 +3,7 @@
 [![Changelog](https://img.shields.io/badge/changelog-CHANGELOG.md-blue)](CHANGELOG.md)
 [![User Guide](https://img.shields.io/badge/docs-User_Guide-green)](docs/user_guide.md)
 [![Customization](https://img.shields.io/badge/docs-Customization-green)](docs/customization.md)
+[![Fonts](https://img.shields.io/badge/docs-Fonts-green)](docs/fonts.md)
 [![Architecture](https://img.shields.io/badge/docs-Architecture-green)](docs/architecture.md)
 [![Device Specs](https://img.shields.io/badge/docs-Device_Specs-green)](docs/device-specifications.md)
 [![File Formats](https://img.shields.io/badge/docs-File_Formats-green)](docs/file-formats.md)
