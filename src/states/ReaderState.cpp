@@ -268,9 +268,13 @@ void ReaderState::exit(Core& core) {
     progress.flatPage = currentPage_;
     ProgressManager::save(core, core.content.cacheDir(), core.content.metadata().type, progress);
 
-    xSemaphoreTake(cacheMutex_, portMAX_DELAY);
-    pageCache_.reset();
-    xSemaphoreGive(cacheMutex_);
+    // Use timeout in case mutex is stuck from force-deleted task
+    if (xSemaphoreTake(cacheMutex_, pdMS_TO_TICKS(100)) == pdTRUE) {
+      pageCache_.reset();
+      xSemaphoreGive(cacheMutex_);
+    } else {
+      Serial.println("[READER] Warning: cacheMutex_ stuck, skipping cleanup");
+    }
     core.content.close();
   }
 
@@ -1150,10 +1154,13 @@ void ReaderState::exitToUI(Core& core) {
     progress.flatPage = currentPage_;
     ProgressManager::save(core, core.content.cacheDir(), core.content.metadata().type, progress);
 
-    // Close content
-    xSemaphoreTake(cacheMutex_, portMAX_DELAY);
-    pageCache_.reset();
-    xSemaphoreGive(cacheMutex_);
+    // Close content - use timeout in case mutex is stuck from force-deleted task
+    if (xSemaphoreTake(cacheMutex_, pdMS_TO_TICKS(100)) == pdTRUE) {
+      pageCache_.reset();
+      xSemaphoreGive(cacheMutex_);
+    } else {
+      Serial.println("[READER] Warning: cacheMutex_ stuck, skipping cleanup");
+    }
     core.content.close();
   }
 
