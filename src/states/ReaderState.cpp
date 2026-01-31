@@ -86,10 +86,15 @@ void ReaderState::backgroundCacheImpl(ParserT& parser, const std::string& cacheP
   if (!loaded || needsExtend) {
     xSemaphoreTake(cacheMutex_, portMAX_DELAY);
     if (!cacheTaskStopRequested_.load(std::memory_order_acquire)) {
+      bool success;
       if (needsExtend) {
-        pageCache_->extend(parser, PageCache::DEFAULT_CACHE_CHUNK);
+        success = pageCache_->extend(parser, PageCache::DEFAULT_CACHE_CHUNK);
       } else {
-        pageCache_->create(parser, config, PageCache::DEFAULT_CACHE_CHUNK);
+        success = pageCache_->create(parser, config, PageCache::DEFAULT_CACHE_CHUNK);
+      }
+      if (!success) {
+        Serial.println("[READER] Cache creation failed, clearing pageCache");
+        pageCache_.reset();
       }
     }
     xSemaphoreGive(cacheMutex_);
@@ -990,6 +995,12 @@ void ReaderState::stopBackgroundCaching() {
   Serial.println("[READER] Cache task timeout - forcing delete");
   vTaskDelete(taskToStop);
   cacheTaskHandle_ = nullptr;
+  // Recreate mutex - it may be stuck from force-deleted task
+  vSemaphoreDelete(cacheMutex_);
+  cacheMutex_ = xSemaphoreCreateMutex();
+  if (!cacheMutex_) {
+    Serial.println("[READER] CRITICAL: Failed to recreate mutex");
+  }
   cacheTaskStopRequested_.store(false, std::memory_order_release);
 }
 
