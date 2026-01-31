@@ -2,6 +2,8 @@
 
 #include <cstdint>
 #include <cstring>
+#include <string>
+#include <vector>
 
 #include "../ui/views/SettingsViews.h"
 #include "State.h"
@@ -11,7 +13,7 @@ class GfxRenderer;
 namespace papyrix {
 
 // FileListState - browse and select files
-// Uses fixed-size arrays to avoid heap allocation
+// Uses dynamic vector for unlimited file support with pagination
 class FileListState : public State {
   enum class Screen : uint8_t {
     Browse,
@@ -19,9 +21,6 @@ class FileListState : public State {
   };
 
  public:
-  static constexpr uint16_t MAX_FILES = 64;
-  static constexpr uint16_t MAX_NAME_LEN = 128;  // UTF-8 aware: ~40 Cyrillic or 128 ASCII chars
-
   explicit FileListState(GfxRenderer& renderer);
   ~FileListState() override;
 
@@ -42,16 +41,14 @@ class FileListState : public State {
   char currentDir_[256];
   char selectedPath_[256];
 
-  // File entries - fixed size array
+  // File entries - dynamic vector for unlimited files
   struct FileEntry {
-    char name[MAX_NAME_LEN];
+    std::string name;
     bool isDir;
   };
-  FileEntry files_[MAX_FILES];
-  uint16_t fileCount_;
+  std::vector<FileEntry> files_;
 
-  uint16_t selectedIndex_;
-  uint16_t scrollOffset_;
+  size_t selectedIndex_;
   bool needsRender_;
   bool hasSelection_;
   bool goHome_;       // Return to Home state
@@ -65,8 +62,13 @@ class FileListState : public State {
   void navigateDown(Core& core);
   void openSelected(Core& core);
   void goBack(Core& core);
-  void ensureVisible(int visibleCount);
-  int getVisibleCount() const;
+
+  // Pagination helpers
+  int getPageItems() const;
+  int getTotalPages() const;
+  int getCurrentPage() const;
+  int getPageStartIndex() const;
+
   bool isHidden(const char* name) const;
   bool isSupportedFile(const char* name) const;
   bool isAtRoot() const { return strcmp(currentDir_, "/") == 0; }

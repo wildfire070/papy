@@ -15,10 +15,10 @@ namespace papyrix {
 namespace {
 // Minimum version we can read (allows backward compatibility)
 constexpr uint8_t MIN_SETTINGS_VERSION = 3;
-// Version 4: Added sunlightFadingFix
-constexpr uint8_t SETTINGS_FILE_VERSION = 4;
+// Version 5: Added fileListDir, fileListSelectedName, fileListSelectedIndex
+constexpr uint8_t SETTINGS_FILE_VERSION = 5;
 // Increment this when adding new persisted settings fields
-constexpr uint8_t SETTINGS_COUNT = 19;
+constexpr uint8_t SETTINGS_COUNT = 22;
 }  // namespace
 
 Result<void> Settings::save(drivers::Storage& storage) const {
@@ -54,6 +54,9 @@ Result<void> Settings::save(drivers::Storage& storage) const {
   serialization::writePod(outputFile, pendingTransition);
   serialization::writePod(outputFile, transitionReturnTo);
   serialization::writePod(outputFile, sunlightFadingFix);
+  outputFile.write(reinterpret_cast<const uint8_t*>(fileListDir), sizeof(fileListDir));
+  outputFile.write(reinterpret_cast<const uint8_t*>(fileListSelectedName), sizeof(fileListSelectedName));
+  serialization::writePod(outputFile, fileListSelectedIndex);
   outputFile.close();
 
   Serial.printf("[%lu] [SET] Settings saved to file\n", millis());
@@ -123,6 +126,14 @@ Result<void> Settings::load(drivers::Storage& storage) {
     if (++settingsRead >= fileSettingsCount) break;
     serialization::readPodValidated(inputFile, sunlightFadingFix, uint8_t(1));
     if (++settingsRead >= fileSettingsCount) break;
+    inputFile.read(reinterpret_cast<uint8_t*>(fileListDir), sizeof(fileListDir));
+    fileListDir[sizeof(fileListDir) - 1] = '\0';
+    if (++settingsRead >= fileSettingsCount) break;
+    inputFile.read(reinterpret_cast<uint8_t*>(fileListSelectedName), sizeof(fileListSelectedName));
+    fileListSelectedName[sizeof(fileListSelectedName) - 1] = '\0';
+    if (++settingsRead >= fileSettingsCount) break;
+    serialization::readPod(inputFile, fileListSelectedIndex);
+    if (++settingsRead >= fileSettingsCount) break;
   } while (false);
 
   inputFile.close();
@@ -177,6 +188,9 @@ bool Settings::saveToFile() const {
   serialization::writePod(outputFile, pendingTransition);
   serialization::writePod(outputFile, transitionReturnTo);
   serialization::writePod(outputFile, sunlightFadingFix);
+  outputFile.write(reinterpret_cast<const uint8_t*>(fileListDir), sizeof(fileListDir));
+  outputFile.write(reinterpret_cast<const uint8_t*>(fileListSelectedName), sizeof(fileListSelectedName));
+  serialization::writePod(outputFile, fileListSelectedIndex);
   outputFile.close();
 
   Serial.printf("[%lu] [SET] Settings saved to file\n", millis());
@@ -241,6 +255,14 @@ bool Settings::loadFromFile() {
     serialization::readPodValidated(inputFile, transitionReturnTo, uint8_t(2));
     if (++settingsRead >= fileSettingsCount) break;
     serialization::readPodValidated(inputFile, sunlightFadingFix, uint8_t(1));
+    if (++settingsRead >= fileSettingsCount) break;
+    inputFile.read(reinterpret_cast<uint8_t*>(fileListDir), sizeof(fileListDir));
+    fileListDir[sizeof(fileListDir) - 1] = '\0';
+    if (++settingsRead >= fileSettingsCount) break;
+    inputFile.read(reinterpret_cast<uint8_t*>(fileListSelectedName), sizeof(fileListSelectedName));
+    fileListSelectedName[sizeof(fileListSelectedName) - 1] = '\0';
+    if (++settingsRead >= fileSettingsCount) break;
+    serialization::readPod(inputFile, fileListSelectedIndex);
     if (++settingsRead >= fileSettingsCount) break;
   } while (false);
 

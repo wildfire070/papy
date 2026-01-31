@@ -80,6 +80,8 @@ The Files screen acts as a folder and file browser.
 
 > **Note:** System folders (LOST.DIR, $RECYCLE.BIN, etc.) are automatically hidden from the file browser.
 
+> **Note:** Each folder can display up to 1000 items. Organize large libraries into subfolders if you exceed this limit.
+
 > **Note:** You cannot delete the currently open book. Close the book first before deleting it.
 
 ### 3.3 Reading Screen

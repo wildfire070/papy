@@ -20,9 +20,7 @@ namespace papyrix {
 
 FileListState::FileListState(GfxRenderer& renderer)
     : renderer_(renderer),
-      fileCount_(0),
       selectedIndex_(0),
-      scrollOffset_(0),
       needsRender_(true),
       hasSelection_(false),
       goHome_(false),
@@ -31,7 +29,6 @@ FileListState::FileListState(GfxRenderer& renderer)
       confirmView_{} {
   strcpy(currentDir_, "/");
   selectedPath_[0] = '\0';
-  memset(files_, 0, sizeof(files_));
 }
 
 FileListState::~FileListState() = default;
@@ -52,9 +49,10 @@ void FileListState::enter(Core& core) {
   const auto& transition = getTransition();
   bool preservePosition = transition.isValid() && transition.returnTo == ReturnTo::FILE_MANAGER;
 
-  if (!preservePosition) {
-    selectedIndex_ = 0;
-    scrollOffset_ = 0;
+  if (preservePosition) {
+    // Restore directory from settings
+    strncpy(currentDir_, core.settings.fileListDir, sizeof(currentDir_) - 1);
+    currentDir_[sizeof(currentDir_) - 1] = '\0';
   }
 
   needsRender_ = true;
@@ -66,16 +64,33 @@ void FileListState::enter(Core& core) {
 
   loadFiles(core);
 
-  // Clamp selectedIndex to valid range after reloading files
-  if (selectedIndex_ >= fileCount_) {
-    selectedIndex_ = fileCount_ > 0 ? fileCount_ - 1 : 0;
+  if (preservePosition && !files_.empty()) {
+    selectedIndex_ = core.settings.fileListSelectedIndex;
+
+    // Clamp to valid range
+    if (selectedIndex_ >= files_.size()) {
+      selectedIndex_ = files_.size() - 1;
+    }
+
+    // Verify filename matches, search if not
+    if (strcasecmp(files_[selectedIndex_].name.c_str(), core.settings.fileListSelectedName) != 0) {
+      for (size_t i = 0; i < files_.size(); i++) {
+        if (strcasecmp(files_[i].name.c_str(), core.settings.fileListSelectedName) == 0) {
+          selectedIndex_ = i;
+          break;
+        }
+      }
+    }
+  } else {
+    selectedIndex_ = 0;
   }
 }
 
 void FileListState::exit(Core& core) { Serial.println("[FILES] Exiting"); }
 
 void FileListState::loadFiles(Core& core) {
-  fileCount_ = 0;
+  files_.clear();
+  files_.reserve(512);  // Pre-allocate for large libraries
 
   FsFile dir;
   auto result = core.storage.openDir(currentDir_, dir);
@@ -84,14 +99,11 @@ void FileListState::loadFiles(Core& core) {
     return;
   }
 
-  // Temporary storage for sorting - use same fixed array
-  uint16_t dirCount = 0;
-  uint16_t filesStored = 0;               // Track files separately to avoid unsigned underflow
-  uint16_t fileStartIdx = MAX_FILES / 2;  // Dirs at start, files at middle temporarily
-
   char name[256];
   FsFile entry;
-  while ((entry = dir.openNextFile()) && (dirCount + filesStored < MAX_FILES)) {
+
+  // Collect all entries (no hard limit during collection)
+  while ((entry = dir.openNextFile())) {
     entry.getName(name, sizeof(name));
 
     if (isHidden(name)) {
@@ -102,58 +114,28 @@ void FileListState::loadFiles(Core& core) {
     bool isDir = entry.isDirectory();
     entry.close();
 
-    if (isDir) {
-      if (dirCount < fileStartIdx) {
-        strncpy(files_[dirCount].name, name, MAX_NAME_LEN - 1);
-        files_[dirCount].name[MAX_NAME_LEN - 1] = '\0';
-        files_[dirCount].isDir = true;
-        dirCount++;
-      }
-    } else if (isSupportedFile(name)) {
-      uint16_t idx = fileStartIdx + filesStored;
-      if (idx < MAX_FILES) {
-        strncpy(files_[idx].name, name, MAX_NAME_LEN - 1);
-        files_[idx].name[MAX_NAME_LEN - 1] = '\0';
-        files_[idx].isDir = false;
-        filesStored++;
-      }
+    if (isDir || isSupportedFile(name)) {
+      files_.push_back({std::string(name), isDir});
     }
   }
   dir.close();
 
-  // Compact: move files right after directories
-  for (uint16_t i = 0; i < filesStored && (dirCount + i) < MAX_FILES; i++) {
-    files_[dirCount + i] = files_[fileStartIdx + i];
-  }
-  fileCount_ = dirCount + filesStored;
-
-  // Simple insertion sort (small arrays, avoids heap)
-  for (uint16_t i = 1; i < fileCount_; i++) {
-    FileEntry temp = files_[i];
-    int j = i - 1;
-
-    // Sort: directories first, then alphabetically (case-insensitive)
-    while (j >= 0) {
-      bool swap = false;
-      if (temp.isDir && !files_[j].isDir) {
-        swap = true;
-      } else if (temp.isDir == files_[j].isDir) {
-        if (strcasecmp(temp.name, files_[j].name) < 0) {
-          swap = true;
-        }
-      }
-
-      if (swap) {
-        files_[j + 1] = files_[j];
-        j--;
-      } else {
-        break;
-      }
-    }
-    files_[j + 1] = temp;
+  // Safety check - prevent OOM on extreme cases
+  constexpr size_t MAX_ENTRIES = 1000;
+  if (files_.size() > MAX_ENTRIES) {
+    Serial.printf("[FILES] Warning: truncated to %zu entries\n", MAX_ENTRIES);
+    files_.resize(MAX_ENTRIES);
+    files_.shrink_to_fit();
   }
 
-  Serial.printf("[FILES] Loaded %u entries\n", fileCount_);
+  // Sort: directories first, then alphabetically (case-insensitive)
+  std::sort(files_.begin(), files_.end(), [](const FileEntry& a, const FileEntry& b) {
+    if (a.isDir && !b.isDir) return true;
+    if (!a.isDir && b.isDir) return false;
+    return strcasecmp(a.name.c_str(), b.name.c_str()) < 0;
+  });
+
+  Serial.printf("[FILES] Loaded %zu entries\n", files_.size());
 }
 
 bool FileListState::isHidden(const char* name) const {
@@ -201,9 +183,9 @@ StateTransition FileListState::update(Core& core) {
                 char pathBuf[512];  // currentDir_(256) + '/' + name(128)
                 size_t dirLen = strlen(currentDir_);
                 if (currentDir_[dirLen - 1] == '/') {
-                  snprintf(pathBuf, sizeof(pathBuf), "%s%s", currentDir_, entry.name);
+                  snprintf(pathBuf, sizeof(pathBuf), "%s%s", currentDir_, entry.name.c_str());
                 } else {
-                  snprintf(pathBuf, sizeof(pathBuf), "%s/%s", currentDir_, entry.name);
+                  snprintf(pathBuf, sizeof(pathBuf), "%s/%s", currentDir_, entry.name.c_str());
                 }
 
                 // Check if trying to delete the currently active book
@@ -221,8 +203,8 @@ StateTransition FileListState::update(Core& core) {
                   vTaskDelay(1000 / portTICK_PERIOD_MS);
 
                   loadFiles(core);
-                  if (selectedIndex_ >= fileCount_) {
-                    selectedIndex_ = fileCount_ > 0 ? fileCount_ - 1 : 0;
+                  if (selectedIndex_ >= files_.size()) {
+                    selectedIndex_ = files_.empty() ? 0 : files_.size() - 1;
                   }
                 }
               }
@@ -301,11 +283,17 @@ void FileListState::render(Core& core) {
 
   renderer_.clearScreen(theme.backgroundColor);
 
-  // Title
-  renderer_.drawCenteredText(theme.readerFontId, 10, "Books", theme.primaryTextBlack, BOLD);
+  // Title with page indicator
+  char title[32];
+  if (getTotalPages() > 1) {
+    snprintf(title, sizeof(title), "Books (%d/%d)", getCurrentPage(), getTotalPages());
+  } else {
+    strcpy(title, "Books");
+  }
+  renderer_.drawCenteredText(theme.readerFontId, 10, title, theme.primaryTextBlack, BOLD);
 
   // Empty state
-  if (fileCount_ == 0) {
+  if (files_.empty()) {
     renderer_.drawText(theme.uiFontId, 20, 60, "No books found", theme.primaryTextBlack);
     renderer_.displayBuffer();
     needsRender_ = false;
@@ -313,25 +301,22 @@ void FileListState::render(Core& core) {
     return;
   }
 
-  // Calculate visible count dynamically (single-line items)
+  // Draw current page of items
   constexpr int listStartY = 60;
   const int itemHeight = theme.itemHeight + theme.itemSpacing;
-  const int visibleCount = getVisibleCount();
+  const int pageItems = getPageItems();
+  const int pageStart = getPageStartIndex();
+  const int pageEnd = std::min(pageStart + pageItems, static_cast<int>(files_.size()));
 
-  // Adjust scroll to keep selection visible
-  ensureVisible(visibleCount);
-
-  // Draw file entries (single line each, truncated)
-  const int end = std::min(static_cast<int>(scrollOffset_ + visibleCount), static_cast<int>(fileCount_));
-  for (int i = scrollOffset_; i < end; i++) {
-    const int y = listStartY + (i - scrollOffset_) * itemHeight;
-    ui::fileEntry(renderer_, theme, y, files_[i].name, files_[i].isDir, i == selectedIndex_);
+  for (int i = pageStart; i < pageEnd; i++) {
+    const int y = listStartY + (i - pageStart) * itemHeight;
+    ui::fileEntry(renderer_, theme, y, files_[i].name.c_str(), files_[i].isDir,
+                  static_cast<size_t>(i) == selectedIndex_);
   }
 
   // Button hints - "Home" if at root, "Back" if in subfolder
   const char* backLabel = isAtRoot() ? "Home" : "Back";
-  const char* deleteLabel = (fileCount_ > 0) ? "Delete" : "";
-  renderer_.drawButtonHints(theme.uiFontId, backLabel, "Open", "", deleteLabel, theme.primaryTextBlack);
+  renderer_.drawButtonHints(theme.uiFontId, backLabel, "Open", "", "Delete", theme.primaryTextBlack);
 
   if (firstRender_) {
     renderer_.displayBuffer(EInkDisplay::HALF_REFRESH);
@@ -344,18 +329,20 @@ void FileListState::render(Core& core) {
 }
 
 void FileListState::navigateUp(Core& core) {
-  if (fileCount_ == 0) return;
+  if (files_.empty()) return;
+
   if (selectedIndex_ > 0) {
     selectedIndex_--;
   } else {
-    selectedIndex_ = fileCount_ - 1;  // Wrap to last item
+    selectedIndex_ = files_.size() - 1;  // Wrap to last item
   }
   needsRender_ = true;
 }
 
 void FileListState::navigateDown(Core& core) {
-  if (fileCount_ == 0) return;
-  if (selectedIndex_ + 1 < fileCount_) {
+  if (files_.empty()) return;
+
+  if (selectedIndex_ + 1 < files_.size()) {
     selectedIndex_++;
   } else {
     selectedIndex_ = 0;  // Wrap to first item
@@ -364,7 +351,7 @@ void FileListState::navigateDown(Core& core) {
 }
 
 void FileListState::openSelected(Core& core) {
-  if (fileCount_ == 0) {
+  if (files_.empty()) {
     return;
   }
 
@@ -373,9 +360,9 @@ void FileListState::openSelected(Core& core) {
   // Build full path
   size_t dirLen = strlen(currentDir_);
   if (currentDir_[dirLen - 1] == '/') {
-    snprintf(selectedPath_, sizeof(selectedPath_), "%s%s", currentDir_, entry.name);
+    snprintf(selectedPath_, sizeof(selectedPath_), "%s%s", currentDir_, entry.name.c_str());
   } else {
-    snprintf(selectedPath_, sizeof(selectedPath_), "%s/%s", currentDir_, entry.name);
+    snprintf(selectedPath_, sizeof(selectedPath_), "%s/%s", currentDir_, entry.name.c_str());
   }
 
   if (entry.isDir) {
@@ -385,7 +372,20 @@ void FileListState::openSelected(Core& core) {
     selectedIndex_ = 0;
     loadFiles(core);
     needsRender_ = true;
+
+    // Save directory for return after mode switch
+    strncpy(core.settings.fileListDir, currentDir_, sizeof(core.settings.fileListDir) - 1);
+    core.settings.fileListDir[sizeof(core.settings.fileListDir) - 1] = '\0';
+    core.settings.fileListSelectedName[0] = '\0';
+    core.settings.fileListSelectedIndex = 0;
   } else {
+    // Save position for return
+    strncpy(core.settings.fileListDir, currentDir_, sizeof(core.settings.fileListDir) - 1);
+    core.settings.fileListDir[sizeof(core.settings.fileListDir) - 1] = '\0';
+    strncpy(core.settings.fileListSelectedName, entry.name.c_str(), sizeof(core.settings.fileListSelectedName) - 1);
+    core.settings.fileListSelectedName[sizeof(core.settings.fileListSelectedName) - 1] = '\0';
+    core.settings.fileListSelectedIndex = selectedIndex_;
+
     // Select file - transition to Reader mode via restart
     Serial.printf("[FILES] Selected: %s\n", selectedPath_);
     showTransitionNotification("Opening book...");
@@ -417,7 +417,7 @@ void FileListState::goBack(Core& core) {
 }
 
 void FileListState::promptDelete(Core& core) {
-  if (fileCount_ == 0) return;
+  if (files_.empty()) return;
 
   const FileEntry& entry = files_[selectedIndex_];
   const char* typeStr = entry.isDir ? "folder" : "file";
@@ -426,10 +426,10 @@ void FileListState::promptDelete(Core& core) {
   snprintf(line1, sizeof(line1), "Delete this %s?", typeStr);
 
   char line2[48];
-  if (strlen(entry.name) > 40) {
-    snprintf(line2, sizeof(line2), "%.37s...", entry.name);
+  if (entry.name.length() > 40) {
+    snprintf(line2, sizeof(line2), "%.37s...", entry.name.c_str());
   } else {
-    strncpy(line2, entry.name, sizeof(line2) - 1);
+    strncpy(line2, entry.name.c_str(), sizeof(line2) - 1);
     line2[sizeof(line2) - 1] = '\0';
   }
 
@@ -438,22 +438,29 @@ void FileListState::promptDelete(Core& core) {
   needsRender_ = true;
 }
 
-void FileListState::ensureVisible(int visibleCount) {
-  if (fileCount_ == 0 || visibleCount <= 0) return;
-  if (selectedIndex_ < scrollOffset_) {
-    scrollOffset_ = selectedIndex_;
-  } else if (selectedIndex_ >= scrollOffset_ + visibleCount) {
-    scrollOffset_ = selectedIndex_ - visibleCount + 1;
-  }
-}
-
-int FileListState::getVisibleCount() const {
+int FileListState::getPageItems() const {
   const Theme& theme = THEME_MANAGER.current();
   constexpr int listStartY = 60;
   constexpr int bottomMargin = 70;
   const int availableHeight = renderer_.getScreenHeight() - listStartY - bottomMargin;
   const int itemHeight = theme.itemHeight + theme.itemSpacing;
-  return availableHeight / itemHeight;
+  return std::max(1, availableHeight / itemHeight);
+}
+
+int FileListState::getTotalPages() const {
+  if (files_.empty()) return 1;
+  const int pageItems = getPageItems();
+  return (static_cast<int>(files_.size()) + pageItems - 1) / pageItems;
+}
+
+int FileListState::getCurrentPage() const {
+  const int pageItems = getPageItems();
+  return selectedIndex_ / pageItems + 1;
+}
+
+int FileListState::getPageStartIndex() const {
+  const int pageItems = getPageItems();
+  return (selectedIndex_ / pageItems) * pageItems;
 }
 
 }  // namespace papyrix
