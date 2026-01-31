@@ -29,9 +29,12 @@ size_t findUtf8Boundary(const char* s, size_t maxLen) {
       // This is a UTF-8 start byte - don't cut before it completes
       // Check if the full character fits
       size_t charLen = 1;
-      if ((c & 0xE0) == 0xC0) charLen = 2;
-      else if ((c & 0xF0) == 0xE0) charLen = 3;
-      else if ((c & 0xF8) == 0xF0) charLen = 4;
+      if ((c & 0xE0) == 0xC0)
+        charLen = 2;
+      else if ((c & 0xF0) == 0xE0)
+        charLen = 3;
+      else if ((c & 0xF8) == 0xF0)
+        charLen = 4;
 
       if (pos - 1 + charLen <= maxLen) {
         return pos - 1 + charLen;  // Full character fits

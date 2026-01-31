@@ -52,8 +52,7 @@ std::unique_ptr<ImageBlock> ImageBlock::deserialize(FsFile& file) {
   std::string path;
   uint16_t w, h;
 
-  if (!serialization::readString(file, path) ||
-      !serialization::readPodChecked(file, w) ||
+  if (!serialization::readString(file, path) || !serialization::readPodChecked(file, w) ||
       !serialization::readPodChecked(file, h)) {
     Serial.printf("[%lu] [IMB] Deserialization failed: couldn't read data\n", millis());
     return nullptr;
