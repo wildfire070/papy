@@ -16,7 +16,7 @@ constexpr size_t VOID_ELEMENT_COUNT = sizeof(VOID_ELEMENTS) / sizeof(VOID_ELEMEN
 constexpr size_t MAX_TAG_NAME_LENGTH = 8;
 constexpr size_t BUFFER_SIZE = 512;
 
-enum class State { Normal, InTagStart, InTagName, InTagAttrs, InQuote };
+enum class State { Normal, InTagStart, InTagName, InTagAttrs, InQuote, InClosingTagName, InClosingTagRest };
 
 char toLowerAscii(char c) { return (c >= 'A' && c <= 'Z') ? static_cast<char>(c + ('a' - 'A')) : c; }
 
@@ -53,6 +53,8 @@ bool normalizeVoidElements(const std::string& inputPath, const std::string& outp
   State state = State::Normal;
   char tagName[MAX_TAG_NAME_LENGTH + 1] = {0};
   size_t tagNameLen = 0;
+  char closingTagWhitespace[8] = {0};  // Buffer for whitespace in closing tags
+  size_t closingTagWsLen = 0;
   bool isCurrentTagVoid = false;
   char quoteChar = 0;
   char prevChar = 0;
@@ -92,22 +94,35 @@ bool normalizeVoidElements(const std::string& inputPath, const std::string& outp
             state = State::InTagStart;
             tagNameLen = 0;
             isCurrentTagVoid = false;
+            // Don't write '<' yet - might need to skip if it's a void element closing tag
+          } else {
+            if (!writeChar(c)) goto error;
           }
-          if (!writeChar(c)) goto error;
           break;
 
         case State::InTagStart:
-          if (c == '/' || c == '!' || c == '?') {
-            // Closing tag, comment, or processing instruction - skip normalization
+          if (c == '/') {
+            // Closing tag - need to check if it's a void element
+            state = State::InClosingTagName;
+            tagNameLen = 0;
+            closingTagWsLen = 0;
+            // Don't write '</' yet - buffer it in case we need to skip
+          } else if (c == '!' || c == '?') {
+            // Comment or processing instruction - skip normalization
             state = State::Normal;
+            if (!writeChar('<')) goto error;
+            if (!writeChar(c)) goto error;
           } else if (std::isalpha(static_cast<unsigned char>(c))) {
             state = State::InTagName;
             tagName[0] = c;
             tagNameLen = 1;
+            if (!writeChar('<')) goto error;
+            if (!writeChar(c)) goto error;
           } else {
             state = State::Normal;
+            if (!writeChar('<')) goto error;
+            if (!writeChar(c)) goto error;
           }
-          if (!writeChar(c)) goto error;
           break;
 
         case State::InTagName:
@@ -168,9 +183,82 @@ bool normalizeVoidElements(const std::string& inputPath, const std::string& outp
           }
           if (!writeChar(c)) goto error;
           break;
+
+        case State::InClosingTagName:
+          if (std::isalnum(static_cast<unsigned char>(c)) || c == '-' || c == ':') {
+            if (tagNameLen < MAX_TAG_NAME_LENGTH) {
+              tagName[tagNameLen++] = c;
+            } else {
+              // Tag too long to be void - flush buffer and passthrough
+              if (!writeChar('<')) goto error;
+              if (!writeChar('/')) goto error;
+              for (size_t j = 0; j < tagNameLen; j++) {
+                if (!writeChar(tagName[j])) goto error;
+              }
+              if (!writeChar(c)) goto error;
+              state = State::InClosingTagRest;
+            }
+          } else if (c == '>') {
+            // End of closing tag - check if it's a void element
+            tagName[tagNameLen] = '\0';
+            if (isVoidElement(tagName, tagNameLen)) {
+              // Skip the entire closing tag (don't output anything)
+            } else {
+              // Not a void element - output the buffered "</tagname>" with any whitespace
+              if (!writeChar('<')) goto error;
+              if (!writeChar('/')) goto error;
+              for (size_t j = 0; j < tagNameLen; j++) {
+                if (!writeChar(tagName[j])) goto error;
+              }
+              for (size_t j = 0; j < closingTagWsLen; j++) {
+                if (!writeChar(closingTagWhitespace[j])) goto error;
+              }
+              if (!writeChar('>')) goto error;
+            }
+            state = State::Normal;
+          } else if (std::isspace(static_cast<unsigned char>(c))) {
+            // Whitespace before '>' in closing tag (unusual but valid)
+            // Buffer it in case we need to replay for non-void elements
+            if (closingTagWsLen < sizeof(closingTagWhitespace)) {
+              closingTagWhitespace[closingTagWsLen++] = c;
+            }
+          } else {
+            // Unexpected character - output what we have and return to normal
+            if (!writeChar('<')) goto error;
+            if (!writeChar('/')) goto error;
+            for (size_t j = 0; j < tagNameLen; j++) {
+              if (!writeChar(tagName[j])) goto error;
+            }
+            if (!writeChar(c)) goto error;
+            state = State::Normal;
+          }
+          break;
+
+        case State::InClosingTagRest:
+          if (!writeChar(c)) goto error;
+          if (c == '>') {
+            state = State::Normal;
+          }
+          break;
       }
 
       prevChar = c;
+    }
+  }
+
+  // Handle EOF - flush any buffered but uncommitted content
+  if (state == State::InTagStart) {
+    // We saw '<' but nothing else
+    if (!writeChar('<')) goto error;
+  } else if (state == State::InClosingTagName) {
+    // We were in the middle of a closing tag - output what we have
+    if (!writeChar('<')) goto error;
+    if (!writeChar('/')) goto error;
+    for (size_t j = 0; j < tagNameLen; j++) {
+      if (!writeChar(tagName[j])) goto error;
+    }
+    for (size_t j = 0; j < closingTagWsLen; j++) {
+      if (!writeChar(closingTagWhitespace[j])) goto error;
     }
   }
 
