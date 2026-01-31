@@ -30,7 +30,9 @@ std::unique_ptr<TextBlock> TextBlock::deserialize(FsFile& file) {
   BLOCK_STYLE style;
 
   // Word count
-  serialization::readPod(file, wc);
+  if (!serialization::readPodChecked(file, wc)) {
+    return nullptr;
+  }
 
   // Sanity check: prevent allocation of unreasonably large vectors (max 10000 words per block)
   if (wc > 10000) {
@@ -43,12 +45,26 @@ std::unique_ptr<TextBlock> TextBlock::deserialize(FsFile& file) {
   std::vector<uint16_t> xpos(wc);
   std::vector<EpdFontFamily::Style> styles(wc);
 
-  for (auto& w : words) serialization::readString(file, w);
-  for (auto& x : xpos) serialization::readPod(file, x);
-  for (auto& s : styles) serialization::readPod(file, s);
+  for (auto& w : words) {
+    if (!serialization::readString(file, w)) {
+      return nullptr;
+    }
+  }
+  for (auto& x : xpos) {
+    if (!serialization::readPodChecked(file, x)) {
+      return nullptr;
+    }
+  }
+  for (auto& s : styles) {
+    if (!serialization::readPodChecked(file, s)) {
+      return nullptr;
+    }
+  }
 
   // Block style
-  serialization::readPod(file, style);
+  if (!serialization::readPodChecked(file, style)) {
+    return nullptr;
+  }
 
   // Combine into WordData vector
   std::vector<WordData> data;

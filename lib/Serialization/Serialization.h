@@ -25,6 +25,11 @@ static void readPod(FsFile& file, T& value) {
   file.read(reinterpret_cast<uint8_t*>(&value), sizeof(T));
 }
 
+template <typename T>
+[[nodiscard]] static bool readPodChecked(FsFile& file, T& value) {
+  return file.read(reinterpret_cast<uint8_t*>(&value), sizeof(T)) == sizeof(T);
+}
+
 static void writeString(std::ostream& os, const std::string& s) {
   const uint32_t len = s.size();
   writePod(os, len);
@@ -37,28 +42,40 @@ static void writeString(FsFile& file, const std::string& s) {
   file.write(reinterpret_cast<const uint8_t*>(s.data()), len);
 }
 
-static void readString(std::istream& is, std::string& s) {
+[[nodiscard]] static bool readString(std::istream& is, std::string& s) {
   uint32_t len;
   readPod(is, len);
+  if (!is.good()) {
+    s.clear();
+    return false;
+  }
   if (len > 65536) {  // Sanity check: no string should be > 64KB
     s.clear();
     is.setstate(std::ios::failbit);
-    return;
+    return false;
   }
   s.resize(len);
   is.read(&s[0], len);
+  return is.good();
 }
 
-static void readString(FsFile& file, std::string& s) {
+[[nodiscard]] static bool readString(FsFile& file, std::string& s) {
   uint32_t len;
-  readPod(file, len);
+  if (file.read(reinterpret_cast<uint8_t*>(&len), sizeof(len)) != sizeof(len)) {
+    s.clear();
+    return false;
+  }
   if (len > 65536) {  // Sanity check: no string should be > 64KB
     Serial.printf("[SER] String length %u exceeds max, file corrupt\n", len);
     s.clear();
-    return;
+    return false;
   }
   s.resize(len);
-  file.read(&s[0], len);
+  if (len > 0 && file.read(reinterpret_cast<uint8_t*>(&s[0]), len) != static_cast<int>(len)) {
+    s.clear();
+    return false;
+  }
+  return true;
 }
 
 template <typename T>

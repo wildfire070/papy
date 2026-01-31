@@ -52,9 +52,12 @@ std::unique_ptr<ImageBlock> ImageBlock::deserialize(FsFile& file) {
   std::string path;
   uint16_t w, h;
 
-  serialization::readString(file, path);
-  serialization::readPod(file, w);
-  serialization::readPod(file, h);
+  if (!serialization::readString(file, path) ||
+      !serialization::readPodChecked(file, w) ||
+      !serialization::readPodChecked(file, h)) {
+    Serial.printf("[%lu] [IMB] Deserialization failed: couldn't read data\n", millis());
+    return nullptr;
+  }
 
   // Sanity check: prevent unreasonable dimensions from corrupted data
   if (w > 2000 || h > 2000) {

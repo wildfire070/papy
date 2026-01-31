@@ -4,6 +4,8 @@
 
 #include <string>
 
+constexpr size_t MAX_NAV_LABEL_LENGTH = 512;
+
 class BookMetadataCache;
 
 // Parser for EPUB 3 nav.xhtml navigation documents

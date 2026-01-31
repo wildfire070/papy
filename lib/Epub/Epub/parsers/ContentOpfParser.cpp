@@ -9,6 +9,42 @@
 namespace {
 constexpr char MEDIA_TYPE_NCX[] = "application/x-dtbncx+xml";
 constexpr char itemCacheFile[] = "/.items.bin";
+
+// Find the last valid UTF-8 boundary within maxLen bytes
+// Returns the safe length to use for truncation (may be less than maxLen)
+size_t findUtf8Boundary(const char* s, size_t maxLen) {
+  if (maxLen == 0) return 0;
+
+  // Work backwards from maxLen to find a valid boundary
+  size_t pos = maxLen;
+  while (pos > 0) {
+    const unsigned char c = static_cast<unsigned char>(s[pos - 1]);
+    // If this byte is ASCII or a UTF-8 start byte, previous position is safe
+    if (c < 0x80 || c >= 0xC0) {
+      // Previous char ended cleanly at pos-1, so pos is a valid boundary
+      // But we need to check if we're in the middle of a multi-byte sequence
+      if (c < 0x80) {
+        return pos;  // ASCII byte, safe to cut after it
+      }
+      // This is a UTF-8 start byte - don't cut before it completes
+      // Check if the full character fits
+      size_t charLen = 1;
+      if ((c & 0xE0) == 0xC0) charLen = 2;
+      else if ((c & 0xF0) == 0xE0) charLen = 3;
+      else if ((c & 0xF8) == 0xF0) charLen = 4;
+
+      if (pos - 1 + charLen <= maxLen) {
+        return pos - 1 + charLen;  // Full character fits
+      }
+      // Character doesn't fit, try earlier
+      pos--;
+      continue;
+    }
+    // Continuation byte (0x80-0xBF), keep going back
+    pos--;
+  }
+  return 0;
+}
 }  // namespace
 
 bool ContentOpfParser::setup() {
@@ -127,8 +163,11 @@ void XMLCALL ContentOpfParser::startElement(void* userData, const XML_Char* name
       std::string itemId;
       std::string href;
       while (self->tempItemStore.available()) {
-        serialization::readString(self->tempItemStore, itemId);
-        serialization::readString(self->tempItemStore, href);
+        if (!serialization::readString(self->tempItemStore, itemId) ||
+            !serialization::readString(self->tempItemStore, href)) {
+          Serial.printf("[%lu] [COF] Failed to read manifest item from temp store\n", millis());
+          break;
+        }
         self->manifestIndex[itemId] = href;
       }
       self->tempItemStore.close();
@@ -256,12 +295,30 @@ void XMLCALL ContentOpfParser::characterData(void* userData, const XML_Char* s, 
   auto* self = static_cast<ContentOpfParser*>(userData);
 
   if (self->state == IN_BOOK_TITLE) {
-    self->title.append(s, len);
+    if (self->title.size() + static_cast<size_t>(len) <= MAX_TITLE_LENGTH) {
+      self->title.append(s, len);
+    } else if (self->title.size() < MAX_TITLE_LENGTH) {
+      const size_t remaining = MAX_TITLE_LENGTH - self->title.size();
+      const size_t safeLen = findUtf8Boundary(s, remaining);
+      if (safeLen > 0) {
+        self->title.append(s, safeLen);
+      }
+      Serial.printf("[COF] Title truncated at %zu bytes\n", self->title.size());
+    }
     return;
   }
 
   if (self->state == IN_BOOK_AUTHOR) {
-    self->author.append(s, len);
+    if (self->author.size() + static_cast<size_t>(len) <= MAX_AUTHOR_LENGTH) {
+      self->author.append(s, len);
+    } else if (self->author.size() < MAX_AUTHOR_LENGTH) {
+      const size_t remaining = MAX_AUTHOR_LENGTH - self->author.size();
+      const size_t safeLen = findUtf8Boundary(s, remaining);
+      if (safeLen > 0) {
+        self->author.append(s, safeLen);
+      }
+      Serial.printf("[COF] Author truncated at %zu bytes\n", self->author.size());
+    }
     return;
   }
 }

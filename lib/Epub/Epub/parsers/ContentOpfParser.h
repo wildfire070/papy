@@ -7,6 +7,9 @@
 #include "Epub.h"
 #include "expat.h"
 
+constexpr size_t MAX_TITLE_LENGTH = 256;
+constexpr size_t MAX_AUTHOR_LENGTH = 128;
+
 class BookMetadataCache;
 
 class ContentOpfParser final : public Print {

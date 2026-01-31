@@ -69,8 +69,8 @@ bool BookMetadataCache::endTocPass() {
   tocFile.close();
   spineFile.close();
 
-  // Free cached spine hrefs memory
-  spineHrefIndex.clear();
+  // Free cached spine hrefs memory - swap idiom to release bucket memory
+  std::unordered_map<std::string, int>().swap(spineHrefIndex);
 
   return true;
 }
@@ -384,10 +384,13 @@ bool BookMetadataCache::load() {
   serialization::readPod(bookFile, spineCount);
   serialization::readPod(bookFile, tocCount);
 
-  serialization::readString(bookFile, coreMetadata.title);
-  serialization::readString(bookFile, coreMetadata.author);
-  serialization::readString(bookFile, coreMetadata.coverItemHref);
-  serialization::readString(bookFile, coreMetadata.textReferenceHref);
+  if (!serialization::readString(bookFile, coreMetadata.title) ||
+      !serialization::readString(bookFile, coreMetadata.author) ||
+      !serialization::readString(bookFile, coreMetadata.coverItemHref) ||
+      !serialization::readString(bookFile, coreMetadata.textReferenceHref)) {
+    Serial.printf("[%lu] [BMC] Failed to read metadata strings\n", millis());
+    return false;
+  }
 
   loaded = true;
   Serial.printf("[%lu] [BMC] Loaded cache data: %d spine, %d TOC entries\n", millis(), spineCount, tocCount);
@@ -434,18 +437,22 @@ BookMetadataCache::TocEntry BookMetadataCache::getTocEntry(const int index) {
 
 BookMetadataCache::SpineEntry BookMetadataCache::readSpineEntry(FsFile& file) const {
   SpineEntry entry;
-  serialization::readString(file, entry.href);
-  serialization::readPod(file, entry.cumulativeSize);
-  serialization::readPod(file, entry.tocIndex);
+  if (!serialization::readString(file, entry.href) ||
+      !serialization::readPodChecked(file, entry.cumulativeSize) ||
+      !serialization::readPodChecked(file, entry.tocIndex)) {
+    return {};
+  }
   return entry;
 }
 
 BookMetadataCache::TocEntry BookMetadataCache::readTocEntry(FsFile& file) const {
   TocEntry entry;
-  serialization::readString(file, entry.title);
-  serialization::readString(file, entry.href);
-  serialization::readString(file, entry.anchor);
-  serialization::readPod(file, entry.level);
-  serialization::readPod(file, entry.spineIndex);
+  if (!serialization::readString(file, entry.title) ||
+      !serialization::readString(file, entry.href) ||
+      !serialization::readString(file, entry.anchor) ||
+      !serialization::readPodChecked(file, entry.level) ||
+      !serialization::readPodChecked(file, entry.spineIndex)) {
+    return {};
+  }
   return entry;
 }

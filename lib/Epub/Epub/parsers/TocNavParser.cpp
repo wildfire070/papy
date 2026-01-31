@@ -131,7 +131,13 @@ void XMLCALL TocNavParser::characterData(void* userData, const XML_Char* s, cons
 
   // Only collect text when inside an anchor within the TOC nav
   if (self->state == IN_ANCHOR) {
-    self->currentLabel.append(s, len);
+    if (self->currentLabel.size() + static_cast<size_t>(len) <= MAX_NAV_LABEL_LENGTH) {
+      self->currentLabel.append(s, len);
+    } else if (self->currentLabel.size() < MAX_NAV_LABEL_LENGTH) {
+      const size_t remaining = MAX_NAV_LABEL_LENGTH - self->currentLabel.size();
+      self->currentLabel.append(s, remaining);
+      Serial.printf("[NAV] Label truncated at %zu bytes\n", MAX_NAV_LABEL_LENGTH);
+    }
   }
 }
 
