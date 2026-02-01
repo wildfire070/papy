@@ -13,6 +13,8 @@
 namespace papyrix {
 
 namespace {
+// Magic signature to identify Papyrix settings files ("PPXS" in little-endian)
+constexpr uint32_t SETTINGS_MAGIC = 0x53585050;
 // Minimum version we can read (allows backward compatibility)
 constexpr uint8_t MIN_SETTINGS_VERSION = 3;
 // Version 5: Added fileListDir, fileListSelectedName, fileListSelectedIndex
@@ -32,6 +34,7 @@ Result<void> Settings::save(drivers::Storage& storage) const {
     return result;
   }
 
+  serialization::writePod(outputFile, SETTINGS_MAGIC);
   serialization::writePod(outputFile, SETTINGS_FILE_VERSION);
   serialization::writePod(outputFile, SETTINGS_COUNT);
   serialization::writePod(outputFile, sleepScreen);
@@ -68,6 +71,16 @@ Result<void> Settings::load(drivers::Storage& storage) {
   auto result = storage.openRead(PAPYRIX_SETTINGS_FILE, inputFile);
   if (!result.ok()) {
     return result;
+  }
+
+  // Check magic signature to detect incompatible settings files (e.g., from Crosspoint firmware)
+  uint32_t magic;
+  serialization::readPod(inputFile, magic);
+  if (magic != SETTINGS_MAGIC) {
+    Serial.printf("[%lu] [SET] Invalid settings file (wrong magic 0x%08X), deleting\n", millis(), magic);
+    inputFile.close();
+    storage.remove(PAPYRIX_SETTINGS_FILE);
+    return ErrVoid(Error::UnsupportedVersion);
   }
 
   uint8_t version;
@@ -174,6 +187,7 @@ bool Settings::saveToFile() const {
     return false;
   }
 
+  serialization::writePod(outputFile, SETTINGS_MAGIC);
   serialization::writePod(outputFile, SETTINGS_FILE_VERSION);
   serialization::writePod(outputFile, SETTINGS_COUNT);
   serialization::writePod(outputFile, sleepScreen);
@@ -207,6 +221,16 @@ bool Settings::saveToFile() const {
 bool Settings::loadFromFile() {
   FsFile inputFile;
   if (!SdMan.openFileForRead("SET", PAPYRIX_SETTINGS_FILE, inputFile)) {
+    return false;
+  }
+
+  // Check magic signature to detect incompatible settings files (e.g., from Crosspoint firmware)
+  uint32_t magic;
+  serialization::readPod(inputFile, magic);
+  if (magic != SETTINGS_MAGIC) {
+    Serial.printf("[%lu] [SET] Invalid settings file (wrong magic 0x%08X), deleting\n", millis(), magic);
+    inputFile.close();
+    SdMan.remove(PAPYRIX_SETTINGS_FILE);
     return false;
   }
 

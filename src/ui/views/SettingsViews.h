@@ -170,6 +170,10 @@ struct ReaderSettingsView {
       }
       return "light";
     }
+    // Bounds check to prevent array out-of-bounds access from corrupted settings
+    if (def.enumCount == 0 || values[index] >= def.enumCount) {
+      return def.enumCount > 0 ? def.enumValues[0] : "???";
+    }
     return def.enumValues[values[index]];
   }
 
@@ -225,7 +229,14 @@ struct DeviceSettingsView {
     needsRender = true;
   }
 
-  const char* getCurrentValueStr(int index) const { return DEFS[index].values[values[index]]; }
+  const char* getCurrentValueStr(int index) const {
+    const auto& def = DEFS[index];
+    // Bounds check to prevent array out-of-bounds access from corrupted settings
+    if (def.valueCount == 0 || values[index] >= def.valueCount) {
+      return def.valueCount > 0 ? def.values[0] : "???";
+    }
+    return def.values[values[index]];
+  }
 };
 
 void render(const GfxRenderer& r, const Theme& t, const DeviceSettingsView& v);
