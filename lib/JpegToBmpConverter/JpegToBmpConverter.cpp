@@ -166,6 +166,57 @@ static void writeBmpHeader2bit(Print& bmpOut, const int width, const int height)
   }
 }
 
+// JPEG SOF markers - detect unsupported encoding types
+// SOF0 (0xC0) = Baseline DCT (supported)
+// SOF1 (0xC1) = Extended sequential DCT (supported)
+// SOF2 (0xC2) = Progressive DCT (NOT supported)
+// SOF9 (0xC9) = Extended sequential DCT, arithmetic (NOT supported)
+// SOF10 (0xCA) = Progressive DCT, arithmetic (NOT supported)
+static bool isUnsupportedJpeg(FsFile& file) {
+  const uint64_t originalPos = file.position();
+  file.seek(0);
+
+  uint8_t buf[2];
+  bool isProgressive = false;
+
+  // Scan for SOF marker
+  while (file.read(buf, 1) == 1) {
+    if (buf[0] != 0xFF) continue;
+
+    if (file.read(buf, 1) != 1) break;
+
+    // Skip padding FFs
+    while (buf[0] == 0xFF) {
+      if (file.read(buf, 1) != 1) break;
+    }
+
+    const uint8_t marker = buf[0];
+
+    // Check for unsupported SOF markers (progressive or arithmetic coding)
+    if (marker == 0xC2 || marker == 0xC9 || marker == 0xCA) {
+      isProgressive = true;
+      break;
+    }
+
+    // Baseline/extended sequential DCT - supported
+    if (marker == 0xC0 || marker == 0xC1) {
+      isProgressive = false;
+      break;
+    }
+
+    // Skip variable-length segments (not SOF, SOS, or standalone markers)
+    if (marker != 0xD8 && marker != 0xD9 && marker != 0x01 && !(marker >= 0xD0 && marker <= 0xD7)) {
+      if (file.read(buf, 2) != 2) break;
+      const uint16_t len = (buf[0] << 8) | buf[1];
+      if (len < 2) break;
+      file.seek(file.position() + len - 2);
+    }
+  }
+
+  file.seek(originalPos);
+  return isProgressive;
+}
+
 // Callback function for picojpeg to read JPEG data
 unsigned char JpegToBmpConverter::jpegReadCallback(unsigned char* pBuf, const unsigned char buf_size,
                                                    unsigned char* pBytes_actually_read, void* pCallback_data) {
@@ -203,6 +254,12 @@ bool JpegToBmpConverter::jpegFileToBmpStreamInternal(FsFile& jpegFile, Print& bm
                                                      bool oneBit, bool quickMode) {
   Serial.printf("[%lu] [JPG] Converting JPEG to %s BMP (target: %dx%d)%s\n", millis(), oneBit ? "1-bit" : "2-bit",
                 targetWidth, targetHeight, quickMode ? " [QUICK]" : "");
+
+  // Check for unsupported JPEG encoding (progressive or arithmetic) before attempting decode
+  if (isUnsupportedJpeg(jpegFile)) {
+    Serial.printf("[%lu] [JPG] Unsupported JPEG encoding (progressive or arithmetic), skipping\n", millis());
+    return false;
+  }
 
   // Setup context for picojpeg callback
   JpegReadContext context = {.file = jpegFile, .bufferPos = 0, .bufferFilled = 0};
