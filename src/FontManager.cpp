@@ -37,35 +37,50 @@ bool FontManager::loadFontFamily(const char* familyName, int fontId) {
     return false;
   }
 
+  struct StyleInfo {
+    const char* filename;
+    EpdFontFamily::Style style;
+  };
+  const StyleInfo styles[] = {{"regular.epdfont", EpdFontFamily::REGULAR},
+                              {"bold.epdfont", EpdFontFamily::BOLD},
+                              {"italic.epdfont", EpdFontFamily::ITALIC}};
+
   LoadedFamily family;
   family.fontId = fontId;
+  EpdFont* fontPtrs[4] = {nullptr, nullptr, nullptr, nullptr};
 
-  // Only load regular font to save memory (~150KB savings)
-  // Bold/italic/bold_italic will use the same regular font
-  char fontPath[80];
-  snprintf(fontPath, sizeof(fontPath), "%s/regular.epdfont", basePath);
+  for (const auto& s : styles) {
+    char fontPath[80];
+    snprintf(fontPath, sizeof(fontPath), "%s/%s", basePath, s.filename);
 
-  // Use streaming mode by default (saves ~50KB RAM per font)
-  LoadedFont loaded = _useStreamingFonts ? loadStreamingFont(fontPath) : loadSingleFont(fontPath);
+    if (!SdMan.exists(fontPath)) {
+      if (s.style == EpdFontFamily::REGULAR) {
+        return false;  // Regular is required
+      }
+      continue;
+    }
 
-  if (!loaded.font && !loaded.streamingFont) {
-    return false;
+    LoadedFont loaded = _useStreamingFonts ? loadStreamingFont(fontPath) : loadSingleFont(fontPath);
+
+    if (!loaded.font && !loaded.streamingFont) {
+      if (s.style == EpdFontFamily::REGULAR) {
+        return false;
+      }
+      continue;
+    }
+
+    // Create EpdFont wrapper if streaming
+    if (loaded.streamingFont) {
+      loaded.font = new EpdFont(loaded.streamingFont->getData());
+      renderer->setStreamingFont(fontId, s.style, loaded.streamingFont);
+    }
+
+    fontPtrs[s.style] = loaded.font;
+    family.fonts.push_back(loaded);
   }
 
-  family.fonts.push_back(loaded);
-
-  // Create font family with regular font for all styles
-  // For streaming fonts, we wrap the StreamingEpdFont in an EpdFont adapter
-  EpdFont* fontPtr = loaded.font;
-  if (loaded.streamingFont) {
-    // StreamingEpdFont provides same getData() interface, but we need an EpdFont wrapper
-    fontPtr = new EpdFont(loaded.streamingFont->getData());
-    // Update the vector entry with the new font pointer (needed for cleanup)
-    family.fonts.back().font = fontPtr;
-    // Register streaming font with renderer for bitmap access
-    renderer->setStreamingFont(fontId, loaded.streamingFont);
-  }
-  EpdFontFamily fontFamily(fontPtr, fontPtr, fontPtr, fontPtr);
+  // Bold-italic (4th param) uses bold font; EpdFontFamily falls back to regular if nullptr
+  EpdFontFamily fontFamily(fontPtrs[0], fontPtrs[1], fontPtrs[2], fontPtrs[1]);
   renderer->insertFont(fontId, fontFamily);
 
   // Store for cleanup

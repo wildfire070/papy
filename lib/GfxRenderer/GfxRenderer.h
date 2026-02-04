@@ -4,6 +4,7 @@
 #include <EpdFontFamily.h>
 #include <ThaiCluster.h>
 
+#include <array>
 #include <map>
 #include <unordered_map>
 #include <vector>
@@ -38,7 +39,8 @@ class GfxRenderer {
   Orientation orientation;
   uint8_t* bwBufferChunks[BW_BUFFER_NUM_CHUNKS] = {nullptr};
   std::map<int, EpdFontFamily> fontMap;
-  std::map<int, StreamingEpdFont*> _streamingFonts;
+  // Streaming fonts: [fontId] -> array of [REGULAR, BOLD, ITALIC] (BOLD_ITALIC uses BOLD)
+  std::map<int, std::array<StreamingEpdFont*, 3>> _streamingFonts;
   ExternalFont* _externalFont = nullptr;
 
   // Pre-allocated row buffers for bitmap rendering (reduces heap fragmentation)
@@ -98,11 +100,20 @@ class GfxRenderer {
   void clearWidthCache() { wordWidthCache.clear(); }
   void setExternalFont(ExternalFont* font) { _externalFont = font; }
   ExternalFont* getExternalFont() const { return _externalFont; }
-  void setStreamingFont(int fontId, StreamingEpdFont* font) { _streamingFonts[fontId] = font; }
+
+  void setStreamingFont(int fontId, EpdFontFamily::Style style, StreamingEpdFont* font) {
+    int idx = (style == EpdFontFamily::BOLD_ITALIC) ? EpdFontFamily::BOLD : style;
+    // std::map::operator[] value-initializes new entries, so array elements are nullptr by default
+    _streamingFonts[fontId][idx] = font;
+  }
+  void setStreamingFont(int fontId, StreamingEpdFont* font) { _streamingFonts[fontId][EpdFontFamily::REGULAR] = font; }
   void removeStreamingFont(int fontId) { _streamingFonts.erase(fontId); }
-  StreamingEpdFont* getStreamingFont(int fontId) const {
+  StreamingEpdFont* getStreamingFont(int fontId, EpdFontFamily::Style style = EpdFontFamily::REGULAR) const {
     auto it = _streamingFonts.find(fontId);
-    return it != _streamingFonts.end() ? it->second : nullptr;
+    if (it == _streamingFonts.end()) return nullptr;
+    int idx = (style == EpdFontFamily::BOLD_ITALIC) ? EpdFontFamily::BOLD : style;
+    StreamingEpdFont* sf = it->second[idx];
+    return sf ? sf : it->second[EpdFontFamily::REGULAR];
   }
 
   // Orientation control (affects logical width/height and coordinate transforms)
