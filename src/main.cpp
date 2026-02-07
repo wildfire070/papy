@@ -160,9 +160,10 @@ void verifyWakeupLongPress(esp_reset_reason_t resetReason) {
   }
 
   // Fast path for short press mode - skip verification entirely.
-  // When "Short Power Button" is set to "Sleep", rtcPowerButtonDurationMs is 10ms.
-  // Needed because inputManager.isPressed() may take up to ~500ms to return the correct state after wake-up.
-  if (rtcPowerButtonDurationMs <= 10) {
+  // Uses settings directly (not RTC variable) so it works even after a full power cycle
+  // where RTC memory is lost. Needed because inputManager.isPressed() may take up to
+  // ~500ms to return the correct state after wake-up.
+  if (papyrix::core.settings.shortPwrBtn == papyrix::Settings::PowerSleep) {
     Serial.printf("[%lu] [   ] Skipping wakeup verification (short press mode)\n", millis());
     return;
   }
@@ -170,7 +171,7 @@ void verifyWakeupLongPress(esp_reset_reason_t resetReason) {
   // Give the user up to 1000ms to start holding the power button, and must hold for the configured duration
   const auto start = millis();
   bool abort = false;
-  const uint16_t requiredPressDuration = rtcPowerButtonDurationMs;
+  const uint16_t requiredPressDuration = papyrix::core.settings.getPowerButtonDuration();
 
   inputManager.update();
   // Verify the user has actually pressed
@@ -301,6 +302,21 @@ bool earlyInit() {
   }
 
   inputManager.begin();
+
+  // Initialize SPI and SD card before wakeup verification so settings are available
+  SPI.begin(EPD_SCLK, SD_SPI_MISO, EPD_MOSI, EPD_CS);
+  if (!SdMan.begin()) {
+    Serial.printf("[%lu] [   ] SD card initialization failed\n", millis());
+    setupDisplayAndFonts();
+    showErrorScreen("SD card error");
+    return false;
+  }
+
+  // Load settings before wakeup verification - without this, a full power cycle
+  // (no USB) resets RTC memory and the short power button setting is ignored
+  papyrix::core.settings.loadFromFile();
+  rtcPowerButtonDurationMs = papyrix::core.settings.getPowerButtonDuration();
+
   const auto wakeup = getWakeupInfo();
   if (wakeup.isPowerButton) {
     verifyWakeupLongPress(wakeup.resetReason);
@@ -310,21 +326,6 @@ bool earlyInit() {
 
   // Initialize battery ADC pin with proper attenuation for 0-3.3V range
   analogSetPinAttenuation(BAT_GPIO0, ADC_11db);
-
-  // Initialize SPI with custom pins
-  SPI.begin(EPD_SCLK, SD_SPI_MISO, EPD_MOSI, EPD_CS);
-
-  // SD Card Initialization - critical
-  if (!SdMan.begin()) {
-    Serial.printf("[%lu] [   ] SD card initialization failed\n", millis());
-    setupDisplayAndFonts();
-    showErrorScreen("SD card error");
-    return false;
-  }
-
-  // Load settings early (needed for theme/font decisions)
-  papyrix::core.settings.loadFromFile();
-  rtcPowerButtonDurationMs = papyrix::core.settings.getPowerButtonDuration();
 
   // Initialize internal flash filesystem for font storage
   if (!LittleFS.begin(false)) {
