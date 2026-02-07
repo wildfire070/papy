@@ -53,6 +53,7 @@ class ChapterHtmlSlimParser {
   // XML parser handle for stopping mid-parse
   XML_Parser xmlParser_ = nullptr;
   bool stopRequested_ = false;
+  bool pendingEmergencySplit_ = false;
 
   // External abort callback for cooperative cancellation
   std::function<bool()> externalAbortCallback_ = nullptr;

@@ -39,7 +39,7 @@ class ParsedText {
 
  public:
   explicit ParsedText(const TextBlock::BLOCK_STYLE style, const uint8_t indentLevel,
-                      const bool hyphenationEnabled = true, const bool useGreedy = false)
+                      const bool hyphenationEnabled = true, const bool useGreedy = true)
       : style(style), indentLevel(indentLevel), hyphenationEnabled(hyphenationEnabled), useGreedyBreaking(useGreedy) {}
   ~ParsedText() = default;
 

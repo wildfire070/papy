@@ -22,8 +22,8 @@
 const char* HEADER_TAGS[] = {"h1", "h2", "h3", "h4", "h5", "h6"};
 constexpr int NUM_HEADER_TAGS = 6;
 
-const char* BLOCK_TAGS[] = {"p", "li", "div", "br", "blockquote"};
-constexpr int NUM_BLOCK_TAGS = 5;
+const char* BLOCK_TAGS[] = {"p", "li", "div", "br", "blockquote", "question", "answer", "quotation"};
+constexpr int NUM_BLOCK_TAGS = 8;
 
 const char* BOLD_TAGS[] = {"b", "strong"};
 constexpr int NUM_BOLD_TAGS = 2;
@@ -449,7 +449,25 @@ int main() {
     runner.expectTrue(parser.getAllText().find("Quoted") != std::string::npos, "blockquote: content visible");
   }
 
-  // Test 18: Pre/code blocks
+  // Test 18: Custom block tags (question, answer, quotation)
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body>"
+        "<question>What is the meaning?</question>"
+        "<answer>42</answer>"
+        "<quotation>To be or not to be</quotation>"
+        "</body></html>");
+    runner.expectTrue(ok, "custom_block_tags: parses successfully");
+    runner.expectTrue(parser.getTextElementCount() >= 3, "custom_block_tags: creates separate text elements");
+    runner.expectTrue(parser.getAllText().find("What is the meaning?") != std::string::npos,
+                      "custom_block_tags: question content visible");
+    runner.expectTrue(parser.getAllText().find("42") != std::string::npos, "custom_block_tags: answer content visible");
+    runner.expectTrue(parser.getAllText().find("To be or not to be") != std::string::npos,
+                      "custom_block_tags: quotation content visible");
+  }
+
+  // Test 19: Pre/code blocks
   {
     TestParser parser;
     bool ok = parser.parse("<html><body><pre><code>function test() { return true; }</code></pre></body></html>");
@@ -457,7 +475,7 @@ int main() {
     runner.expectTrue(parser.getAllText().find("function") != std::string::npos, "pre_code: code visible");
   }
 
-  // Test 19: Bold and italic tracking
+  // Test 20: Bold and italic tracking
   {
     TestParser parser;
     bool ok = parser.parse("<html><body><p><b>Bold</b> and <i>Italic</i></p></body></html>");
@@ -467,7 +485,7 @@ int main() {
     runner.expectTrue(parser.getAllText().find("Italic") != std::string::npos, "bold_italic: italic text visible");
   }
 
-  // Test 20: Nested skip regions work correctly
+  // Test 21: Nested skip regions work correctly
   {
     TestParser parser;
     bool ok = parser.parse(

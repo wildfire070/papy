@@ -19,7 +19,7 @@ constexpr int NUM_HEADER_TAGS = sizeof(HEADER_TAGS) / sizeof(HEADER_TAGS[0]);
 // Minimum file size (in bytes) to show progress bar - smaller chapters don't benefit from it
 constexpr size_t MIN_SIZE_FOR_PROGRESS = 50 * 1024;  // 50KB
 
-const char* BLOCK_TAGS[] = {"p", "li", "div", "br", "blockquote"};
+const char* BLOCK_TAGS[] = {"p", "li", "div", "br", "blockquote", "question", "answer", "quotation"};
 constexpr int NUM_BLOCK_TAGS = sizeof(BLOCK_TAGS) / sizeof(BLOCK_TAGS[0]);
 
 const char* BOLD_TAGS[] = {"b", "strong"};
@@ -80,6 +80,7 @@ void ChapterHtmlSlimParser::startNewTextBlock(const TextBlock::BLOCK_STYLE style
     }
 
     makePages();
+    pendingEmergencySplit_ = false;
   }
   currentTextBlock.reset(new ParsedText(style, config.indentLevel, config.hyphenation));
 }
@@ -324,15 +325,9 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
     self->partWordBuffer[self->partWordBufferIndex++] = s[i];
   }
 
-  // If we have > 750 words buffered up, perform the layout and consume out all but the last line
-  // There should be enough here to build out 1-2 full pages and doing this will free up a lot of
-  // memory.
-  // Spotted when reading Intermezzo, there are some really long text blocks in there.
+  // Flag for deferred split - handled outside XML callback to avoid stack overflow
   if (self->currentTextBlock && self->currentTextBlock->size() > 750) {
-    Serial.printf("[%lu] [EHP] Text block too long, splitting into multiple pages\n", millis());
-    self->currentTextBlock->layoutAndExtractLines(
-        self->renderer, self->config.fontId, self->config.viewportWidth,
-        [self](const std::shared_ptr<TextBlock>& textBlock) { self->addLineToPage(textBlock); }, false);
+    self->pendingEmergencySplit_ = true;
   }
 }
 
@@ -399,6 +394,7 @@ bool ChapterHtmlSlimParser::shouldAbort() const {
 bool ChapterHtmlSlimParser::parseAndBuildPages() {
   parseStartTime_ = millis();
   loopCounter_ = 0;
+  pendingEmergencySplit_ = false;
   dataUriStripper_.reset();
   startNewTextBlock(static_cast<TextBlock::BLOCK_STYLE>(config.paragraphAlignment));
 
@@ -496,6 +492,25 @@ bool ChapterHtmlSlimParser::parseAndBuildPages() {
       currentPage.reset();
       currentTextBlock.reset();
       return false;
+    }
+
+    // Deferred emergency split - runs outside XML callback to avoid stack overflow.
+    // Inside characterData(), the call chain includes expat internal frames (~1-2KB).
+    // By splitting here, we save that stack space - critical for external fonts which
+    // add extra frames through getExternalGlyphWidth() → ExternalFont::getGlyph() (SD I/O).
+    if (pendingEmergencySplit_ && currentTextBlock && !currentTextBlock->isEmpty()) {
+      pendingEmergencySplit_ = false;
+      const size_t freeHeap = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+      if (freeHeap < MIN_FREE_HEAP * 2) {
+        Serial.printf("[%lu] [EHP] Low memory (%zu), aborting parse\n", millis(), freeHeap);
+        break;
+      }
+      Serial.printf("[%lu] [EHP] Text block too long (%zu words), splitting\n", millis(), currentTextBlock->size());
+      currentTextBlock->setUseGreedyBreaking(true);
+      currentTextBlock->layoutAndExtractLines(
+          renderer, config.fontId, config.viewportWidth,
+          [this](const std::shared_ptr<TextBlock>& textBlock) { addLineToPage(textBlock); }, false,
+          [this]() -> bool { return shouldAbort(); });
     }
   } while (!done);
 
