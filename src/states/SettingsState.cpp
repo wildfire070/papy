@@ -1,5 +1,7 @@
 #include "SettingsState.h"
 
+#include <algorithm>
+
 #include <Arduino.h>
 #include <GfxRenderer.h>
 #include <LittleFS.h>  // Must be before SdFat includes to avoid FILE_READ/FILE_WRITE redefinition
@@ -513,6 +515,12 @@ void SettingsState::loadDeviceSettings() {
 
   // Index 5: Sunlight Fading Fix (toggle)
   deviceView_.values[5] = settings.sunlightFadingFix;
+
+  // Index 6: Front Buttons (B/C/L/R=0, L/R/B/C=1)
+  deviceView_.values[6] = settings.frontButtonLayout;
+
+  // Index 7: Side Buttons (Prev/Next=0, Next/Prev=1)
+  deviceView_.values[7] = settings.sideButtonLayout;
 }
 
 void SettingsState::saveDeviceSettings() {
@@ -535,6 +543,12 @@ void SettingsState::saveDeviceSettings() {
 
   // Index 5: Sunlight Fading Fix
   settings.sunlightFadingFix = deviceView_.values[5];
+
+  // Index 6: Front Buttons
+  settings.frontButtonLayout = std::min(deviceView_.values[6], uint8_t(Settings::FrontLRBC));
+
+  // Index 7: Side Buttons
+  settings.sideButtonLayout = std::min(deviceView_.values[7], uint8_t(Settings::NextPrev));
 }
 
 void SettingsState::populateSystemInfo() {

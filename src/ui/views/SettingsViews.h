@@ -199,6 +199,8 @@ struct DeviceSettingsView {
   static constexpr const char* const SHORT_PWR_VALUES[] = {"Ignore", "Sleep", "Page Turn"};
   static constexpr const char* const PAGES_REFRESH_VALUES[] = {"1", "5", "10", "15", "30"};
   static constexpr const char* const TOGGLE_VALUES[] = {"OFF", "ON"};
+  static constexpr const char* const FRONT_BUTTON_VALUES[] = {"B/C/L/R", "L/R/B/C"};
+  static constexpr const char* const SIDE_BUTTON_VALUES[] = {"Prev/Next", "Next/Prev"};
 
   struct SettingDef {
     const char* label;
@@ -206,7 +208,7 @@ struct DeviceSettingsView {
     uint8_t valueCount;
   };
 
-  static constexpr int SETTING_COUNT = 6;
+  static constexpr int SETTING_COUNT = 8;
   static const SettingDef DEFS[SETTING_COUNT];
 
   ButtonBar buttons{"Back", "", "<", ">"};

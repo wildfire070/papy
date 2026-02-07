@@ -35,6 +35,9 @@ struct Settings {
   // Side button layout
   enum SideButtonLayout : uint8_t { PrevNext = 0, NextPrev = 1 };
 
+  // Front button layout
+  enum FrontButtonLayout : uint8_t { FrontBCLR = 0, FrontLRBC = 1 };
+
   // Auto-sleep timeout (in minutes)
   enum AutoSleepTimeout : uint8_t { Sleep5Min = 0, Sleep10Min = 1, Sleep15Min = 2, Sleep30Min = 3, SleepNever = 4 };
 
@@ -81,6 +84,7 @@ struct Settings {
   char fileListDir[256] = "/";          // FileListState: last directory
   char fileListSelectedName[128] = "";  // FileListState: last selected filename
   uint16_t fileListSelectedIndex = 0;   // FileListState: last selected index
+  uint8_t frontButtonLayout = FrontBCLR;
 
   // Persistence (using drivers::Storage wrapper)
   Result<void> load(drivers::Storage& storage);

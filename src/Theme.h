@@ -5,11 +5,6 @@
 
 #include "config.h"
 
-// Front button layout options
-// Default: Back, Confirm, Left, Right
-// Swapped: Left, Right, Back, Confirm
-enum FrontButtonLayout { FRONT_BCLR = 0, FRONT_LRBC = 1 };
-
 /**
  * Theme configuration for Papyrix UI.
  *
@@ -58,9 +53,6 @@ struct Theme {
   char readerFontFamilySmall[32];
   char readerFontFamilyMedium[32];
   char readerFontFamilyLarge[32];
-
-  // UI Layout settings
-  uint8_t frontButtonLayout;  // FrontButtonLayout enum: FRONT_BCLR or FRONT_LRBC
 };
 
 /**
@@ -92,7 +84,6 @@ inline Theme getBuiltinLightTheme() {
   theme.readerFontFamilySmall[0] = '\0';
   theme.readerFontFamilyMedium[0] = '\0';
   theme.readerFontFamilyLarge[0] = '\0';
-  theme.frontButtonLayout = FRONT_BCLR;
   return theme;
 }
 
@@ -125,7 +116,6 @@ inline Theme getBuiltinDarkTheme() {
   theme.readerFontFamilySmall[0] = '\0';
   theme.readerFontFamilyMedium[0] = '\0';
   theme.readerFontFamilyLarge[0] = '\0';
-  theme.frontButtonLayout = FRONT_BCLR;
   return theme;
 }
 

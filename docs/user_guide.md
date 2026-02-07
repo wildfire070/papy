@@ -131,7 +131,7 @@ Reading and display settings:
 
 - **Theme** (default: light)
   - Select from available themes (light, dark, or custom themes from SD card)
-  - Themes control colors, button mappings, and fonts
+  - Themes control colors, layout, and fonts
   - See [Customization Guide](customization.md) for creating custom themes
 
 - **Font Size** (default: Small)
@@ -220,6 +220,16 @@ Power and device behavior settings:
   - Prevents screen fading in bright sunlight (UV exposure causes the SSD1677 driver IC to fade to white)
   - Adds ~100-200ms overhead per page turn
   - Recommended for white X4 devices used outdoors
+
+- **Front Buttons** (default: B/C/L/R)
+  - Options: B/C/L/R, L/R/B/C
+  - **B/C/L/R:** Back, Confirm, Left, Right (default layout)
+  - **L/R/B/C:** Left, Right, Back, Confirm (swapped layout)
+
+- **Side Buttons** (default: Prev/Next)
+  - Options: Prev/Next, Next/Prev
+  - **Prev/Next:** Volume Up = previous page, Volume Down = next page
+  - **Next/Prev:** Volume Up = next page, Volume Down = previous page
 
 #### Cleanup
 

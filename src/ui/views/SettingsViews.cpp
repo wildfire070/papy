@@ -35,11 +35,14 @@ constexpr const char* const DeviceSettingsView::STARTUP_VALUES[];
 constexpr const char* const DeviceSettingsView::SHORT_PWR_VALUES[];
 constexpr const char* const DeviceSettingsView::PAGES_REFRESH_VALUES[];
 constexpr const char* const DeviceSettingsView::TOGGLE_VALUES[];
+constexpr const char* const DeviceSettingsView::FRONT_BUTTON_VALUES[];
+constexpr const char* const DeviceSettingsView::SIDE_BUTTON_VALUES[];
 
 const DeviceSettingsView::SettingDef DeviceSettingsView::DEFS[SETTING_COUNT] = {
     {"Auto Sleep Timeout", SLEEP_TIMEOUT_VALUES, 5}, {"Sleep Screen", SLEEP_SCREEN_VALUES, 4},
     {"Startup Behavior", STARTUP_VALUES, 2},         {"Short Power Button", SHORT_PWR_VALUES, 3},
     {"Pages Per Refresh", PAGES_REFRESH_VALUES, 5},  {"Sunlight Fading Fix", TOGGLE_VALUES, 2},
+    {"Front Buttons", FRONT_BUTTON_VALUES, 2},       {"Side Buttons", SIDE_BUTTON_VALUES, 2},
 };
 
 // Render functions

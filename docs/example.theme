@@ -33,8 +33,6 @@ margin_side = 3
 item_height = 30
 # Vertical space between items in pixels
 item_spacing = 0
-# Front button mapping: bclr (Back/Confirm/Left/Right) or lrbc (Left/Right/Back/Confirm)
-front_buttons = bclr
 
 [fonts]
 # Custom UI font family name (leave empty for builtin UI font)

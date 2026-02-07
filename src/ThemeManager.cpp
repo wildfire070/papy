@@ -96,8 +96,6 @@ bool ThemeManager::loadFromFileToTheme(const char* path, Theme& theme) {
         theme.itemPaddingX = static_cast<uint8_t>(IniParser::parseInt(value, 8));
       } else if (strcmp(key, "item_value_padding") == 0) {
         theme.itemValuePadding = static_cast<uint8_t>(IniParser::parseInt(value, 20));
-      } else if (strcmp(key, "front_buttons") == 0) {
-        theme.frontButtonLayout = (strcmp(value, "lrbc") == 0) ? FRONT_LRBC : FRONT_BCLR;
       }
     }
     // [fonts] section
@@ -190,7 +188,6 @@ bool ThemeManager::saveToFile(const char* path, const Theme& theme) {
   file.printf("item_spacing = %d\n", theme.itemSpacing);
   file.printf("item_padding_x = %d\n", theme.itemPaddingX);
   file.printf("item_value_padding = %d\n", theme.itemValuePadding);
-  file.printf("front_buttons = %s\n", theme.frontButtonLayout == FRONT_LRBC ? "lrbc" : "bclr");
   file.println();
 
   file.println("[fonts]");

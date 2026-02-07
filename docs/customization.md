@@ -6,7 +6,7 @@ This guide explains how to create custom themes and add custom fonts to Papyrix.
 
 ## Custom Themes
 
-Papyrix supports user-customizable themes stored on the SD card. Themes control colors, layout options, and button mappings.
+Papyrix supports user-customizable themes stored on the SD card. Themes control colors, layout options, and fonts.
 
 ### Theme File Location
 
@@ -64,7 +64,6 @@ margin_top = 9            # Top margin in pixels
 margin_side = 3           # Side margin in pixels
 item_height = 30          # Menu item height
 item_spacing = 0          # Space between menu items
-front_buttons = bclr      # bclr or lrbc (see below)
 
 [fonts]
 ui_font =                 # UI font family (empty = builtin)
@@ -117,8 +116,8 @@ Optional metadata for the theme:
   - Note: Chapter selection screens use automatic 2-line item heights based on font size
 - **item_spacing** - Vertical space between items in pixels
   - Default: `0`
-- **front_buttons** - Front button mapping
-  - Values: `bclr` (Back, Confirm, Left, Right) or `lrbc` (Left, Right, Back, Confirm)
+
+> **Note:** Front button layout (B/C/L/R vs L/R/B/C) and side button layout are now configured in **Settings > Device** instead of the theme file.
 
 #### Fonts Section
 
@@ -151,7 +150,6 @@ margin_top = 9
 margin_side = 3
 item_height = 30
 item_spacing = 0
-front_buttons = bclr
 
 [fonts]
 ui_font =
@@ -180,7 +178,6 @@ margin_top = 5
 margin_side = 5
 item_height = 25
 item_spacing = 2
-front_buttons = bclr
 
 [fonts]
 ui_font =
@@ -209,7 +206,6 @@ margin_top = 9
 margin_side = 3
 item_height = 30
 item_spacing = 0
-front_buttons = bclr
 
 [fonts]
 ui_font = noto-sans

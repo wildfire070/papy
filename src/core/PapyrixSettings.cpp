@@ -17,10 +17,10 @@ namespace {
 constexpr uint32_t SETTINGS_MAGIC = 0x53585050;
 // Minimum version we can read (allows backward compatibility)
 constexpr uint8_t MIN_SETTINGS_VERSION = 3;
-// Version 8: Added FontXSmall (shifted font size enum values +1)
-constexpr uint8_t SETTINGS_FILE_VERSION = 8;
+// Version 9: Moved frontButtonLayout from Theme to Settings
+constexpr uint8_t SETTINGS_FILE_VERSION = 9;
 // Increment this when adding new persisted settings fields
-constexpr uint8_t SETTINGS_COUNT = 24;
+constexpr uint8_t SETTINGS_COUNT = 25;
 }  // namespace
 
 Result<void> Settings::save(drivers::Storage& storage) const {
@@ -62,6 +62,7 @@ Result<void> Settings::save(drivers::Storage& storage) const {
   outputFile.write(reinterpret_cast<const uint8_t*>(fileListDir), sizeof(fileListDir));
   outputFile.write(reinterpret_cast<const uint8_t*>(fileListSelectedName), sizeof(fileListSelectedName));
   serialization::writePod(outputFile, fileListSelectedIndex);
+  serialization::writePod(outputFile, frontButtonLayout);
   outputFile.close();
 
   Serial.printf("[%lu] [SET] Settings saved to file\n", millis());
@@ -160,6 +161,8 @@ Result<void> Settings::load(drivers::Storage& storage) {
     if (++settingsRead >= fileSettingsCount) break;
     serialization::readPod(inputFile, fileListSelectedIndex);
     if (++settingsRead >= fileSettingsCount) break;
+    serialization::readPodValidated(inputFile, frontButtonLayout, uint8_t(2));
+    if (++settingsRead >= fileSettingsCount) break;
   } while (false);
 
   // Migrate font size from version < 8 (enum values shifted +1 for FontXSmall)
@@ -231,6 +234,7 @@ bool Settings::saveToFile() const {
   outputFile.write(reinterpret_cast<const uint8_t*>(fileListDir), sizeof(fileListDir));
   outputFile.write(reinterpret_cast<const uint8_t*>(fileListSelectedName), sizeof(fileListSelectedName));
   serialization::writePod(outputFile, fileListSelectedIndex);
+  serialization::writePod(outputFile, frontButtonLayout);
   outputFile.close();
 
   Serial.printf("[%lu] [SET] Settings saved to file\n", millis());
@@ -324,6 +328,8 @@ bool Settings::loadFromFile() {
     fileListSelectedName[sizeof(fileListSelectedName) - 1] = '\0';
     if (++settingsRead >= fileSettingsCount) break;
     serialization::readPod(inputFile, fileListSelectedIndex);
+    if (++settingsRead >= fileSettingsCount) break;
+    serialization::readPodValidated(inputFile, frontButtonLayout, uint8_t(2));
     if (++settingsRead >= fileSettingsCount) break;
   } while (false);
 
