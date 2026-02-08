@@ -13,10 +13,11 @@ namespace ScriptDetector {
 
 // Script classification for rendering decisions
 enum class Script : uint8_t {
-  LATIN,  // Latin, Cyrillic, Greek, and other space-separated scripts
-  CJK,    // Chinese, Japanese, Korean (no spaces between characters)
-  THAI,   // Thai script (requires shaping, no word spaces)
-  OTHER   // Symbols, digits, punctuation, unknown
+  LATIN,   // Latin, Cyrillic, Greek, and other space-separated scripts
+  CJK,     // Chinese, Japanese, Korean (no spaces between characters)
+  THAI,    // Thai script (requires shaping, no word spaces)
+  ARABIC,  // Arabic script (requires shaping, RTL)
+  OTHER    // Symbols, digits, punctuation, unknown
 };
 
 /**
@@ -50,18 +51,27 @@ bool isCjkCodepoint(uint32_t cp);
 inline bool isThaiCodepoint(uint32_t cp) { return cp >= 0x0E00 && cp <= 0x0E7F; }
 
 /**
+ * Check if a codepoint is in an Arabic Unicode block.
+ */
+inline bool isArabicCodepoint(uint32_t cp) {
+  return (cp >= 0x0600 && cp <= 0x06FF) ||  // Arabic
+         (cp >= 0x0750 && cp <= 0x077F) ||  // Arabic Supplement
+         (cp >= 0xFB50 && cp <= 0xFDFF) ||  // Arabic Presentation Forms-A
+         (cp >= 0xFE70 && cp <= 0xFEFF);    // Arabic Presentation Forms-B
+}
+
+/**
  * Check if text contains any Thai codepoints (for fast-path detection).
- *
- * @param text UTF-8 encoded text
- * @return true if any Thai character found
  */
 bool containsThai(const char* text);
 
 /**
+ * Check if text contains any Arabic codepoints (for fast-path detection).
+ */
+bool containsArabic(const char* text);
+
+/**
  * Check if text contains any CJK codepoints (for fast-path detection).
- *
- * @param text UTF-8 encoded text
- * @return true if any CJK character found
  */
 bool containsCjk(const char* text);
 

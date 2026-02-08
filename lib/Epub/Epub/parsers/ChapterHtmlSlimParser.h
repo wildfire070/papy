@@ -54,6 +54,8 @@ class ChapterHtmlSlimParser {
   XML_Parser xmlParser_ = nullptr;
   bool stopRequested_ = false;
   bool pendingEmergencySplit_ = false;
+  bool pendingRtl_ = false;
+  int rtlUntilDepth_ = INT_MAX;
   bool aborted_ = false;
 
   // External abort callback for cooperative cancellation

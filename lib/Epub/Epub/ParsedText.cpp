@@ -432,13 +432,8 @@ void ParsedText::extractLine(const size_t breakIndex, const int pageWidth, const
     spacing = spareSpace / static_cast<int>(actualGapCount);
   }
 
-  // Calculate initial x position
-  uint16_t xpos = 0;
-  if (style == TextBlock::RIGHT_ALIGN) {
-    xpos = spareSpace - static_cast<int>(actualGapCount) * spaceWidth;
-  } else if (style == TextBlock::CENTER_ALIGN) {
-    xpos = (spareSpace - static_cast<int>(actualGapCount) * spaceWidth) / 2;
-  }
+  // For RTL text, default to right alignment
+  const auto effectiveStyle = (isRtl && style == TextBlock::LEFT_ALIGN) ? TextBlock::RIGHT_ALIGN : style;
 
   // Build WordData vector directly, consuming from front of lists
   // Punctuation that attaches to the previous word doesn't get space before it
@@ -448,25 +443,54 @@ void ParsedText::extractLine(const size_t breakIndex, const int pageWidth, const
   auto wordIt = words.begin();
   auto styleIt = wordStyles.begin();
 
-  for (size_t wordIdx = 0; wordIdx < lineWordCount; wordIdx++) {
-    const uint16_t currentWordWidth = wordWidths[lastBreakAt + wordIdx];
-    lineData.push_back({std::move(*wordIt), xpos, *styleIt});
+  if (isRtl) {
+    // RTL: Position words from right to left
+    uint16_t xpos;
+    if (effectiveStyle == TextBlock::CENTER_ALIGN) {
+      xpos = pageWidth - (spareSpace - static_cast<int>(actualGapCount) * spacing) / 2;
+    } else {
+      xpos = pageWidth;  // RIGHT_ALIGN and JUSTIFIED start from right edge
+    }
 
-    // Add spacing after this word, unless the next word is attaching punctuation
-    auto nextWordIt = wordIt;
-    ++nextWordIt;
-    const bool nextIsAttachingPunctuation = wordIdx + 1 < lineWordCount && isAttachingPunctuationWord(*nextWordIt);
+    for (size_t wordIdx = 0; wordIdx < lineWordCount; wordIdx++) {
+      const uint16_t currentWordWidth = wordWidths[lastBreakAt + wordIdx];
+      xpos -= currentWordWidth;
+      lineData.push_back({std::move(*wordIt), xpos, *styleIt});
 
-    xpos += currentWordWidth + (nextIsAttachingPunctuation ? 0 : spacing);
-    ++wordIt;
-    ++styleIt;
+      auto nextWordIt = wordIt;
+      ++nextWordIt;
+      const bool nextIsAttachingPunctuation = wordIdx + 1 < lineWordCount && isAttachingPunctuationWord(*nextWordIt);
+      xpos -= (nextIsAttachingPunctuation ? 0 : spacing);
+      ++wordIt;
+      ++styleIt;
+    }
+  } else {
+    // LTR: Position words from left to right
+    uint16_t xpos = 0;
+    if (effectiveStyle == TextBlock::RIGHT_ALIGN) {
+      xpos = spareSpace - static_cast<int>(actualGapCount) * spaceWidth;
+    } else if (effectiveStyle == TextBlock::CENTER_ALIGN) {
+      xpos = (spareSpace - static_cast<int>(actualGapCount) * spaceWidth) / 2;
+    }
+
+    for (size_t wordIdx = 0; wordIdx < lineWordCount; wordIdx++) {
+      const uint16_t currentWordWidth = wordWidths[lastBreakAt + wordIdx];
+      lineData.push_back({std::move(*wordIt), xpos, *styleIt});
+
+      auto nextWordIt = wordIt;
+      ++nextWordIt;
+      const bool nextIsAttachingPunctuation = wordIdx + 1 < lineWordCount && isAttachingPunctuationWord(*nextWordIt);
+      xpos += currentWordWidth + (nextIsAttachingPunctuation ? 0 : spacing);
+      ++wordIt;
+      ++styleIt;
+    }
   }
 
   // Remove consumed elements from lists
   words.erase(words.begin(), wordIt);
   wordStyles.erase(wordStyles.begin(), styleIt);
 
-  processLine(std::make_shared<TextBlock>(std::move(lineData), style));
+  processLine(std::make_shared<TextBlock>(std::move(lineData), effectiveStyle));
 }
 
 bool ParsedText::preSplitOversizedWords(const GfxRenderer& renderer, const int fontId, const int pageWidth,

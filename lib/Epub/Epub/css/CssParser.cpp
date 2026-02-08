@@ -281,7 +281,7 @@ void CssParser::parseRule(const std::string& selector, const std::string& proper
 
       // Store style if it has any supported properties
       if (style.hasTextAlign || style.hasFontStyle || style.hasFontWeight || style.hasTextIndent ||
-          style.hasMarginTop || style.hasMarginBottom) {
+          style.hasMarginTop || style.hasMarginBottom || style.hasDirection) {
         auto it = styleMap_.find(singleSelector);
         if (it != styleMap_.end()) {
           it->second.merge(style);
@@ -314,6 +314,15 @@ void CssParser::parseProperty(const std::string& name, const std::string& value,
   } else if (name == "margin-bottom") {
     style.marginBottom = parseMargin(value);
     style.hasMarginBottom = style.marginBottom > 0;
+  } else if (name == "direction") {
+    std::string v = toLower(trim(value));
+    if (v == "rtl") {
+      style.direction = TextDirection::Rtl;
+      style.hasDirection = true;
+    } else if (v == "ltr") {
+      style.direction = TextDirection::Ltr;
+      style.hasDirection = true;
+    }
   }
 }
 

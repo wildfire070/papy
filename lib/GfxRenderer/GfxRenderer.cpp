@@ -1,5 +1,6 @@
 #include "GfxRenderer.h"
 
+#include <ArabicShaper.h>
 #include <ExternalFont.h>
 #include <ScriptDetector.h>
 #include <StreamingEpdFont.h>
@@ -91,9 +92,11 @@ int GfxRenderer::getTextWidth(const int fontId, const char* text, const EpdFontF
     return it->second;
   }
 
-  // Check if text contains Thai - use cluster-based width calculation
+  // Check if text contains Arabic or Thai - use specialized width calculation
   int w = 0;
-  if (ScriptDetector::containsThai(text)) {
+  if (ScriptDetector::containsArabic(text)) {
+    w = getArabicTextWidth(fontId, text, style);
+  } else if (ScriptDetector::containsThai(text)) {
     w = getThaiTextWidth(fontId, text, style);
   } else if (_externalFont && _externalFont->isLoaded()) {
     // Character-by-character calculation with external font fallback
@@ -153,6 +156,12 @@ void GfxRenderer::drawText(const int fontId, const int x, const int y, const cha
 
   // no printable characters
   if (!font.hasPrintableChars(text, style)) {
+    return;
+  }
+
+  // Check if text contains Arabic script - use Arabic rendering path
+  if (ScriptDetector::containsArabic(text)) {
+    drawArabicText(fontId, x, y, text, black, style);
     return;
   }
 
@@ -1071,5 +1080,54 @@ void GfxRenderer::renderThaiCluster(const EpdFontFamily& fontFamily, const ThaiS
       baseX = *x + glyphData->advanceX;
       *x += glyphData->advanceX;
     }
+  }
+}
+
+// ============================================================================
+// Arabic Text Rendering
+// ============================================================================
+
+int GfxRenderer::getArabicTextWidth(const int fontId, const char* text, const EpdFontFamily::Style style) const {
+  if (text == nullptr || *text == '\0') return 0;
+
+  if (fontMap.count(fontId) == 0) {
+    Serial.printf("[%lu] [GFX] Font %d not found\n", millis(), fontId);
+    return 0;
+  }
+
+  const auto& font = fontMap.at(fontId);
+  int totalWidth = 0;
+
+  auto shaped = ArabicShaper::shapeText(text);
+
+  for (const auto cp : shaped) {
+    const EpdGlyph* glyphData = font.getGlyph(cp, style);
+    if (!glyphData) {
+      glyphData = font.getGlyph('?', style);
+    }
+    if (glyphData) {
+      totalWidth += glyphData->advanceX;
+    }
+  }
+
+  return totalWidth;
+}
+
+void GfxRenderer::drawArabicText(const int fontId, const int x, const int y, const char* text, const bool black,
+                                 const EpdFontFamily::Style style) const {
+  if (fontMap.count(fontId) == 0) {
+    Serial.printf("[%lu] [GFX] Font %d not found\n", millis(), fontId);
+    return;
+  }
+
+  const int yPos = y + getFontAscenderSize(fontId);
+  int xpos = x;
+
+  const auto& font = fontMap.at(fontId);
+  auto shaped = ArabicShaper::shapeText(text);
+
+  // Render each shaped codepoint (already in visual LTR order)
+  for (const auto cp : shaped) {
+    renderChar(font, cp, &xpos, &yPos, black, style, fontId);
   }
 }

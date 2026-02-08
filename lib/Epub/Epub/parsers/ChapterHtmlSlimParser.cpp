@@ -82,7 +82,7 @@ void ChapterHtmlSlimParser::startNewTextBlock(const TextBlock::BLOCK_STYLE style
     makePages();
     pendingEmergencySplit_ = false;
   }
-  currentTextBlock.reset(new ParsedText(style, config.indentLevel, config.hyphenation));
+  currentTextBlock.reset(new ParsedText(style, config.indentLevel, config.hyphenation, true, pendingRtl_));
 }
 
 void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char* name, const XML_Char** atts) {
@@ -212,15 +212,18 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
     }
   }
 
-  // Extract class and style attributes for CSS lookup
+  // Extract class, style, and dir attributes
   std::string classAttr;
   std::string styleAttr;
+  std::string dirAttr;
   if (atts != nullptr) {
     for (int i = 0; atts[i]; i += 2) {
       if (strcmp(atts[i], "class") == 0) {
         classAttr = atts[i + 1];
       } else if (strcmp(atts[i], "style") == 0) {
         styleAttr = atts[i + 1];
+      } else if (strcmp(atts[i], "dir") == 0) {
+        dirAttr = atts[i + 1];
       }
     }
   }
@@ -234,6 +237,14 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
   if (!styleAttr.empty()) {
     cssStyle.merge(CssParser::parseInlineStyle(styleAttr));
   }
+  // HTML dir attribute overrides CSS direction (case-insensitive per HTML spec)
+  if (!dirAttr.empty() && strcasecmp(dirAttr.c_str(), "rtl") == 0) {
+    cssStyle.direction = TextDirection::Rtl;
+    cssStyle.hasDirection = true;
+  } else if (!dirAttr.empty() && strcasecmp(dirAttr.c_str(), "ltr") == 0) {
+    cssStyle.direction = TextDirection::Ltr;
+    cssStyle.hasDirection = true;
+  }
 
   // Apply CSS font-weight and font-style
   if (cssStyle.hasFontWeight && cssStyle.fontWeight == CssFontWeight::Bold) {
@@ -241,6 +252,12 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
   }
   if (cssStyle.hasFontStyle && cssStyle.fontStyle == CssFontStyle::Italic) {
     self->cssItalicUntilDepth = min(self->cssItalicUntilDepth, self->depth);
+  }
+
+  // Track direction for next text block creation
+  if (cssStyle.hasDirection) {
+    self->pendingRtl_ = (cssStyle.direction == TextDirection::Rtl);
+    self->rtlUntilDepth_ = min(self->rtlUntilDepth_, self->depth);
   }
 
   if (matches(name, HEADER_TAGS, NUM_HEADER_TAGS)) {
@@ -365,6 +382,10 @@ void XMLCALL ChapterHtmlSlimParser::endElement(void* userData, const XML_Char* n
   }
   if (self->cssItalicUntilDepth == self->depth) {
     self->cssItalicUntilDepth = INT_MAX;
+  }
+  if (self->rtlUntilDepth_ == self->depth) {
+    self->rtlUntilDepth_ = INT_MAX;
+    self->pendingRtl_ = false;
   }
 }
 

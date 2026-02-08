@@ -44,6 +44,13 @@ INTERVALS_THAI = [
     (0x0E00, 0x0E7F),  # Thai
 ]
 
+INTERVALS_ARABIC = [
+    (0x0600, 0x06FF),  # Arabic
+    (0x0750, 0x077F),  # Arabic Supplement
+    (0xFB50, 0xFDFF),  # Arabic Presentation Forms-A (ligatures)
+    (0xFE70, 0xFEFF),  # Arabic Presentation Forms-B (contextual forms)
+]
+
 GlyphProps = namedtuple(
     "GlyphProps",
     ["width", "height", "advance_x", "left", "top", "data_length", "data_offset", "code_point"],
@@ -486,6 +493,11 @@ Examples:
         help="Include Thai script (U+0E00-0E7F)",
     )
     parser.add_argument(
+        "--arabic",
+        action="store_true",
+        help="Include Arabic script (U+0600-06FF, Presentation Forms)",
+    )
+    parser.add_argument(
         "--all-sizes",
         action="store_true",
         help="Generate 14, 16, 18pt sizes",
@@ -505,6 +517,8 @@ Examples:
         intervals = list(INTERVALS_BASE)
         if args.thai:
             intervals.extend(INTERVALS_THAI)
+        if args.arabic:
+            intervals.extend(INTERVALS_ARABIC)
         if args.additional_intervals:
             for interval_str in args.additional_intervals:
                 parts = [int(n, base=0) for n in interval_str.split(",")]
@@ -528,6 +542,8 @@ Examples:
         print(f"Mode: {'2-bit' if args.is_2bit else '1-bit'}")
         if args.thai:
             print("Including Thai script")
+        if args.arabic:
+            print("Including Arabic script")
         print()
 
         for size in sizes:
@@ -568,6 +584,8 @@ Examples:
         intervals = list(INTERVALS_BASE)
         if args.thai:
             intervals.extend(INTERVALS_THAI)
+        if args.arabic:
+            intervals.extend(INTERVALS_ARABIC)
         if args.additional_intervals:
             for interval_str in args.additional_intervals:
                 parts = [int(n, base=0) for n in interval_str.split(",")]

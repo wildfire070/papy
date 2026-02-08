@@ -55,6 +55,7 @@ class TestParser {
     std::string content;
     bool isBold = false;
     bool isItalic = false;
+    bool isRtl = false;
   };
 
   std::vector<ParsedElement> elements;
@@ -63,6 +64,8 @@ class TestParser {
   int skipUntilDepth = INT_MAX;
   int boldUntilDepth = INT_MAX;
   int italicUntilDepth = INT_MAX;
+  bool pendingRtl = false;
+  int rtlUntilDepth = INT_MAX;
 
   void flushText() {
     if (!currentText.empty()) {
@@ -71,6 +74,7 @@ class TestParser {
       elem.content = currentText;
       elem.isBold = boldUntilDepth < depth;
       elem.isItalic = italicUntilDepth < depth;
+      elem.isRtl = pendingRtl;
       elements.push_back(elem);
       currentText.clear();
     }
@@ -146,6 +150,21 @@ class TestParser {
       }
     }
 
+    // Extract dir attribute (mirrors ChapterHtmlSlimParser RTL logic)
+    if (atts) {
+      for (int i = 0; atts[i]; i += 2) {
+        if (strcmp(atts[i], "dir") == 0) {
+          if (strcasecmp(atts[i + 1], "rtl") == 0) {
+            self->pendingRtl = true;
+            self->rtlUntilDepth = std::min(self->rtlUntilDepth, self->depth);
+          } else if (strcasecmp(atts[i + 1], "ltr") == 0) {
+            self->pendingRtl = false;
+            self->rtlUntilDepth = std::min(self->rtlUntilDepth, self->depth);
+          }
+        }
+      }
+    }
+
     // Headers
     if (matches(name, HEADER_TAGS, NUM_HEADER_TAGS)) {
       self->flushText();
@@ -208,6 +227,10 @@ class TestParser {
     if (self->italicUntilDepth == self->depth) {
       self->italicUntilDepth = INT_MAX;
     }
+    if (self->rtlUntilDepth == self->depth) {
+      self->rtlUntilDepth = INT_MAX;
+      self->pendingRtl = false;
+    }
   }
 
   bool parse(const std::string& html) {
@@ -261,6 +284,20 @@ class TestParser {
       if (elem.type == ParsedElement::TABLE_PLACEHOLDER) return true;
     }
     return false;
+  }
+
+  bool hasRtlElement() const {
+    for (const auto& elem : elements) {
+      if (elem.isRtl) return true;
+    }
+    return false;
+  }
+
+  bool isAllTextRtl() const {
+    for (const auto& elem : elements) {
+      if (elem.type == ParsedElement::TEXT && !elem.isRtl) return false;
+    }
+    return true;
   }
 };
 
@@ -501,6 +538,76 @@ int main() {
     runner.expectTrue(parser.getAllText().find("Skip table") == std::string::npos, "nested_skip: table skipped");
     runner.expectTrue(parser.getAllText().find("Visible content") != std::string::npos,
                       "nested_skip: body content visible");
+  }
+
+  // ============================================
+  // RTL dir attribute tests
+  // ============================================
+
+  // Test 22: dir="rtl" on a block element marks text as RTL
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p dir=\"rtl\">Arabic text</p></body></html>");
+    runner.expectTrue(ok, "dir_rtl: parses successfully");
+    runner.expectTrue(parser.hasRtlElement(), "dir_rtl: text marked as RTL");
+  }
+
+  // Test 23: dir="ltr" on a block element keeps text LTR
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p dir=\"ltr\">English text</p></body></html>");
+    runner.expectTrue(ok, "dir_ltr: parses successfully");
+    runner.expectFalse(parser.hasRtlElement(), "dir_ltr: text remains LTR");
+  }
+
+  // Test 24: dir attribute is case-insensitive
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p dir=\"RTL\">Arabic text</p></body></html>");
+    runner.expectTrue(ok, "dir_case: parses successfully");
+    runner.expectTrue(parser.hasRtlElement(), "dir_case: RTL uppercase works");
+  }
+
+  // Test 25: dir="rtl" on body affects all children
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body dir=\"rtl\">"
+        "<p>First paragraph</p>"
+        "<p>Second paragraph</p>"
+        "</body></html>");
+    runner.expectTrue(ok, "dir_body_rtl: parses successfully");
+    runner.expectTrue(parser.isAllTextRtl(), "dir_body_rtl: all text is RTL");
+  }
+
+  // Test 26: RTL scope resets after closing tag
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body>"
+        "<div dir=\"rtl\"><p>RTL text</p></div>"
+        "<p>LTR text</p>"
+        "</body></html>");
+    runner.expectTrue(ok, "dir_scope_reset: parses successfully");
+    // First element should be RTL, second should not
+    bool hasRtl = false;
+    bool hasLtr = false;
+    for (const auto& elem : parser.elements) {
+      if (elem.type == TestParser::ParsedElement::TEXT) {
+        if (elem.content.find("RTL") != std::string::npos && elem.isRtl) hasRtl = true;
+        if (elem.content.find("LTR") != std::string::npos && !elem.isRtl) hasLtr = true;
+      }
+    }
+    runner.expectTrue(hasRtl, "dir_scope_reset: RTL text is RTL");
+    runner.expectTrue(hasLtr, "dir_scope_reset: LTR text after scope is LTR");
+  }
+
+  // Test 27: No dir attribute defaults to LTR
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>Default direction</p></body></html>");
+    runner.expectTrue(ok, "dir_default: parses successfully");
+    runner.expectFalse(parser.hasRtlElement(), "dir_default: no dir attribute = LTR");
   }
 
   return runner.allPassed() ? 0 : 1;

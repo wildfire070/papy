@@ -34,6 +34,7 @@ MarkdownParser::~MarkdownParser() = default;
 void MarkdownParser::reset() {
   currentOffset_ = 0;
   hasMore_ = true;
+  isRtl_ = false;
 }
 
 int MarkdownParser::getCurrentFontStyle(const ParseContext& ctx) const {
@@ -65,8 +66,8 @@ void MarkdownParser::startNewTextBlock(ParseContext& ctx, const int style) {
     }
     flushTextBlock(ctx);
   }
-  ctx.textBlock.reset(
-      new ParsedText(static_cast<TextBlock::BLOCK_STYLE>(style), config_.indentLevel, config_.hyphenation));
+  ctx.textBlock.reset(new ParsedText(static_cast<TextBlock::BLOCK_STYLE>(style), config_.indentLevel,
+                                     config_.hyphenation, true, isRtl_));
 }
 
 void MarkdownParser::flushTextBlock(ParseContext& ctx) {
@@ -336,6 +337,13 @@ bool MarkdownParser::parsePages(const std::function<void(std::unique_ptr<Page>)>
   }
 
   file.seekSet(currentOffset_);
+
+  if (currentOffset_ == 0 && !isRtl_) {
+    if (readLine(file)) {
+      isRtl_ = ScriptDetector::containsArabic(lineBuffer_);
+    }
+    file.seekSet(currentOffset_);
+  }
 
   Serial.printf("[MD] Parsing from offset %zu, file size %zu\n", currentOffset_, fileSize_);
   Serial.printf("[MD] Heap: %zu free\n", heap_caps_get_free_size(MALLOC_CAP_8BIT));

@@ -702,5 +702,82 @@ int main() {
     runner.expectEq(static_cast<uint16_t>(126), positions[6], "dialog: replied at 126");
   }
 
+  // ============================================
+  // RTL position calculation tests
+  // These test the logic used in extractLine() for RTL word positioning
+  // ============================================
+
+  // Helper: calculate RTL word positions (mirrors extractLine RTL logic)
+  auto calculateRtlPositions = [](const std::vector<std::string>& words,
+                                  const std::vector<uint16_t>& widths,
+                                  int pageWidth, int spacing) -> std::vector<uint16_t> {
+    std::vector<uint16_t> positions;
+    uint16_t xpos = pageWidth;
+    for (size_t i = 0; i < words.size(); i++) {
+      xpos -= widths[i];
+      positions.push_back(xpos);
+      // Subtract spacing after this word, unless next is attaching punctuation
+      bool nextIsAttaching = (i + 1 < words.size()) && isAttachingPunctuationWord(words[i + 1]);
+      xpos -= (nextIsAttaching ? 0 : spacing);
+    }
+    return positions;
+  };
+
+  // Test 64: RTL two words positioned right-to-left
+  {
+    std::vector<std::string> words = {"Hello", "world"};
+    std::vector<uint16_t> widths = {50, 50};
+    auto positions = calculateRtlPositions(words, widths, 400, 10);
+    // First word: xpos = 400 - 50 = 350
+    runner.expectEq(static_cast<uint16_t>(350), positions[0], "RTL positions: first word at 350");
+    // Second word: xpos = 350 - 10 - 50 = 290
+    runner.expectEq(static_cast<uint16_t>(290), positions[1], "RTL positions: second word at 290");
+  }
+
+  // Test 65: RTL single word at right edge
+  {
+    std::vector<std::string> words = {"Hello"};
+    std::vector<uint16_t> widths = {50};
+    auto positions = calculateRtlPositions(words, widths, 400, 10);
+    runner.expectEq(static_cast<uint16_t>(350), positions[0], "RTL positions: single word at right edge");
+  }
+
+  // Test 66: RTL punctuation attaches without gap
+  {
+    std::vector<std::string> words = {"Hello", ","};
+    std::vector<uint16_t> widths = {50, 5};
+    auto positions = calculateRtlPositions(words, widths, 400, 10);
+    // Hello: xpos = 400 - 50 = 350
+    runner.expectEq(static_cast<uint16_t>(350), positions[0], "RTL punct: Hello at 350");
+    // Comma attaches: xpos = 350 - 0 - 5 = 345
+    runner.expectEq(static_cast<uint16_t>(345), positions[1], "RTL punct: comma at 345 (no gap)");
+  }
+
+  // Test 67: RTL word + punct + word pattern
+  {
+    std::vector<std::string> words = {"Hello", ",", "world"};
+    std::vector<uint16_t> widths = {50, 5, 50};
+    auto positions = calculateRtlPositions(words, widths, 400, 10);
+    // Hello: xpos = 400 - 50 = 350
+    runner.expectEq(static_cast<uint16_t>(350), positions[0], "RTL w+p+w: Hello at 350");
+    // Comma attaches: xpos = 350 - 0 - 5 = 345
+    runner.expectEq(static_cast<uint16_t>(345), positions[1], "RTL w+p+w: comma at 345");
+    // world: xpos = 345 - 10 - 50 = 285
+    runner.expectEq(static_cast<uint16_t>(285), positions[2], "RTL w+p+w: world at 285");
+  }
+
+  // Test 68: RTL words fill from right to left
+  {
+    std::vector<std::string> words = {"A", "B", "C"};
+    std::vector<uint16_t> widths = {30, 40, 50};
+    auto positions = calculateRtlPositions(words, widths, 200, 10);
+    // A: 200 - 30 = 170
+    runner.expectEq(static_cast<uint16_t>(170), positions[0], "RTL fill: A at 170");
+    // B: 170 - 10 - 40 = 120
+    runner.expectEq(static_cast<uint16_t>(120), positions[1], "RTL fill: B at 120");
+    // C: 120 - 10 - 50 = 60
+    runner.expectEq(static_cast<uint16_t>(60), positions[2], "RTL fill: C at 60");
+  }
+
   return runner.allPassed() ? 0 : 1;
 }

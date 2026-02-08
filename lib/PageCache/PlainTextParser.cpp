@@ -19,6 +19,7 @@ PlainTextParser::PlainTextParser(std::string filepath, GfxRenderer& renderer, co
 void PlainTextParser::reset() {
   currentOffset_ = 0;
   hasMore_ = true;
+  isRtl_ = false;
 }
 
 bool PlainTextParser::parsePages(const std::function<void(std::unique_ptr<Page>)>& onPageComplete, uint16_t maxPages,
@@ -86,9 +87,18 @@ bool PlainTextParser::parsePages(const std::function<void(std::unique_ptr<Page>)
     return continueProcessing;
   };
 
+  if (currentOffset_ == 0) {
+    size_t peekBytes = file.read(buffer, READ_CHUNK_SIZE);
+    if (peekBytes > 0) {
+      buffer[peekBytes] = '\0';
+      isRtl_ = ScriptDetector::containsArabic(reinterpret_cast<const char*>(buffer));
+    }
+    file.seekSet(0);
+  }
+
   startNewPage();
   currentBlock.reset(new ParsedText(static_cast<TextBlock::BLOCK_STYLE>(config_.paragraphAlignment),
-                                    config_.indentLevel, config_.hyphenation, true));
+                                    config_.indentLevel, config_.hyphenation, true, isRtl_));
 
   while (file.available() > 0) {
     // Check for abort every few iterations
@@ -131,7 +141,7 @@ bool PlainTextParser::parsePages(const std::function<void(std::unique_ptr<Page>)
 
         // Start new paragraph
         currentBlock.reset(new ParsedText(static_cast<TextBlock::BLOCK_STYLE>(config_.paragraphAlignment),
-                                          config_.indentLevel, config_.hyphenation, true));
+                                          config_.indentLevel, config_.hyphenation, true, isRtl_));
 
         // Add paragraph spacing
         switch (config_.spacingLevel) {

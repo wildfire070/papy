@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Epub/RenderConfig.h>
+#include <ScriptDetector.h>
 #include <SdFat.h>
 
 #include <string>
@@ -20,6 +21,7 @@ class PlainTextParser : public ContentParser {
   size_t fileSize_ = 0;
   size_t currentOffset_ = 0;
   bool hasMore_ = true;
+  bool isRtl_ = false;
 
  public:
   PlainTextParser(std::string filepath, GfxRenderer& renderer, const RenderConfig& config);

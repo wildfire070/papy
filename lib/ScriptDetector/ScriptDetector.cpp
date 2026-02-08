@@ -38,6 +38,20 @@ bool containsThai(const char* text) {
   return false;
 }
 
+bool containsArabic(const char* text) {
+  if (text == nullptr) return false;
+
+  const unsigned char* ptr = reinterpret_cast<const unsigned char*>(text);
+  uint32_t cp;
+
+  while ((cp = utf8NextCodepoint(&ptr))) {
+    if (isArabicCodepoint(cp)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool containsCjk(const char* text) {
   if (text == nullptr) return false;
 
@@ -69,6 +83,11 @@ Script classify(const char* word) {
     // Check Thai first (smaller range, fast check)
     if (isThaiCodepoint(cp)) {
       return Script::THAI;
+    }
+
+    // Check Arabic
+    if (isArabicCodepoint(cp)) {
+      return Script::ARABIC;
     }
 
     // Check CJK ranges

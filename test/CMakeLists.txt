@@ -40,6 +40,7 @@ include_directories(
   ${PROJECT_ROOT}/lib/Txt
   ${PROJECT_ROOT}/lib/GfxRenderer
   ${PROJECT_ROOT}/lib/EpdFont
+  ${PROJECT_ROOT}/lib/ArabicShaper
 )
 
 # Common test helpers
@@ -56,7 +57,21 @@ foreach(TEST_SRC ${TEST_SOURCES})
   get_filename_component(TEST_NAME ${TEST_SRC} NAME_WE)
 
   # Special handling for tests that need additional source files
-  if(TEST_NAME STREQUAL "MarkdownParserTest")
+  if(TEST_NAME STREQUAL "ArabicShaperTest")
+    add_executable(${TEST_NAME}
+      ${TEST_SRC}
+      ${PROJECT_ROOT}/lib/ArabicShaper/ArabicCharacter.cpp
+      ${PROJECT_ROOT}/lib/ArabicShaper/ArabicShaper.cpp
+      ${TEST_HELPERS}
+    )
+  elseif(TEST_NAME STREQUAL "ScriptDetectorTest")
+    add_executable(${TEST_NAME}
+      ${TEST_SRC}
+      ${PROJECT_ROOT}/lib/ScriptDetector/ScriptDetector.cpp
+      ${PROJECT_ROOT}/lib/Utf8/Utf8.cpp
+      ${TEST_HELPERS}
+    )
+  elseif(TEST_NAME STREQUAL "MarkdownParserTest")
     add_executable(${TEST_NAME}
       ${TEST_SRC}
       ${PROJECT_ROOT}/lib/Markdown/md_parser.c

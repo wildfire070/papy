@@ -1,0 +1,35 @@
+# Papyrix Theme: Light with Arabic Fonts
+# Copy this file to /config/themes/ on your SD card
+# Copy the fonts/noto-sans-arabic-* folders to /config/fonts/ on your SD card
+#
+# To create the fonts, run:
+#   uv run scripts/fontconvert.py noto-sans-arabic -r fonts/Noto_Sans_Arabic/static/NotoSansArabic-Regular.ttf -b fonts/Noto_Sans_Arabic/static/NotoSansArabic-Bold.ttf --2bit --arabic --all-sizes -o /tmp/fonts/
+#
+# Download Noto Sans Arabic from: https://fonts.google.com/noto/specimen/Noto+Sans+Arabic
+
+[theme]
+name = Light Arabic
+
+[colors]
+inverted_mode = false
+background = white
+
+[selection]
+fill_color = black
+text_color = white
+
+[text]
+primary_color = black
+secondary_color = black
+
+[layout]
+margin_top = 9
+margin_side = 3
+item_height = 30
+item_spacing = 0
+
+[fonts]
+ui_font =
+reader_font_small = noto-sans-arabic-14
+reader_font_medium = noto-sans-arabic-16
+reader_font_large = noto-sans-arabic-18

@@ -10,6 +10,7 @@
 
 #include <ContentParser.h>
 #include <Epub/RenderConfig.h>
+#include <ScriptDetector.h>
 #include <SdFat.h>
 
 #include <functional>
@@ -49,6 +50,7 @@ class MarkdownParser : public ContentParser {
   size_t fileSize_ = 0;
   size_t currentOffset_ = 0;
   bool hasMore_ = true;
+  bool isRtl_ = false;
 
   // Line buffer for reading from file
   char lineBuffer_[LINE_BUFFER_SIZE];

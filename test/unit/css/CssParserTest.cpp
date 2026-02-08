@@ -27,6 +27,11 @@ enum class CssFontWeight {
   Bold
 };
 
+enum class TextDirection {
+  Ltr,
+  Rtl
+};
+
 struct CssStyle {
   TextAlign textAlign = TextAlign::None;
   bool hasTextAlign = false;
@@ -45,6 +50,9 @@ struct CssStyle {
 
   int marginBottom = 0;
   bool hasMarginBottom = false;
+
+  TextDirection direction = TextDirection::Ltr;
+  bool hasDirection = false;
 
   void merge(const CssStyle& other) {
     if (other.hasTextAlign) {
@@ -71,6 +79,10 @@ struct CssStyle {
       marginBottom = other.marginBottom;
       hasMarginBottom = true;
     }
+    if (other.hasDirection) {
+      direction = other.direction;
+      hasDirection = true;
+    }
   }
 
   void reset() {
@@ -86,6 +98,8 @@ struct CssStyle {
     hasMarginTop = false;
     marginBottom = 0;
     hasMarginBottom = false;
+    direction = TextDirection::Ltr;
+    hasDirection = false;
   }
 };
 
@@ -220,6 +234,15 @@ void parseProperty(const std::string& name, const std::string& value, CssStyle& 
   } else if (name == "margin-bottom") {
     style.marginBottom = parseMargin(value);
     style.hasMarginBottom = style.marginBottom > 0;
+  } else if (name == "direction") {
+    std::string v = toLower(trim(value));
+    if (v == "rtl") {
+      style.direction = TextDirection::Rtl;
+      style.hasDirection = true;
+    } else if (v == "ltr") {
+      style.direction = TextDirection::Ltr;
+      style.hasDirection = true;
+    }
   }
 }
 
@@ -482,6 +505,8 @@ int main() {
     style.hasFontWeight = true;
     style.textIndent = 100.0f;
     style.hasTextIndent = true;
+    style.direction = TextDirection::Rtl;
+    style.hasDirection = true;
 
     style.reset();
 
@@ -491,6 +516,76 @@ int main() {
     runner.expectFalse(style.hasFontWeight, "reset: hasFontWeight false");
     runner.expectFloatEq(0.0f, style.textIndent, "reset: textIndent to 0");
     runner.expectFalse(style.hasTextIndent, "reset: hasTextIndent false");
+    runner.expectTrue(style.direction == TextDirection::Ltr, "reset: direction to Ltr");
+    runner.expectFalse(style.hasDirection, "reset: hasDirection false");
+  }
+
+  // ============================================
+  // Direction property tests
+  // ============================================
+
+  // Test 33: Parse direction RTL
+  {
+    CssStyle style = parseInlineStyle("direction: rtl");
+    runner.expectTrue(style.hasDirection, "direction: rtl sets hasDirection");
+    runner.expectTrue(style.direction == TextDirection::Rtl, "direction: rtl value");
+  }
+
+  // Test 34: Parse direction LTR
+  {
+    CssStyle style = parseInlineStyle("direction: ltr");
+    runner.expectTrue(style.hasDirection, "direction: ltr sets hasDirection");
+    runner.expectTrue(style.direction == TextDirection::Ltr, "direction: ltr value");
+  }
+
+  // Test 35: Direction case insensitive
+  {
+    CssStyle style = parseInlineStyle("direction: RTL");
+    runner.expectTrue(style.hasDirection, "direction: RTL uppercase");
+    runner.expectTrue(style.direction == TextDirection::Rtl, "direction: RTL uppercase value");
+  }
+
+  // Test 36: Unknown direction value ignored
+  {
+    CssStyle style = parseInlineStyle("direction: auto");
+    runner.expectFalse(style.hasDirection, "direction: unknown value not set");
+  }
+
+  // Test 37: Direction combined with other properties
+  {
+    CssStyle style = parseInlineStyle("text-align: right; direction: rtl; font-weight: bold");
+    runner.expectTrue(style.hasDirection, "direction: combined has direction");
+    runner.expectTrue(style.direction == TextDirection::Rtl, "direction: combined rtl value");
+    runner.expectTrue(style.hasTextAlign, "direction: combined has text-align");
+    runner.expectTrue(style.hasFontWeight, "direction: combined has font-weight");
+  }
+
+  // Test 38: Merge direction
+  {
+    CssStyle base;
+    base.direction = TextDirection::Ltr;
+    base.hasDirection = false;
+
+    CssStyle override_;
+    override_.direction = TextDirection::Rtl;
+    override_.hasDirection = true;
+
+    base.merge(override_);
+    runner.expectTrue(base.hasDirection, "merge direction: override sets hasDirection");
+    runner.expectTrue(base.direction == TextDirection::Rtl, "merge direction: override value");
+  }
+
+  // Test 39: Merge preserves direction when not overridden
+  {
+    CssStyle base;
+    base.direction = TextDirection::Rtl;
+    base.hasDirection = true;
+
+    CssStyle override_;
+    // hasDirection is false
+
+    base.merge(override_);
+    runner.expectTrue(base.direction == TextDirection::Rtl, "merge direction: preserved when not overridden");
   }
 
   return runner.allPassed() ? 0 : 1;

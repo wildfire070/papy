@@ -163,6 +163,11 @@ class GfxRenderer {
   void drawThaiText(int fontId, int x, int y, const char* text, bool black = true,
                     EpdFontFamily::Style style = EpdFontFamily::REGULAR) const;
 
+  // Arabic text rendering
+  int getArabicTextWidth(int fontId, const char* text, EpdFontFamily::Style style = EpdFontFamily::REGULAR) const;
+  void drawArabicText(int fontId, int x, int y, const char* text, bool black = true,
+                      EpdFontFamily::Style style = EpdFontFamily::REGULAR) const;
+
   // UI Components
   void drawButtonHints(int fontId, const char* btn1, const char* btn2, const char* btn3, const char* btn4,
                        bool black = true) const;

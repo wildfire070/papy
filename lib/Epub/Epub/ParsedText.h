@@ -25,6 +25,7 @@ class ParsedText {
   uint8_t indentLevel;
   bool hyphenationEnabled;
   bool useGreedyBreaking = true;  // Default to greedy to avoid Knuth-Plass memory spike
+  bool isRtl = false;
 
   std::vector<size_t> computeLineBreaks(int pageWidth, int spaceWidth, const std::vector<uint16_t>& wordWidths,
                                         const AbortCallback& shouldAbort = nullptr) const;
@@ -39,8 +40,12 @@ class ParsedText {
 
  public:
   explicit ParsedText(const TextBlock::BLOCK_STYLE style, const uint8_t indentLevel,
-                      const bool hyphenationEnabled = true, const bool useGreedy = true)
-      : style(style), indentLevel(indentLevel), hyphenationEnabled(hyphenationEnabled), useGreedyBreaking(useGreedy) {}
+                      const bool hyphenationEnabled = true, const bool useGreedy = true, const bool rtl = false)
+      : style(style),
+        indentLevel(indentLevel),
+        hyphenationEnabled(hyphenationEnabled),
+        useGreedyBreaking(useGreedy),
+        isRtl(rtl) {}
   ~ParsedText() = default;
 
   void addWord(std::string word, EpdFontFamily::Style fontStyle);

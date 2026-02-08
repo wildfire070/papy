@@ -28,6 +28,14 @@ enum class CssFontWeight {
 };
 
 /**
+ * Text direction (LTR/RTL)
+ */
+enum class TextDirection {
+  Ltr,  // Left-to-right (default)
+  Rtl   // Right-to-left (Arabic, Hebrew)
+};
+
+/**
  * CssStyle - Represents supported CSS properties for a selector
  *
  * Supported properties:
@@ -56,6 +64,9 @@ struct CssStyle {
   int marginBottom = 0;
   bool hasMarginBottom = false;
 
+  TextDirection direction = TextDirection::Ltr;
+  bool hasDirection = false;
+
   // Merge another style into this one (other style takes precedence)
   void merge(const CssStyle& other) {
     if (other.hasTextAlign) {
@@ -82,6 +93,10 @@ struct CssStyle {
       marginBottom = other.marginBottom;
       hasMarginBottom = true;
     }
+    if (other.hasDirection) {
+      direction = other.direction;
+      hasDirection = true;
+    }
   }
 
   void reset() {
@@ -97,5 +112,7 @@ struct CssStyle {
     hasMarginTop = false;
     marginBottom = 0;
     hasMarginBottom = false;
+    direction = TextDirection::Ltr;
+    hasDirection = false;
   }
 };
