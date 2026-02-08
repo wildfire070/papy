@@ -125,6 +125,12 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
         if (SdMan.openFileForRead("EHP", cachedPath, bmpFile)) {
           Bitmap bitmap(bmpFile, false);
           if (bitmap.parseHeaders() == BmpReaderError::Ok) {
+            // Skip tiny decorative images (e.g. 1px-tall line separators) - invisible on e-paper
+            if (bitmap.getWidth() <= 3 || bitmap.getHeight() <= 3) {
+              bmpFile.close();
+              self->depth += 1;
+              return;
+            }
             Serial.printf("[%lu] [EHP] Image loaded: %dx%d\n", millis(), bitmap.getWidth(), bitmap.getHeight());
             auto imageBlock = std::make_shared<ImageBlock>(cachedPath, bitmap.getWidth(), bitmap.getHeight());
             bmpFile.close();

@@ -93,12 +93,25 @@ class TestParser {
     if (matches(name, IMAGE_TAGS, NUM_IMAGE_TAGS)) {
       self->flushText();
       std::string altText;
+      int imgWidth = 0;
+      int imgHeight = 0;
       if (atts) {
         for (int i = 0; atts[i]; i += 2) {
           if (strcmp(atts[i], "alt") == 0 && atts[i + 1][0] != '\0') {
             altText = atts[i + 1];
+          } else if (strcmp(atts[i], "width") == 0) {
+            imgWidth = atoi(atts[i + 1]);
+          } else if (strcmp(atts[i], "height") == 0) {
+            imgHeight = atoi(atts[i + 1]);
           }
         }
+      }
+      // Skip tiny decorative images (approximates ChapterHtmlSlimParser BMP dimension check).
+      // Production checks actual BMP pixel dimensions; this mock uses HTML attributes as proxy,
+      // so images missing width/height attributes won't be skipped here (production may still skip them).
+      if (imgWidth > 0 && imgHeight > 0 && (imgWidth <= 3 || imgHeight <= 3)) {
+        self->depth++;
+        return;
       }
       ParsedElement elem;
       elem.type = ParsedElement::IMAGE_PLACEHOLDER;
@@ -608,6 +621,106 @@ int main() {
     bool ok = parser.parse("<html><body><p>Default direction</p></body></html>");
     runner.expectTrue(ok, "dir_default: parses successfully");
     runner.expectFalse(parser.hasRtlElement(), "dir_default: no dir attribute = LTR");
+  }
+
+  // ============================================
+  // Tiny decorative image skip tests
+  // ============================================
+
+  // Test 28: 1px-tall decorative line separator is skipped
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body>"
+        "<h1><img height=\"1\" src=\"images/line_r1.jpg\" width=\"166\"/> 5</h1>"
+        "</body></html>");
+    runner.expectTrue(ok, "skip_1px_height: parses successfully");
+    runner.expectFalse(parser.hasImagePlaceholder(), "skip_1px_height: 1px-tall image skipped");
+    runner.expectTrue(parser.getAllText().find("5") != std::string::npos, "skip_1px_height: text preserved");
+  }
+
+  // Test 29: 1px-wide decorative image is skipped
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body>"
+        "<p><img width=\"1\" height=\"100\" src=\"spacer.gif\"/></p>"
+        "</body></html>");
+    runner.expectTrue(ok, "skip_1px_width: parses successfully");
+    runner.expectFalse(parser.hasImagePlaceholder(), "skip_1px_width: 1px-wide image skipped");
+  }
+
+  // Test 30: 3px-tall image at boundary is still skipped
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body><img width=\"200\" height=\"3\" src=\"border.jpg\"/></body></html>");
+    runner.expectTrue(ok, "skip_3px_boundary: parses successfully");
+    runner.expectFalse(parser.hasImagePlaceholder(), "skip_3px_boundary: 3px image skipped");
+  }
+
+  // Test 31: 4px-tall image is NOT skipped (just above threshold)
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body><img width=\"200\" height=\"4\" src=\"small.jpg\"/></body></html>");
+    runner.expectTrue(ok, "keep_4px: parses successfully");
+    runner.expectTrue(parser.hasImagePlaceholder(), "keep_4px: 4px image kept");
+  }
+
+  // Test 32: Normal-sized image is NOT skipped
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body><img width=\"480\" height=\"300\" src=\"photo.jpg\"/></body></html>");
+    runner.expectTrue(ok, "keep_normal: parses successfully");
+    runner.expectTrue(parser.hasImagePlaceholder(), "keep_normal: normal image kept");
+  }
+
+  // Test 33: Image without width/height attributes is NOT skipped (unknown dimensions)
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body><img src=\"unknown.jpg\"/></body></html>");
+    runner.expectTrue(ok, "keep_no_dims: parses successfully");
+    runner.expectTrue(parser.hasImagePlaceholder(), "keep_no_dims: image without dimensions kept");
+  }
+
+  // Test 34: Hyperion Cantos pattern - header with two 1px decorative images
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body>"
+        "<h1>"
+        "<img height=\"1\" src=\"images/line_r1.jpg\" width=\"166\"/>"
+        " 5 "
+        "<img height=\"1\" src=\"images/line_r2.jpg\" width=\"117\"/>"
+        "</h1>"
+        "<p>Chapter text here</p>"
+        "</body></html>");
+    runner.expectTrue(ok, "hyperion_pattern: parses successfully");
+    runner.expectFalse(parser.hasImagePlaceholder(), "hyperion_pattern: both decorative images skipped");
+    runner.expectTrue(parser.getAllText().find("5") != std::string::npos, "hyperion_pattern: chapter number preserved");
+    runner.expectTrue(parser.getAllText().find("Chapter text") != std::string::npos,
+                      "hyperion_pattern: body text preserved");
+  }
+
+  // Test 35: 3x3 pixel image is skipped (both dimensions at threshold)
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body><img width=\"3\" height=\"3\" src=\"dot.gif\"/></body></html>");
+    runner.expectTrue(ok, "skip_3x3: parses successfully");
+    runner.expectFalse(parser.hasImagePlaceholder(), "skip_3x3: tiny square image skipped");
+  }
+
+  // Test 36: 4x4 pixel image is kept (both dimensions above threshold)
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body><img width=\"4\" height=\"4\" src=\"icon.gif\"/></body></html>");
+    runner.expectTrue(ok, "keep_4x4: parses successfully");
+    runner.expectTrue(parser.hasImagePlaceholder(), "keep_4x4: small but visible image kept");
   }
 
   return runner.allPassed() ? 0 : 1;
