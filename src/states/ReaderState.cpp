@@ -1123,10 +1123,8 @@ void ReaderState::exitToUI(Core& core) {
     progress.sectionPage = (lastRenderedSectionPage_ == -1) ? 0 : lastRenderedSectionPage_;
     progress.flatPage = currentPage_;
     ProgressManager::save(core, core.content.cacheDir(), core.content.metadata().type, progress);
-
-    // Safe to reset - task is stopped, we own pageCache_
-    pageCache_.reset();
-    core.content.close();
+    // Skip pageCache_.reset() and content.close() — ESP.restart() follows,
+    // and if stopBackgroundCaching() timed out the task still uses them.
   }
 
   // Determine return destination from cached transition or fall back to sourceState_
