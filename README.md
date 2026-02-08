@@ -36,7 +36,7 @@ This project is **not affiliated with Xteink**; it's built as a community projec
 
 ### Reading & Format Support
 - [x] EPUB 2 and EPUB 3 parsing (nav.xhtml with NCX fallback)
-- [x] CSS stylesheet parsing (text-align, font-style, font-weight, text-indent, margins)
+- [x] CSS stylesheet parsing (text-align, font-style, font-weight, text-indent, margins, direction)
 - [x] XTC/XTCH native format support
 - [x] Markdown (.md, .markdown) file support with formatting
 - [x] Plain text (.txt, .text) file support
@@ -52,6 +52,7 @@ This project is **not affiliated with Xteink**; it's built as a community projec
 - [x] Soft hyphen support for text layout
 - [x] CJK (Chinese/Japanese/Korean) text layout
 - [x] Thai text rendering with proper mark positioning
+- [x] Arabic text shaping (contextual forms, Lam-Alef ligatures) with RTL layout
 - [x] Knuth-Plass line breaking algorithm (TeX-quality justified text)
 - [x] Text anti-aliasing toggle (grayscale text rendering)
 - [x] Cover dithering toggle (1-bit black/white vs grayscale covers)
@@ -196,11 +197,14 @@ uv run scripts/fontconvert.py my-font -r Regular.ttf -b Bold.ttf -i Italic.ttf -
 # With Thai script support
 uv run scripts/fontconvert.py my-font -r Regular.ttf --2bit --thai -o /tmp/fonts/
 
+# With Arabic script support
+uv run scripts/fontconvert.py my-font -r Regular.ttf --2bit --arabic -o /tmp/fonts/
+
 # Generate C header instead of binary (for builtin fonts)
 uv run scripts/fontconvert.py my_font 16 Regular.ttf --2bit > my_font_16_2b.h
 ```
 
-Options: `-r/--regular`, `-b/--bold`, `-i/--italic`, `-o/--output`, `-s/--size`, `--2bit`, `--all-sizes`, `--header`, `--thai`
+Options: `-r/--regular`, `-b/--bold`, `-i/--italic`, `-o/--output`, `-s/--size`, `--2bit`, `--all-sizes`, `--header`, `--thai`, `--arabic`
 
 See [customization guide](docs/customization.md) for detailed font conversion instructions.
 

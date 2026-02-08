@@ -7,19 +7,19 @@ This document describes the internal architecture and subsystems of Papyrix.
 Papyrix is organized around a **state machine** architecture with **singleton managers** and **content providers** for multi-format ebook support. The system is optimized for the ESP32-C3's ~380KB RAM constraint.
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Application                             │
-├─────────────────────────────────────────────────────────────────┤
-│  StateMachine (10 States)  │  Managers (Font, Theme, Input)     │
-├─────────────────────────────────────────────────────────────────┤
-│  ContentHandle (EPUB, XTC, TXT, Markdown)  │  PageCache         │
-├─────────────────────────────────────────────────────────────────┤
-│  GfxRenderer  │  EpdFont  │  ThaiShaper  │  ScriptDetector      │
-├─────────────────────────────────────────────────────────────────┤
-│  EInkDisplay  │  Storage  │  Input  │  Network                  │
-├─────────────────────────────────────────────────────────────────┤
-│                    ESP32-C3 Hardware                            │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         Application                                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  StateMachine (10 States)  │  Managers (Font, Theme, Input)                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  ContentHandle (EPUB, XTC, TXT, Markdown)  │  PageCache                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  GfxRenderer  │  EpdFont  │  ThaiShaper  │  ArabicShaper  │  ScriptDetector │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  EInkDisplay  │  Storage  │  Input  │  Network                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                    ESP32-C3 Hardware                                        │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -221,6 +221,7 @@ EPUB Load → ContentOpfParser → CssParser → ChapterHtmlSlimParser → Page
 - **font-weight** (normal, bold, 700+) — Bold text
 - **text-indent** (px, em) — First-line indent
 - **margin-top/bottom** (em, %) — Extra line spacing
+- **direction** (ltr, rtl) — Text direction (RTL for Arabic)
 
 ### Supported Selectors
 
@@ -285,6 +286,7 @@ Classifies text by Unicode codepoint ranges:
 - **LATIN** — Latin, Cyrillic, Greek — Word-based line breaking
 - **CJK** — Chinese, Japanese, Korean (U+4E00–U+9FFF, etc.) — Character-based line breaking
 - **THAI** — Thai script (U+0E00–U+0E7F) — Word segmentation
+- **ARABIC** — Arabic script (U+0600–U+06FF, etc.) — Shaping and RTL layout
 - **OTHER** — Symbols, digits, punctuation — Contextual line breaking
 
 ### Thai Text Rendering
@@ -298,6 +300,16 @@ The ThaiShaper library provides:
 - **ThaiCluster**: Groups consonants with marks into grapheme clusters
 - **ThaiWordBreak**: Dictionary-based word segmentation for line breaking
 - **Mark positioning**: Proper vertical ordering of diacritics
+
+### Arabic Text Rendering
+
+Arabic script requires special handling in reader mode for book text:
+- **Contextual shaping**: Letters change form based on position (initial, medial, final, isolated)
+- **Lam-Alef ligatures**: Automatic ligature formation for Lam + Alef combinations
+- **RTL layout**: Words are rendered right-to-left with right-aligned lines
+- **CSS direction**: `direction: rtl` in EPUB stylesheets triggers RTL paragraph layout
+
+The ArabicShaper library converts logical-order UTF-8 text to visual-order shaped codepoints for left-to-right rendering by the font system.
 
 ### CJK Rendering
 
@@ -456,6 +468,7 @@ class HomeState : public State {
 - **`EpdFont/`** — Font loading (full and streaming modes) and glyph cache
 - **`ExternalFont/`** — CJK font support
 - **`ScriptDetector/`** — Script classification
+- **`ArabicShaper/`** — Arabic text shaping (contextual forms, ligatures)
 - **`ThaiShaper/`** — Thai text shaping
 - **`Utf8/`** — UTF-8 string utilities
 - **`ZipFile/`** — EPUB ZIP extraction

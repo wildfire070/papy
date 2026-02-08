@@ -119,6 +119,14 @@ A sans-serif font with complete Thai script support.
 
 ![Noto Sans Thai Sample](examples/images/noto-sans-thai-sample.png)
 
+### Noto Sans Arabic
+
+A sans-serif font with complete Arabic script support including contextual shaping and ligatures.
+
+- **Styles**: Regular, Bold
+- **Theme**: `light-arabic.theme`
+- **License**: OFL (Open Font License)
+
 ### CJK Fonts (Chinese/Japanese/Korean)
 
 For CJK texts, Papyrix uses external `.bin` format fonts that are streamed from the SD card due to their large size.
@@ -142,24 +150,26 @@ uv run scripts/fontconvert.py my-font -r MyFont-Regular.ttf --2bit --all-sizes -
 # Thai font
 uv run scripts/fontconvert.py noto-sans-thai -r NotoSansThai-Regular.ttf --2bit --thai --all-sizes -o /tmp/fonts/
 
+# Arabic font
+uv run scripts/fontconvert.py noto-sans-arabic -r NotoSansArabic-Regular.ttf -b NotoSansArabic-Bold.ttf --2bit --arabic --all-sizes -o /tmp/fonts/
+
 # Generate C header (for builtin fonts)
 uv run scripts/fontconvert.py my_font 16 MyFont-Regular.ttf --2bit > my_font_16_2b.h
 ```
 
 ### Options
 
-| Option | Description |
-|--------|-------------|
-| `-r, --regular` | Path to regular style font (required for binary mode) |
-| `-b, --bold` | Path to bold style font |
-| `-i, --italic` | Path to italic style font |
-| `-o, --output` | Output directory (default: current) |
-| `-s, --size-opt` | Font size in points (default: 16) |
-| `--all-sizes` | Generate 14pt, 16pt, and 18pt |
-| `--thai` | Include Thai script characters |
-| `--2bit` | 2-bit grayscale (smoother, larger) |
-| `--header` | Output C header instead of binary |
-| `--additional-intervals` | Add custom Unicode ranges |
+- **-r, --regular** - Path to regular style font (required for binary mode)
+- **-b, --bold** - Path to bold style font
+- **-i, --italic** - Path to italic style font
+- **-o, --output** - Output directory (default: current)
+- **-s, --size-opt** - Font size in points (default: 16)
+- **--all-sizes** - Generate 14pt, 16pt, and 18pt
+- **--thai** - Include Thai script characters
+- **--arabic** - Include Arabic script characters
+- **--2bit** - 2-bit grayscale (smoother, larger)
+- **--header** - Output C header instead of binary
+- **--additional-intervals** - Add custom Unicode ranges
 
 ## Installing Fonts
 

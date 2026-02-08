@@ -284,6 +284,7 @@ uv run scripts/fontconvert.py my-font -r MyFont-Regular.ttf --2bit -o /tmp/fonts
 - **--all-sizes** - Generate all reader sizes (14, 16, 18pt)
 - **--header** - Output C header instead of binary .epdfont
 - **--thai** - Include Thai script (U+0E00-0E7F)
+- **--arabic** - Include Arabic script (U+0600-06FF, Presentation Forms)
 - **--additional-intervals** - Additional Unicode intervals as min,max (can be repeated)
 
 #### Examples
@@ -375,6 +376,15 @@ Thai fonts can be generated using the `--thai` flag:
 uv run scripts/fontconvert.py noto-sans-thai -r NotoSansThai-Regular.ttf --2bit --thai -o /tmp/fonts/
 ```
 
+### Arabic Fonts
+
+Arabic fonts can be generated using the `--arabic` flag. Arabic text in books is automatically shaped (contextual letter forms, Lam-Alef ligatures) and rendered right-to-left. Arabic support is available in reader mode for book text only (not in the UI):
+
+```bash
+# Arabic font with Arabic script support
+uv run scripts/fontconvert.py noto-sans-arabic -r NotoSansArabic-Regular.ttf -b NotoSansArabic-Bold.ttf --2bit --arabic -o /tmp/fonts/
+```
+
 ### CJK Fonts
 
 The ESP32-C3 has limited RAM (~380KB), so CJK fonts require external `.bin` format which streams glyphs from SD card. Pre-converted CJK fonts are available in the `docs/examples/fonts/` directory.
@@ -439,6 +449,7 @@ The repository includes example theme and font files in [`docs/examples/`](examp
 - **`light-opendyslexic.theme`** - Light theme with OpenDyslexic reader fonts
 - **`light-thai.theme`** - Light theme with Noto Sans Thai fonts
 - **`light-vietnamese.theme`** - Light theme with Noto Serif Vietnamese fonts
+- **`light-arabic.theme`** - Light theme with Noto Sans Arabic fonts
 - **`light-cjk-external.theme`** - Light theme with CJK external (.bin) fonts
 
 **Fonts:**
@@ -450,6 +461,7 @@ The repository includes example theme and font files in [`docs/examples/`](examp
 - **`fonts/opendyslexic-*/`** - OpenDyslexic at 14pt, 16pt, 18pt
 - **`fonts/noto-sans-thai-*/`** - Noto Sans Thai at 14pt, 16pt, 18pt
 - **`fonts/noto-serif-vn-*/`** - Noto Serif Vietnamese at 14pt, 16pt, 18pt
+- **`fonts/noto-sans-arabic-*/`** - Noto Sans Arabic at 12pt, 14pt, 16pt, 18pt
 - **`fonts/*.bin`** - CJK external fonts (Source Han Sans CN, KingHwaOldSong)
 
 To use a theme:
@@ -462,6 +474,7 @@ To use a theme:
 The example fonts use:
 - [Noto Serif](https://fonts.google.com/noto/specimen/Noto+Serif) from Google Fonts (SIL OFL)
 - [Noto Sans Thai](https://fonts.google.com/noto/specimen/Noto+Sans+Thai) from Google Fonts (SIL OFL)
+- [Noto Sans Arabic](https://fonts.google.com/noto/specimen/Noto+Sans+Arabic) from Google Fonts (SIL OFL)
 - [Source Han Sans CN](https://github.com/adobe-fonts/source-han-sans) from Adobe (SIL OFL)
 - KingHwaOldSong (traditional Chinese font)
 
