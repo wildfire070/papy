@@ -283,7 +283,7 @@ void NetworkState::handleWifiList(Core& core, Button button) {
       break;
 
     case Button::Right:
-      if (wifiListView_.buttons.isActive(2)) {
+      if (wifiListView_.buttons.isActive(3)) {
         startWifiScan(core);
         needsRender_ = true;
       }

@@ -55,7 +55,7 @@ struct WifiListView {
     bool secured;
   };
 
-  ButtonBar buttons{"Back", "Connect", "Scan", ""};
+  ButtonBar buttons{"Back", "Connect", "", "Scan"};
   Network networks[MAX_NETWORKS];
   uint8_t networkCount = 0;
   uint8_t selected = 0;
