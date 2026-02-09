@@ -916,8 +916,11 @@ int GfxRenderer::getExternalGlyphWidth(const uint32_t cp) const {
     return 0;
   }
 
-  // Ensure glyph is loaded to get metrics
-  _externalFont->getGlyph(cp);
+  // Ensure glyph is loaded to get metrics; return 0 if not found
+  // so caller falls back to builtin font width
+  if (!_externalFont->getGlyph(cp)) {
+    return 0;
+  }
 
   uint8_t minX = 0;
   uint8_t advanceX = _externalFont->getCharWidth();

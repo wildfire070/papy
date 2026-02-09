@@ -7,7 +7,7 @@
 #include "ContentParser.h"
 
 namespace {
-constexpr uint8_t CACHE_FILE_VERSION = 16;  // v16: Fix MarkdownParser block reuse bug
+constexpr uint8_t CACHE_FILE_VERSION = 17;  // v17: fix external font width fallback for Latin chars
 
 // Header layout:
 // - version (1 byte)
