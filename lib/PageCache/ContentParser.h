@@ -39,6 +39,13 @@ class ContentParser {
   virtual bool hasMoreContent() const = 0;
 
   /**
+   * Check if this parser can resume from where it left off (hot extend).
+   * Returns true when internal state allows continuing without re-parsing.
+   * @return true if parsePages() will continue from last position
+   */
+  virtual bool canResume() const { return false; }
+
+  /**
    * Reset parser to start from beginning.
    * Call this before re-parsing to extend cache.
    */

@@ -16,45 +16,91 @@ EpubChapterParser::EpubChapterParser(std::shared_ptr<Epub> epub, int spineIndex,
       config_(config),
       imageCachePath_(imageCachePath) {}
 
-void EpubChapterParser::reset() { hasMore_ = true; }
+EpubChapterParser::~EpubChapterParser() {
+  liveParser_.reset();
+  cleanupTempFiles();
+}
+
+void EpubChapterParser::cleanupTempFiles() {
+  if (!tmpHtmlPath_.empty()) {
+    SdMan.remove(tmpHtmlPath_.c_str());
+    tmpHtmlPath_.clear();
+  }
+  if (!normalizedPath_.empty()) {
+    SdMan.remove(normalizedPath_.c_str());
+    normalizedPath_.clear();
+  }
+}
+
+void EpubChapterParser::reset() {
+  liveParser_.reset();
+  cleanupTempFiles();
+  initialized_ = false;
+  hasMore_ = true;
+  parseHtmlPath_.clear();
+  chapterBasePath_.clear();
+}
 
 bool EpubChapterParser::parsePages(const std::function<void(std::unique_ptr<Page>)>& onPageComplete, uint16_t maxPages,
                                    const AbortCallback& shouldAbort) {
+  // RESUME PATH: parser is alive from a previous call, just resume.
+  // The liveParser_'s completePageFn captures `this` and delegates to member state
+  // (onPageComplete_, maxPages_, etc.), so we just update those for the new batch.
+  if (initialized_ && liveParser_ && liveParser_->isSuspended()) {
+    onPageComplete_ = onPageComplete;
+    maxPages_ = maxPages;
+    pagesCreated_ = 0;
+    hitMaxPages_ = false;
+
+    bool success = liveParser_->resumeParsing();
+
+    hasMore_ = liveParser_->isSuspended() || liveParser_->wasAborted() || (!success && pagesCreated_ > 0);
+
+    if (!liveParser_->isSuspended()) {
+      liveParser_.reset();
+      cleanupTempFiles();
+      initialized_ = false;
+      renderer_.clearWidthCache();
+    }
+
+    return success || pagesCreated_ > 0;
+  }
+
+  // INIT PATH: first call — extract HTML, normalize, create parser
   const auto localPath = epub_->getSpineItem(spineIndex_).href;
-  const auto tmpHtmlPath = epub_->getCachePath() + "/.tmp_" + std::to_string(spineIndex_) + ".html";
+  tmpHtmlPath_ = epub_->getCachePath() + "/.tmp_" + std::to_string(spineIndex_) + ".html";
 
   // Derive chapter base path for resolving relative image paths
-  std::string chapterBasePath;
   {
     size_t lastSlash = localPath.rfind('/');
     if (lastSlash != std::string::npos) {
-      chapterBasePath = localPath.substr(0, lastSlash + 1);
+      chapterBasePath_ = localPath.substr(0, lastSlash + 1);
+    } else {
+      chapterBasePath_.clear();
     }
   }
 
   // Stream HTML to temp file
   bool success = false;
-  uint32_t fileSize = 0;
   for (int attempt = 0; attempt < 3 && !success; attempt++) {
     if (attempt > 0) {
       Serial.printf("[EPUB] Retrying stream (attempt %d)...\n", attempt + 1);
       delay(50);
     }
 
-    if (SdMan.exists(tmpHtmlPath.c_str())) {
-      SdMan.remove(tmpHtmlPath.c_str());
+    if (SdMan.exists(tmpHtmlPath_.c_str())) {
+      SdMan.remove(tmpHtmlPath_.c_str());
     }
 
     FsFile tmpHtml;
-    if (!SdMan.openFileForWrite("EPUB", tmpHtmlPath, tmpHtml)) {
+    if (!SdMan.openFileForWrite("EPUB", tmpHtmlPath_, tmpHtml)) {
       continue;
     }
     success = epub_->readItemContentsToStream(localPath, tmpHtml, 4096);
-    fileSize = tmpHtml.size();
     tmpHtml.close();
 
-    if (!success && SdMan.exists(tmpHtmlPath.c_str())) {
-      SdMan.remove(tmpHtmlPath.c_str());
+    if (!success && SdMan.exists(tmpHtmlPath_.c_str())) {
+      SdMan.remove(tmpHtmlPath_.c_str());
     }
   }
 
@@ -64,10 +110,10 @@ bool EpubChapterParser::parsePages(const std::function<void(std::unique_ptr<Page
   }
 
   // Normalize HTML5 void elements for Expat parser
-  const auto normalizedPath = epub_->getCachePath() + "/.norm_" + std::to_string(spineIndex_) + ".html";
-  std::string parseHtmlPath = tmpHtmlPath;
-  if (html5::normalizeVoidElements(tmpHtmlPath, normalizedPath)) {
-    parseHtmlPath = normalizedPath;
+  normalizedPath_ = epub_->getCachePath() + "/.norm_" + std::to_string(spineIndex_) + ".html";
+  parseHtmlPath_ = tmpHtmlPath_;
+  if (html5::normalizeVoidElements(tmpHtmlPath_, normalizedPath_)) {
+    parseHtmlPath_ = normalizedPath_;
   }
 
   // Create read callback for extracting images from EPUB
@@ -75,37 +121,42 @@ bool EpubChapterParser::parsePages(const std::function<void(std::unique_ptr<Page
     return epub_->readItemContentsToStream(href, out, chunkSize);
   };
 
-  // Track pages for early termination
-  uint16_t pagesCreated = 0;
-  bool hitMaxPages = false;
+  // Set up callback state for this batch
+  onPageComplete_ = onPageComplete;
+  maxPages_ = maxPages;
+  pagesCreated_ = 0;
+  hitMaxPages_ = false;
 
-  auto wrappedCallback = [&](std::unique_ptr<Page> page) -> bool {
-    if (hitMaxPages) return false;  // Signal parser to stop
+  // Create the parser with a callback that references our member state
+  auto wrappedCallback = [this](std::unique_ptr<Page> page) -> bool {
+    if (hitMaxPages_) return false;
 
-    onPageComplete(std::move(page));
-    pagesCreated++;
+    onPageComplete_(std::move(page));
+    pagesCreated_++;
 
-    if (maxPages > 0 && pagesCreated >= maxPages) {
-      hitMaxPages = true;
-      return false;  // Signal parser to stop
+    if (maxPages_ > 0 && pagesCreated_ >= maxPages_) {
+      hitMaxPages_ = true;
+      return false;
     }
-    return true;  // Continue parsing
+    return true;
   };
 
-  ChapterHtmlSlimParser parser(parseHtmlPath, renderer_, config_, wrappedCallback, nullptr, chapterBasePath,
-                               imageCachePath_, readItemFn, epub_->getCssParser(), shouldAbort);
+  liveParser_.reset(new ChapterHtmlSlimParser(parseHtmlPath_, renderer_, config_, wrappedCallback, nullptr,
+                                              chapterBasePath_, imageCachePath_, readItemFn, epub_->getCssParser(),
+                                              shouldAbort));
 
-  success = parser.parseAndBuildPages();
+  success = liveParser_->parseAndBuildPages();
+  initialized_ = true;
 
-  // Clean up temp files
-  SdMan.remove(tmpHtmlPath.c_str());
-  SdMan.remove(normalizedPath.c_str());
+  hasMore_ = liveParser_->isSuspended() || liveParser_->wasAborted() || (!success && pagesCreated_ > 0);
 
-  // Clear word width cache
-  renderer_.clearWidthCache();
+  // If parser finished (not suspended), clean up
+  if (!liveParser_->isSuspended()) {
+    liveParser_.reset();
+    cleanupTempFiles();
+    initialized_ = false;
+    renderer_.clearWidthCache();
+  }
 
-  // More content remains if we hit the page limit OR the parser was internally aborted
-  // (timeout/memory). Without this, an aborted parse marks the chapter as complete.
-  hasMore_ = hitMaxPages || parser.wasAborted() || (!success && pagesCreated > 0);
-  return success || pagesCreated > 0;
+  return success || pagesCreated_ > 0;
 }

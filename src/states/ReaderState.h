@@ -11,6 +11,7 @@
 #include "../ui/views/HomeView.h"
 #include "State.h"
 
+class ContentParser;
 class GfxRenderer;
 class PageCache;
 class Page;
@@ -69,10 +70,15 @@ class ReaderState : public State {
   int textStartIndex_ = 0;
 
   // Unified page cache for all content types
-  // Ownership model: main thread owns pageCache_ when !cacheTask_.isRunning()
-  //                  background task owns pageCache_ when cacheTask_.isRunning()
-  // Navigation ALWAYS stops task first, then accesses cache
+  // Ownership model: main thread owns pageCache_/parser_ when !cacheTask_.isRunning()
+  //                  background task owns pageCache_/parser_ when cacheTask_.isRunning()
+  // Navigation ALWAYS stops task first, then accesses cache/parser
   std::unique_ptr<PageCache> pageCache_;
+
+  // Persistent parser for incremental (hot) extends — kept alive between extend calls
+  // so the parser can resume from where it left off instead of re-parsing from byte 0
+  std::unique_ptr<ContentParser> parser_;
+  int parserSpineIndex_ = -1;
   uint8_t pagesUntilFullRefresh_;
 
   // Background caching (uses BackgroundTask for proper lifecycle management)
@@ -101,13 +107,8 @@ class ReaderState : public State {
   void loadCacheFromDisk(Core& core);
   void createOrExtendCache(Core& core);
 
-  // Template helper for cache creation/extension (reduces duplication)
-  template <typename ParserT>
-  void createOrExtendCacheImpl(ParserT& parser, const std::string& cachePath, const RenderConfig& config);
-
-  // Background caching template helper
-  template <typename ParserT>
-  void backgroundCacheImpl(ParserT& parser, const std::string& cachePath, const RenderConfig& config);
+  void createOrExtendCacheImpl(ContentParser& parser, const std::string& cachePath, const RenderConfig& config);
+  void backgroundCacheImpl(ContentParser& parser, const std::string& cachePath, const RenderConfig& config);
 
   // Display helpers
   void displayWithRefresh(Core& core);

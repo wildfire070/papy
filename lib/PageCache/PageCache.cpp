@@ -256,20 +256,63 @@ bool PageCache::extend(ContentParser& parser, uint16_t additionalPages, const Ab
     return true;
   }
 
-  // Cap extend chunk to 30 pages once cache is large enough. Each extend() re-parses
-  // from the start (skipping serialization of cached pages), so small chunks limit the
-  // time spent on each re-parse pass while still making forward progress.
-  const uint16_t chunk = pageCount_ >= 30 ? 30 : additionalPages;
+  const uint16_t chunk = pageCount_ >= 30 ? 50 : additionalPages;
   const uint16_t currentPages = pageCount_;
-  const uint16_t targetPages = pageCount_ + chunk;
-  Serial.printf("[CACHE] Extending from %d to %d pages\n", currentPages, targetPages);
 
-  // Re-parse from start but skip serializing already-cached pages
+  if (parser.canResume()) {
+    // HOT PATH: Parser has live session from previous extend, just append new pages.
+    // No re-parsing — O(chunk) work instead of O(totalPages).
+    Serial.printf("[CACHE] Hot extend from %d pages (+%d)\n", currentPages, chunk);
+
+    std::vector<uint32_t> lut;
+    if (!loadLut(lut)) return false;
+
+    if (!file_.open(cachePath_.c_str(), O_RDWR)) {
+      Serial.printf("[CACHE] Failed to open cache file for hot extend\n");
+      return false;
+    }
+    file_.seekEnd();
+
+    const uint16_t pagesBefore = pageCount_;
+    bool parseOk = parser.parsePages(
+        [this, &lut](std::unique_ptr<Page> page) {
+          const uint32_t position = file_.position();
+          if (!page->serialize(file_)) return;
+          lut.push_back(position);
+          pageCount_++;
+        },
+        chunk, shouldAbort);
+
+    isPartial_ = parser.hasMoreContent();
+
+    if (!parseOk && pageCount_ == pagesBefore) {
+      file_.close();
+      Serial.printf("[CACHE] Hot extend failed with no new pages\n");
+      return false;
+    }
+
+    if (!writeLut(lut)) {
+      file_.close();
+      SdMan.remove(cachePath_.c_str());
+      return false;
+    }
+
+    file_.close();
+    Serial.printf("[CACHE] Hot extend done: %d pages, partial=%d\n", pageCount_, isPartial_);
+    return true;
+  }
+
+  // COLD PATH: Fresh parser (after exit/reboot) — re-parse from start, skip cached pages.
+  const uint16_t targetPages = pageCount_ + chunk;
+  Serial.printf("[CACHE] Cold extend from %d to %d pages\n", currentPages, targetPages);
+
   parser.reset();
   bool result = create(parser, config_, targetPages, currentPages, shouldAbort);
 
-  // No forward progress → deterministic error, stop retrying
-  if (result && pageCount_ <= currentPages) {
+  // No forward progress AND parser has no more content → content is truly finished.
+  // Without the hasMoreContent() check, an aborted extend (timeout/memory pressure)
+  // would permanently mark the chapter as complete, truncating it.
+  if (result && pageCount_ <= currentPages && !parser.hasMoreContent()) {
     Serial.printf("[CACHE] No progress during extend (%d pages), marking complete\n", pageCount_);
     isPartial_ = false;
   }

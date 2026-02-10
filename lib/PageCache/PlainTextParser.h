@@ -30,5 +30,6 @@ class PlainTextParser : public ContentParser {
   bool parsePages(const std::function<void(std::unique_ptr<Page>)>& onPageComplete, uint16_t maxPages = 0,
                   const AbortCallback& shouldAbort = nullptr) override;
   bool hasMoreContent() const override { return hasMore_; }
+  bool canResume() const override { return currentOffset_ > 0 && hasMore_; }
   void reset() override;
 };

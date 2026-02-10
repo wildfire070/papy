@@ -18,6 +18,7 @@ class Page {
 // Mock ContentParser that simulates configurable abort/complete/maxPages behavior.
 // Models the hasMore_ logic from EpubChapterParser:
 //   hasMore_ = hitMaxPages || parser.wasAborted() || (!success && pagesCreated > 0)
+// Also models canResume() for hot extend: parser keeps position between parsePages() calls.
 class MockContentParser {
  public:
   MockContentParser(int totalPages) : totalPages_(totalPages) {}
@@ -53,10 +54,12 @@ class MockContentParser {
     bool success = !aborted_ && !failAfterPages_;
 
     // Core logic: hasMore_ tracks whether more content remains unparsed.
-    // hitMaxPages: stopped at page limit, more content exists
+    // reachedEnd: true when we've consumed all available content
+    // hitMaxPages: stopped at page limit (but only matters if content remains)
     // aborted_: stopped due to timeout/memory, more content exists
     // !success && pagesCreated > 0: parse error mid-chapter, partial content exists
-    hasMore_ = hitMaxPages || aborted_ || (!success && pagesCreated > 0);
+    bool reachedEnd = (currentPage_ >= totalPages_);
+    hasMore_ = (!reachedEnd && hitMaxPages) || aborted_ || (!reachedEnd && !success && pagesCreated > 0);
 
     return success;
   }
@@ -64,11 +67,17 @@ class MockContentParser {
   bool hasMoreContent() const { return hasMore_; }
   bool wasAborted() const { return aborted_; }
 
+  // canResume() mirrors the real ContentParser contract:
+  // Returns true when internal state allows continuing without re-parsing from start.
+  bool canResume() const { return currentPage_ > 0 && hasMore_; }
+
   void reset() {
     currentPage_ = 0;
     hasMore_ = true;
     aborted_ = false;
   }
+
+  int currentPage() const { return currentPage_; }
 
   // Simulate parse failure after N pages (e.g., XML_GetBuffer returns null mid-chapter)
   void setFailAfterPages(int n) { failAfterPages_ = n; }
@@ -118,12 +127,35 @@ class MockPageCache {
     if (!isPartial_) return true;
 
     const uint16_t currentPages = pageCount_;
+
+    if (parser.canResume()) {
+      // HOT PATH: Parser has live session from previous call, just append new pages.
+      // No re-parsing — O(chunk) work instead of O(totalPages).
+      const uint16_t pagesBefore = pageCount_;
+      bool parseOk = parser.parsePages(
+          [this](std::unique_ptr<Page>) {
+            pageCount_++;
+          },
+          additionalPages, shouldAbort);
+
+      isPartial_ = parser.hasMoreContent();
+
+      if (!parseOk && pageCount_ == pagesBefore) {
+        return false;
+      }
+
+      return true;
+    }
+
+    // COLD PATH: Fresh parser — re-parse from start, skip cached pages.
     uint16_t targetPages = pageCount_ + additionalPages;
     parser.reset();
     bool result = create(parser, targetPages, shouldAbort);
 
-    // No forward progress → deterministic error, stop retrying
-    if (result && pageCount_ <= currentPages) {
+    // No forward progress AND parser has no more content → content is truly finished.
+    // Without the hasMoreContent() check, an aborted extend (timeout/memory pressure)
+    // would permanently mark the chapter as complete, truncating it.
+    if (result && pageCount_ <= currentPages && !parser.hasMoreContent()) {
       isPartial_ = false;
     }
 
@@ -257,9 +289,10 @@ int main() {
     runner.expectTrue(cache.isPartial(), "parse_error_partial_is_partial");
   }
 
-  // Test 8: Extend after deterministic parse error should stop retrying (no-progress guard)
-  // If extend() re-parses and gets the same page count, the error is deterministic.
-  // The cache should mark itself complete to prevent infinite extend loops.
+  // Test 8: Cold extend no-progress guard: deterministic error at fixed position
+  // If cold extend re-parses from start and gets the same page count, and parser
+  // reports no more content, the error is deterministic → mark complete.
+  // The new guard also checks hasMoreContent() so aborted parses aren't marked complete.
   {
     MockContentParser parser(100);
     parser.setFailAfterPages(5);  // Always fails after 5 pages
@@ -271,16 +304,186 @@ int main() {
     runner.expectEq(static_cast<uint16_t>(5), cache.pageCount(), "no_progress_initial_count");
     runner.expectTrue(cache.isPartial(), "no_progress_initial_partial");
 
-    // Extend: re-parses from start, hits same error at page 5 → no progress
+    // Force cold path by resetting parser (clears canResume)
+    parser.reset();
     ok = cache.extend(parser, 10);
-    runner.expectTrue(ok, "no_progress_extend_success");
-    runner.expectEq(static_cast<uint16_t>(5), cache.pageCount(), "no_progress_extend_count");
-    runner.expectFalse(cache.isPartial(), "no_progress_extend_not_partial");
+    runner.expectTrue(ok, "no_progress_cold_extend_success");
+    runner.expectEq(static_cast<uint16_t>(5), cache.pageCount(), "no_progress_cold_extend_count");
+    // Parser failed mid-content, so hasMoreContent()=true → no-progress guard does NOT fire.
+    // This is the new behavior: transient-looking errors keep retrying (safer than truncating).
+    runner.expectTrue(cache.isPartial(), "no_progress_cold_extend_still_partial");
 
-    // Further extend should be a no-op since isPartial is now false
+    // Further extend should still be a no-op if we force cold path again
+    parser.reset();
     ok = cache.extend(parser, 10);
-    runner.expectTrue(ok, "no_progress_extend_noop");
-    runner.expectEq(static_cast<uint16_t>(5), cache.pageCount(), "no_progress_extend_noop_count");
+    runner.expectTrue(ok, "no_progress_cold_extend_retry");
+    runner.expectEq(static_cast<uint16_t>(5), cache.pageCount(), "no_progress_cold_extend_retry_count");
+  }
+
+  // ============================================
+  // Hot extend tests (canResume / suspend-resume)
+  // ============================================
+
+  // Test 9: Hot extend - parser resumes from last position instead of re-parsing
+  {
+    MockContentParser parser(20);
+    MockPageCache cache;
+
+    // Create initial cache with 5 pages
+    bool ok = cache.create(parser, 5);
+    runner.expectTrue(ok, "hot_extend_initial_create");
+    runner.expectEq(static_cast<uint16_t>(5), cache.pageCount(), "hot_extend_initial_count");
+    runner.expectTrue(cache.isPartial(), "hot_extend_initial_partial");
+    runner.expectTrue(parser.canResume(), "hot_extend_can_resume_after_create");
+
+    // Hot extend: parser continues from page 5, not from 0
+    runner.expectEq(5, parser.currentPage(), "hot_extend_parser_at_page_5");
+    ok = cache.extend(parser, 5);
+    runner.expectTrue(ok, "hot_extend_success");
+    runner.expectEq(static_cast<uint16_t>(10), cache.pageCount(), "hot_extend_count_10");
+    runner.expectTrue(cache.isPartial(), "hot_extend_still_partial_at_10");
+    runner.expectEq(10, parser.currentPage(), "hot_extend_parser_at_page_10");
+  }
+
+  // Test 10: Multiple sequential hot extends until completion
+  {
+    MockContentParser parser(12);
+    MockPageCache cache;
+
+    bool ok = cache.create(parser, 4);
+    runner.expectEq(static_cast<uint16_t>(4), cache.pageCount(), "seq_hot_initial_count");
+    runner.expectTrue(parser.canResume(), "seq_hot_can_resume_1");
+
+    ok = cache.extend(parser, 4);
+    runner.expectTrue(ok, "seq_hot_extend_1");
+    runner.expectEq(static_cast<uint16_t>(8), cache.pageCount(), "seq_hot_count_8");
+    runner.expectTrue(cache.isPartial(), "seq_hot_partial_at_8");
+
+    ok = cache.extend(parser, 4);
+    runner.expectTrue(ok, "seq_hot_extend_2");
+    runner.expectEq(static_cast<uint16_t>(12), cache.pageCount(), "seq_hot_count_12");
+    runner.expectFalse(cache.isPartial(), "seq_hot_complete");
+    runner.expectFalse(parser.canResume(), "seq_hot_no_resume_when_complete");
+  }
+
+  // Test 11: canResume() returns false after reset (forces cold path)
+  {
+    MockContentParser parser(10);
+    MockPageCache cache;
+
+    cache.create(parser, 5);
+    runner.expectTrue(parser.canResume(), "reset_can_resume_before");
+
+    parser.reset();
+    runner.expectFalse(parser.canResume(), "reset_can_resume_after");
+  }
+
+  // Test 12: canResume() returns false when parsing completed (no more content)
+  {
+    MockContentParser parser(5);
+    MockPageCache cache;
+
+    cache.create(parser, 0);  // Parse all
+    runner.expectFalse(parser.hasMoreContent(), "complete_no_more");
+    runner.expectFalse(parser.canResume(), "complete_no_resume");
+  }
+
+  // Test 13: Hot extend with abort - partial progress preserved
+  // Uses parser.currentPage() to trigger abort at a known absolute position.
+  {
+    MockContentParser parser(20);
+    MockPageCache cache;
+
+    cache.create(parser, 5);
+    runner.expectEq(static_cast<uint16_t>(5), cache.pageCount(), "hot_abort_initial_count");
+
+    // Abort when parser reaches absolute page 8 (i.e., after 3 more pages from page 5)
+    AbortCallback abortAt8 = [&]() { return parser.currentPage() >= 8; };
+    bool ok = cache.extend(parser, 10, abortAt8);
+
+    // Parser produced pages 5,6,7 before abort triggered at start of page 8
+    runner.expectEq(static_cast<uint16_t>(8), cache.pageCount(), "hot_abort_count");
+    runner.expectTrue(parser.hasMoreContent(), "hot_abort_has_more");
+    runner.expectTrue(parser.canResume(), "hot_abort_can_resume");
+  }
+
+  // Test 14: Hot extend after abort preserves parser position
+  {
+    MockContentParser parser(30);
+    MockPageCache cache;
+
+    cache.create(parser, 5);
+    runner.expectEq(static_cast<uint16_t>(5), cache.pageCount(), "hot_resume_after_abort_initial");
+
+    // Abort after parser reaches page 10
+    AbortCallback abortAt10 = [&]() { return parser.currentPage() >= 10; };
+    cache.extend(parser, 20, abortAt10);
+    // Parser stopped at page 10, some pages were added
+    runner.expectEq(10, parser.currentPage(), "hot_resume_parser_at_10");
+    runner.expectTrue(parser.canResume(), "hot_resume_can_resume_after_abort");
+    runner.expectTrue(cache.isPartial(), "hot_resume_still_partial");
+
+    // Continue extending (hot path again since canResume is true)
+    bool ok = cache.extend(parser, 20);
+    runner.expectTrue(ok, "hot_resume_extend_after_abort");
+    runner.expectEq(static_cast<uint16_t>(30), cache.pageCount(), "hot_resume_final_count");
+    runner.expectFalse(cache.isPartial(), "hot_resume_complete");
+  }
+
+  // Test 15: Cold extend no-progress guard does NOT fire when parser still has content
+  // (aborted extend shouldn't permanently mark chapter as complete)
+  {
+    MockContentParser parser(100);
+    MockPageCache cache;
+
+    // Create with 5 pages
+    cache.create(parser, 5);
+    runner.expectEq(static_cast<uint16_t>(5), cache.pageCount(), "cold_noprog_initial_count");
+
+    // Reset to force cold path, then abort extend immediately
+    parser.reset();
+    AbortCallback abortImmediately = []() { return true; };
+    bool ok = cache.extend(parser, 10, abortImmediately);
+
+    // Extend failed (abort with 0 pages), but parser.hasMoreContent() is still true
+    // because content exists, so isPartial_ should NOT be set to false
+    runner.expectFalse(ok, "cold_noprog_aborted_extend_fails");
+    runner.expectEq(static_cast<uint16_t>(0), cache.pageCount(), "cold_noprog_aborted_count");
+    // The create() call with abort returns false, so extend returns false.
+    // pageCount_ is 0 (create resets it), which is <= currentPages (5).
+    // But we don't reach the no-progress guard because create returned false.
+  }
+
+  // Test 16: Hot extend when parser reaches exact total (boundary condition)
+  {
+    MockContentParser parser(10);
+    MockPageCache cache;
+
+    cache.create(parser, 10);  // Exactly all pages
+    runner.expectEq(static_cast<uint16_t>(10), cache.pageCount(), "exact_total_count");
+    runner.expectFalse(parser.hasMoreContent(), "exact_total_no_more");
+    runner.expectFalse(cache.isPartial(), "exact_total_not_partial");
+    runner.expectFalse(parser.canResume(), "exact_total_no_resume");
+
+    // Extend should be a no-op
+    bool ok = cache.extend(parser, 5);
+    runner.expectTrue(ok, "exact_total_extend_noop");
+    runner.expectEq(static_cast<uint16_t>(10), cache.pageCount(), "exact_total_extend_count");
+  }
+
+  // Test 17: Hot extend requesting more pages than remaining
+  {
+    MockContentParser parser(8);
+    MockPageCache cache;
+
+    cache.create(parser, 3);
+    runner.expectEq(static_cast<uint16_t>(3), cache.pageCount(), "overrequest_initial");
+
+    // Request 20 pages but only 5 remain
+    bool ok = cache.extend(parser, 20);
+    runner.expectTrue(ok, "overrequest_success");
+    runner.expectEq(static_cast<uint16_t>(8), cache.pageCount(), "overrequest_got_all");
+    runner.expectFalse(cache.isPartial(), "overrequest_complete");
   }
 
   return runner.allPassed() ? 0 : 1;

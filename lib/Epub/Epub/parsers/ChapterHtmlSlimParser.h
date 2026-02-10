@@ -23,7 +23,7 @@ class Print;
 constexpr int MAX_XML_DEPTH = 100;
 
 class ChapterHtmlSlimParser {
-  const std::string& filepath;
+  const std::string filepath;
   GfxRenderer& renderer;
   std::function<bool(std::unique_ptr<Page>)> completePageFn;  // Returns false to stop parsing
   std::function<void(int)> progressFn;                        // Progress callback (0-100)
@@ -92,6 +92,17 @@ class ChapterHtmlSlimParser {
   static void XMLCALL characterData(void* userData, const XML_Char* s, int len);
   static void XMLCALL endElement(void* userData, const XML_Char* name);
 
+  // Suspend/resume state
+  FsFile file_;
+  size_t totalSize_ = 0;
+  size_t bytesRead_ = 0;
+  int lastProgress_ = -1;
+  bool suspended_ = false;  // True when parser is suspended mid-parse (can resume)
+
+  bool initParser();
+  bool parseLoop();
+  void cleanupParser();
+
  public:
   explicit ChapterHtmlSlimParser(const std::string& filepath, GfxRenderer& renderer, const RenderConfig& config,
                                  const std::function<bool(std::unique_ptr<Page>)>& completePageFn,
@@ -110,8 +121,10 @@ class ChapterHtmlSlimParser {
         readItemFn(readItemFn),
         cssParser_(cssParser),
         externalAbortCallback_(externalAbortCallback) {}
-  ~ChapterHtmlSlimParser() = default;
+  ~ChapterHtmlSlimParser();
   bool parseAndBuildPages();
+  bool resumeParsing();
+  bool isSuspended() const { return suspended_; }
   void addLineToPage(std::shared_ptr<TextBlock> line);
   bool wasAborted() const { return aborted_; }
 };

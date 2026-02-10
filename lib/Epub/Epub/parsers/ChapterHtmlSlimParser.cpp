@@ -435,40 +435,61 @@ bool ChapterHtmlSlimParser::shouldAbort() const {
   return false;
 }
 
-bool ChapterHtmlSlimParser::parseAndBuildPages() {
+ChapterHtmlSlimParser::~ChapterHtmlSlimParser() { cleanupParser(); }
+
+void ChapterHtmlSlimParser::cleanupParser() {
+  if (xmlParser_) {
+    XML_SetElementHandler(xmlParser_, nullptr, nullptr);
+    XML_SetCharacterDataHandler(xmlParser_, nullptr);
+    XML_ParserFree(xmlParser_);
+    xmlParser_ = nullptr;
+  }
+  if (file_) {
+    file_.close();
+  }
+  currentPage.reset();
+  currentTextBlock.reset();
+  suspended_ = false;
+}
+
+bool ChapterHtmlSlimParser::initParser() {
   parseStartTime_ = millis();
   loopCounter_ = 0;
   elementCounter_ = 0;
   cssHeapOk_ = true;
   pendingEmergencySplit_ = false;
   aborted_ = false;
+  stopRequested_ = false;
+  suspended_ = false;
   dataUriStripper_.reset();
   startNewTextBlock(static_cast<TextBlock::BLOCK_STYLE>(config.paragraphAlignment));
 
-  const XML_Parser parser = XML_ParserCreate(nullptr);
-  xmlParser_ = parser;  // Store for stopping mid-parse
-  int done;
-
-  if (!parser) {
+  xmlParser_ = XML_ParserCreate(nullptr);
+  if (!xmlParser_) {
     Serial.printf("[%lu] [EHP] Couldn't allocate memory for parser\n", millis());
     return false;
   }
 
-  FsFile file;
-  if (!SdMan.openFileForRead("EHP", filepath, file)) {
-    XML_ParserFree(parser);
+  if (!SdMan.openFileForRead("EHP", filepath, file_)) {
+    XML_ParserFree(xmlParser_);
+    xmlParser_ = nullptr;
     return false;
   }
 
-  // Get file size for progress calculation
-  const size_t totalSize = file.size();
-  size_t bytesRead = 0;
-  int lastProgress = -1;
+  totalSize_ = file_.size();
+  bytesRead_ = 0;
+  lastProgress_ = -1;
   pagesCreated_ = 0;
 
-  XML_SetUserData(parser, this);
-  XML_SetElementHandler(parser, startElement, endElement);
-  XML_SetCharacterDataHandler(parser, characterData);
+  XML_SetUserData(xmlParser_, this);
+  XML_SetElementHandler(xmlParser_, startElement, endElement);
+  XML_SetCharacterDataHandler(xmlParser_, characterData);
+
+  return true;
+}
+
+bool ChapterHtmlSlimParser::parseLoop() {
+  int done;
 
   do {
     // Periodic safety check and yield
@@ -483,32 +504,18 @@ bool ChapterHtmlSlimParser::parseAndBuildPages() {
 
     constexpr size_t kReadChunkSize = 1024;
     constexpr size_t kDataUriPrefixSize = 10;  // max partial saved by DataUriStripper: "src=\"data:"
-    void* const buf = XML_GetBuffer(parser, kReadChunkSize + kDataUriPrefixSize);
+    void* const buf = XML_GetBuffer(xmlParser_, kReadChunkSize + kDataUriPrefixSize);
     if (!buf) {
       Serial.printf("[%lu] [EHP] Couldn't allocate memory for buffer\n", millis());
-      XML_StopParser(parser, XML_FALSE);                // Stop any pending processing
-      XML_SetElementHandler(parser, nullptr, nullptr);  // Clear callbacks
-      XML_SetCharacterDataHandler(parser, nullptr);
-      XML_ParserFree(parser);
-      xmlParser_ = nullptr;
-      file.close();
-      currentPage.reset();
-      currentTextBlock.reset();
+      cleanupParser();
       return false;
     }
 
-    size_t len = file.read(static_cast<uint8_t*>(buf), kReadChunkSize);
+    size_t len = file_.read(static_cast<uint8_t*>(buf), kReadChunkSize);
 
     if (len == 0) {
       Serial.printf("[%lu] [EHP] File read error\n", millis());
-      XML_StopParser(parser, XML_FALSE);                // Stop any pending processing
-      XML_SetElementHandler(parser, nullptr, nullptr);  // Clear callbacks
-      XML_SetCharacterDataHandler(parser, nullptr);
-      XML_ParserFree(parser);
-      xmlParser_ = nullptr;
-      file.close();
-      currentPage.reset();
-      currentTextBlock.reset();
+      cleanupParser();
       return false;
     }
 
@@ -519,29 +526,31 @@ bool ChapterHtmlSlimParser::parseAndBuildPages() {
 
     // Update progress (call every 10% change to avoid too frequent updates)
     // Only show progress for larger chapters where rendering overhead is worth it
-    bytesRead += originalLen;
-    if (progressFn && totalSize >= MIN_SIZE_FOR_PROGRESS) {
-      const int progress = static_cast<int>((bytesRead * 100) / totalSize);
-      if (lastProgress / 10 != progress / 10) {
-        lastProgress = progress;
+    bytesRead_ += originalLen;
+    if (progressFn && totalSize_ >= MIN_SIZE_FOR_PROGRESS) {
+      const int progress = static_cast<int>((bytesRead_ * 100) / totalSize_);
+      if (lastProgress_ / 10 != progress / 10) {
+        lastProgress_ = progress;
         progressFn(progress);
       }
     }
 
-    done = file.available() == 0;
+    done = file_.available() == 0;
 
-    if (XML_ParseBuffer(parser, static_cast<int>(len), done) == XML_STATUS_ERROR) {
-      Serial.printf("[%lu] [EHP] Parse error at line %lu:\n%s\n", millis(), XML_GetCurrentLineNumber(parser),
-                    XML_ErrorString(XML_GetErrorCode(parser)));
-      XML_StopParser(parser, XML_FALSE);                // Stop any pending processing
-      XML_SetElementHandler(parser, nullptr, nullptr);  // Clear callbacks
-      XML_SetCharacterDataHandler(parser, nullptr);
-      XML_ParserFree(parser);
-      xmlParser_ = nullptr;
-      file.close();
-      currentPage.reset();
-      currentTextBlock.reset();
+    const auto status = XML_ParseBuffer(xmlParser_, static_cast<int>(len), done);
+    if (status == XML_STATUS_ERROR) {
+      Serial.printf("[%lu] [EHP] Parse error at line %lu:\n%s\n", millis(), XML_GetCurrentLineNumber(xmlParser_),
+                    XML_ErrorString(XML_GetErrorCode(xmlParser_)));
+      cleanupParser();
       return false;
+    }
+
+    // XML_STATUS_SUSPENDED means completePageFn returned false (maxPages hit).
+    // Parser state is preserved for resume. Close file to free handle.
+    if (status == XML_STATUS_SUSPENDED) {
+      suspended_ = true;
+      file_.close();
+      return true;
     }
 
     // Deferred emergency split - runs outside XML callback to avoid stack overflow.
@@ -565,13 +574,7 @@ bool ChapterHtmlSlimParser::parseAndBuildPages() {
     }
   } while (!done);
 
-  XML_StopParser(parser, XML_FALSE);                // Stop any pending processing
-  XML_SetElementHandler(parser, nullptr, nullptr);  // Clear callbacks
-  XML_SetCharacterDataHandler(parser, nullptr);
-  XML_ParserFree(parser);
-  xmlParser_ = nullptr;
-  file.close();
-
+  // Reached end of file or aborted — finalize
   // Process last page if there is still text
   if (currentTextBlock && !stopRequested_) {
     makePages();
@@ -582,7 +585,54 @@ bool ChapterHtmlSlimParser::parseAndBuildPages() {
     currentTextBlock.reset();
   }
 
+  cleanupParser();
   return true;
+}
+
+bool ChapterHtmlSlimParser::parseAndBuildPages() {
+  if (!initParser()) {
+    return false;
+  }
+  return parseLoop();
+}
+
+bool ChapterHtmlSlimParser::resumeParsing() {
+  if (!suspended_ || !xmlParser_) {
+    return false;
+  }
+
+  // Reopen file at saved position (closed on suspend to free file handle)
+  if (!SdMan.openFileForRead("EHP", filepath, file_)) {
+    Serial.printf("[%lu] [EHP] Failed to reopen file for resume\n", millis());
+    cleanupParser();
+    return false;
+  }
+  file_.seek(bytesRead_);
+
+  // Reset per-extend state
+  parseStartTime_ = millis();
+  loopCounter_ = 0;
+  elementCounter_ = 0;
+  stopRequested_ = false;
+  suspended_ = false;
+
+  const auto status = XML_ResumeParser(xmlParser_);
+  if (status == XML_STATUS_ERROR) {
+    Serial.printf("[%lu] [EHP] Resume error: %s\n", millis(), XML_ErrorString(XML_GetErrorCode(xmlParser_)));
+    cleanupParser();
+    return false;
+  }
+
+  // If resume itself caused a suspend (maxPages hit again immediately), we're done.
+  // Close file to free handle (same as the suspend path inside parseLoop).
+  if (status == XML_STATUS_SUSPENDED) {
+    suspended_ = true;
+    file_.close();
+    return true;
+  }
+
+  // Continue the file-reading loop
+  return parseLoop();
 }
 
 void ChapterHtmlSlimParser::addLineToPage(std::shared_ptr<TextBlock> line) {
@@ -595,7 +645,7 @@ void ChapterHtmlSlimParser::addLineToPage(std::shared_ptr<TextBlock> line) {
     if (!completePageFn(std::move(currentPage))) {
       stopRequested_ = true;
       if (xmlParser_) {
-        XML_StopParser(xmlParser_, XML_FALSE);
+        XML_StopParser(xmlParser_, XML_TRUE);  // Resumable suspend
       }
       return;
     }
@@ -758,7 +808,7 @@ void ChapterHtmlSlimParser::addImageToPage(std::shared_ptr<ImageBlock> image) {
     if (!completePageFn(std::move(currentPage))) {
       stopRequested_ = true;
       if (xmlParser_) {
-        XML_StopParser(xmlParser_, XML_FALSE);
+        XML_StopParser(xmlParser_, XML_TRUE);  // Resumable suspend
       }
       return;
     }
@@ -772,7 +822,7 @@ void ChapterHtmlSlimParser::addImageToPage(std::shared_ptr<ImageBlock> image) {
     if (!completePageFn(std::move(currentPage))) {
       stopRequested_ = true;
       if (xmlParser_) {
-        XML_StopParser(xmlParser_, XML_FALSE);
+        XML_StopParser(xmlParser_, XML_TRUE);  // Resumable suspend
       }
       return;
     }
@@ -799,7 +849,7 @@ void ChapterHtmlSlimParser::addImageToPage(std::shared_ptr<ImageBlock> image) {
     if (!completePageFn(std::move(currentPage))) {
       stopRequested_ = true;
       if (xmlParser_) {
-        XML_StopParser(xmlParser_, XML_FALSE);
+        XML_StopParser(xmlParser_, XML_TRUE);  // Resumable suspend
       }
       return;
     }
