@@ -486,5 +486,76 @@ int main() {
     runner.expectFalse(cache.isPartial(), "overrequest_complete");
   }
 
+  // Test 18: Hot extend with parse failure during resume
+  // Parser fails (not abort) partway through a hot extend. Partial pages should be kept.
+  {
+    MockContentParser parser(20);
+    MockPageCache cache;
+
+    bool ok = cache.create(parser, 5);
+    runner.expectTrue(ok, "hot_fail_initial_create");
+    runner.expectEq(static_cast<uint16_t>(5), cache.pageCount(), "hot_fail_initial_count");
+    runner.expectTrue(parser.canResume(), "hot_fail_can_resume");
+
+    // Enable parse failure: each parsePages() call fails after 3 pages
+    parser.setFailAfterPages(3);
+
+    ok = cache.extend(parser, 10);
+    // Hot extend: produced 3 pages before failure -> total 8
+    runner.expectTrue(ok, "hot_fail_extend_ok");
+    runner.expectEq(static_cast<uint16_t>(8), cache.pageCount(), "hot_fail_count_8");
+    runner.expectTrue(cache.isPartial(), "hot_fail_still_partial");
+  }
+
+  // Test 19: Hot → cold extend transition
+  // Start with hot extends, then reset (simulating device restart), then cold extend.
+  {
+    MockContentParser parser(30);
+    MockPageCache cache;
+
+    // Hot path: create + extend
+    cache.create(parser, 5);
+    runner.expectTrue(parser.canResume(), "hot_cold_can_resume_after_create");
+    cache.extend(parser, 5);
+    runner.expectEq(static_cast<uint16_t>(10), cache.pageCount(), "hot_cold_hot_count");
+    runner.expectTrue(parser.canResume(), "hot_cold_still_resumable");
+
+    // Reset forces cold path (simulates device restart losing parser state)
+    parser.reset();
+    runner.expectFalse(parser.canResume(), "hot_cold_no_resume_after_reset");
+
+    // Cold extend: re-parses from start, targets 20 pages total
+    bool ok = cache.extend(parser, 10);
+    runner.expectTrue(ok, "hot_cold_cold_extend_ok");
+    runner.expectEq(static_cast<uint16_t>(20), cache.pageCount(), "hot_cold_cold_count_20");
+    runner.expectTrue(cache.isPartial(), "hot_cold_still_partial");
+
+    // Can continue with hot extends again from cold path's parser state
+    runner.expectTrue(parser.canResume(), "hot_cold_resume_after_cold");
+    ok = cache.extend(parser, 10);
+    runner.expectTrue(ok, "hot_cold_final_extend");
+    runner.expectEq(static_cast<uint16_t>(30), cache.pageCount(), "hot_cold_final_count");
+    runner.expectFalse(cache.isPartial(), "hot_cold_complete");
+  }
+
+  // Test 20: failAfterPages at exact end of content (reachedEnd guard)
+  // When parse error happens at the exact end of content, hasMore_ should be false.
+  // Before the reachedEnd fix: hasMore_ = !success && pagesCreated > 0 = true (wrong)
+  // After:  reachedEnd = true, so hasMore_ = false (correct)
+  {
+    MockContentParser parser(10);
+    parser.setFailAfterPages(10);  // Fails after producing exactly all 10 pages
+
+    MockPageCache cache;
+    bool ok = cache.create(parser, 0);  // Unlimited
+
+    // All 10 pages produced, then failure triggered (at end of content)
+    runner.expectTrue(ok, "reachedend_fail_success");
+    runner.expectEq(static_cast<uint16_t>(10), cache.pageCount(), "reachedend_fail_count");
+    // reachedEnd=true, so despite parse failure, no more content exists
+    runner.expectFalse(parser.hasMoreContent(), "reachedend_fail_no_more");
+    runner.expectFalse(cache.isPartial(), "reachedend_fail_not_partial");
+  }
+
   return runner.allPassed() ? 0 : 1;
 }

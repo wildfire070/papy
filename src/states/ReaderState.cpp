@@ -987,6 +987,13 @@ void ReaderState::stopBackgroundCaching() {
     Serial.println("[READER] WARNING: Cache task did not stop within timeout");
     Serial.println("[READER] Task may be blocked on SD card I/O");
   }
+
+  // Yield to allow FreeRTOS idle task to clean up the deleted task's TCB.
+  // The background task self-deletes via vTaskDelete(NULL), but the idle task
+  // must run to free its resources. Without this, parser_.reset() or
+  // pageCache_.reset() can trigger mutex ownership violations
+  // (assert failed: xQueueGenericSend queue.c:832).
+  vTaskDelay(10 / portTICK_PERIOD_MS);
 }
 
 // ============================================================================
@@ -997,6 +1004,10 @@ void ReaderState::enterTocMode(Core& core) {
   if (core.content.tocCount() == 0) {
     return;
   }
+
+  // Stop background task before TOC overlay — both SD card I/O (thumbnail)
+  // and e-ink display update share the same SPI bus
+  stopBackgroundCaching();
 
   populateTocView(core);
   int currentIdx = findCurrentTocEntry(core);
@@ -1036,10 +1047,12 @@ void ReaderState::handleTocInput(Core& core, const Event& e) {
     case Button::Center:
       jumpToTocEntry(core, tocView_.selected);
       exitTocMode();
+      startBackgroundCaching(core);
       break;
 
     case Button::Back:
       exitTocMode();
+      startBackgroundCaching(core);
       break;
 
     case Button::Power:
@@ -1099,13 +1112,12 @@ void ReaderState::jumpToTocEntry(Core& core, int tocIndex) {
   if (type == ContentType::Epub) {
     // For EPUB, pageNum is spine index
     if (static_cast<int>(chapter.pageNum) != currentSpineIndex_) {
-      stopBackgroundCaching();
+      // Task already stopped by enterTocMode(); caller restarts after exitTocMode()
       currentSpineIndex_ = chapter.pageNum;
       currentSectionPage_ = 0;
       parser_.reset();
       parserSpineIndex_ = -1;
       pageCache_.reset();
-      startBackgroundCaching(core);
     }
   } else if (type == ContentType::Xtc) {
     // For XTC, pageNum is page index
