@@ -96,7 +96,7 @@ bool EpubChapterParser::parsePages(const std::function<void(std::unique_ptr<Page
     if (!SdMan.openFileForWrite("EPUB", tmpHtmlPath_, tmpHtml)) {
       continue;
     }
-    success = epub_->readItemContentsToStream(localPath, tmpHtml, 4096);
+    success = epub_->readItemContentsToStream(localPath, tmpHtml, 1024);
     tmpHtml.close();
 
     if (!success && SdMan.exists(tmpHtmlPath_.c_str())) {

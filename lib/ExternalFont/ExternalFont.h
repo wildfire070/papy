@@ -110,14 +110,14 @@ class ExternalFont {
   // Trade-off: larger cache = better performance with CJK text, but more RAM usage
   //
   // Memory usage: CACHE_SIZE * ~204 bytes per entry
-  //   - 256 entries = ~52KB (default, good for CJK-heavy content)
-  //   - 128 entries = ~26KB (reduced, suitable for memory-constrained scenarios)
+  //   - 256 entries = ~52KB (good for CJK-heavy content)
+  //   - 128 entries = ~26KB (default, balanced for most content)
   //   - 64 entries  = ~13KB (minimal, may cause cache thrashing with CJK)
   //
   // To reduce memory usage, change EXTERNAL_FONT_CACHE_SIZE before including this header,
   // or modify the default below.
 #ifndef EXTERNAL_FONT_CACHE_SIZE
-#define EXTERNAL_FONT_CACHE_SIZE 256
+#define EXTERNAL_FONT_CACHE_SIZE 128
 #endif
   static constexpr int CACHE_SIZE = EXTERNAL_FONT_CACHE_SIZE;
   static constexpr int MAX_GLYPH_BYTES = 200;  // Max 200 bytes per glyph (enough for 33x39)

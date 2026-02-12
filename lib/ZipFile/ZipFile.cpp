@@ -2,6 +2,7 @@
 
 #include <HardwareSerial.h>
 #include <SDCardManager.h>
+#include <esp_heap_caps.h>
 #include <miniz.h>
 
 #include <algorithm>
@@ -605,22 +606,21 @@ bool ZipFile::readFileToStream(const char* filename, Print& out, const size_t ch
   }
 
   if (fileStat.method == MZ_DEFLATED) {
-    // Setup inflator
+    // Separate allocations: fits in fragmented heap where one large block wouldn't.
+    // tinfl_decompressor ~11KB, chunkSize ~1KB, dictionary 32KB - each fits in smaller fragments.
     const auto inflator = static_cast<tinfl_decompressor*>(malloc(sizeof(tinfl_decompressor)));
     if (!inflator) {
-      Serial.printf("[%lu] [ZIP] Failed to allocate memory for inflator\n", millis());
+      Serial.printf("[%lu] [ZIP] Failed to allocate inflator (largest free: %u)\n", millis(),
+                    heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
       if (!wasOpen) {
         close();
       }
       return false;
     }
-    memset(inflator, 0, sizeof(tinfl_decompressor));
     tinfl_init(inflator);
 
-    // Setup file read buffer
     const auto fileReadBuffer = static_cast<uint8_t*>(malloc(chunkSize));
     if (!fileReadBuffer) {
-      Serial.printf("[%lu] [ZIP] Failed to allocate memory for zip file read buffer\n", millis());
       free(inflator);
       if (!wasOpen) {
         close();
@@ -630,9 +630,8 @@ bool ZipFile::readFileToStream(const char* filename, Print& out, const size_t ch
 
     const auto outputBuffer = static_cast<uint8_t*>(malloc(TINFL_LZ_DICT_SIZE));
     if (!outputBuffer) {
-      Serial.printf("[%lu] [ZIP] Failed to allocate memory for dictionary\n", millis());
-      free(inflator);
       free(fileReadBuffer);
+      free(inflator);
       if (!wasOpen) {
         close();
       }
@@ -711,9 +710,9 @@ bool ZipFile::readFileToStream(const char* filename, Print& out, const size_t ch
         if (!wasOpen) {
           close();
         }
-        free(inflator);
-        free(fileReadBuffer);
         free(outputBuffer);
+        free(fileReadBuffer);
+        free(inflator);
         return true;
       }
     }
