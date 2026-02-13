@@ -191,6 +191,25 @@ int Settings::getReaderFontId(const Theme& theme) const {
   }
 }
 
+bool Settings::hasExternalReaderFont(const Theme& theme) const {
+  const char* family = nullptr;
+  switch (fontSize) {
+    case FontXSmall:
+      family = theme.readerFontFamilyXSmall;
+      break;
+    case FontMedium:
+      family = theme.readerFontFamilyMedium;
+      break;
+    case FontLarge:
+      family = theme.readerFontFamilyLarge;
+      break;
+    default:
+      family = theme.readerFontFamilySmall;
+      break;
+  }
+  return family && *family;
+}
+
 RenderConfig Settings::getRenderConfig(const Theme& theme, uint16_t viewportWidth, uint16_t viewportHeight) const {
   return RenderConfig(getReaderFontId(theme), getLineCompression(), getIndentLevel(), getSpacingLevel(),
                       paragraphAlignment, static_cast<bool>(hyphenation), static_cast<bool>(showImages), viewportWidth,

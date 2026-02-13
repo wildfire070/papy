@@ -113,6 +113,7 @@ struct Settings {
   }
 
   int getReaderFontId(const Theme& theme) const;
+  bool hasExternalReaderFont(const Theme& theme) const;
 
   int getPagesPerRefreshValue() const {
     constexpr int values[] = {1, 5, 10, 15, 30};

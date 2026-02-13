@@ -1162,9 +1162,12 @@ void ReaderState::renderTocOverlay(Core& core) {
   renderer_.clearScreen(theme.backgroundColor);
   renderer_.drawCenteredText(theme.uiFontId, 15, "Chapters", theme.primaryTextBlack, BOLD);
 
-  // Use current reader font for EPUB/TXT/Markdown, UI font for XTC (pre-rendered content)
+  // Use reader font only when external font is selected (for VN/Thai/CJK support),
+  // otherwise use smaller UI font for better chapter list readability
   const ContentType type = core.content.metadata().type;
-  const int tocFontId = (type == ContentType::Xtc) ? theme.uiFontId : core.settings.getReaderFontId(theme);
+  const bool hasExternalFont = core.settings.hasExternalReaderFont(theme);
+  const int tocFontId =
+      (type == ContentType::Xtc || !hasExternalFont) ? theme.uiFontId : core.settings.getReaderFontId(theme);
 
   const int end = std::min(tocView_.scrollOffset + visibleCount, static_cast<int>(tocView_.chapterCount));
   for (int i = tocView_.scrollOffset; i < end; i++) {
