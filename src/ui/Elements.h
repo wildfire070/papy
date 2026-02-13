@@ -20,6 +20,9 @@ struct ButtonBar {
 // Title - Centered bold heading
 void title(const GfxRenderer& r, const Theme& t, int y, const char* text);
 
+// Brand title - Left-aligned bold heading with margin
+void brandTitle(const GfxRenderer& r, const Theme& t, int y, const char* text);
+
 // Menu item - Selectable entry with optional highlight
 void menuItem(const GfxRenderer& r, const Theme& t, int y, const char* text, bool selected);
 

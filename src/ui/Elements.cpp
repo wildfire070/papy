@@ -16,6 +16,10 @@ void title(const GfxRenderer& r, const Theme& t, int y, const char* text) {
   r.drawCenteredText(t.readerFontId, y, text, t.primaryTextBlack, EpdFontFamily::BOLD);
 }
 
+void brandTitle(const GfxRenderer& r, const Theme& t, int y, const char* text) {
+  r.drawText(t.readerFontId, 10, y, text, t.primaryTextBlack, EpdFontFamily::BOLD);
+}
+
 void menuItem(const GfxRenderer& r, const Theme& t, int y, const char* text, bool selected) {
   const int x = t.screenMarginSide;
   const int w = r.getScreenWidth() - 2 * t.screenMarginSide;

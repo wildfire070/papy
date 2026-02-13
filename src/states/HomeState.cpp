@@ -169,9 +169,6 @@ void HomeState::render(Core& core) {
     if (!bufferRestored) {
       renderer_.clearScreen(theme.backgroundColor);
 
-      // Draw card border
-      renderer_.drawRect(card.x, card.y, card.width, card.height, theme.primaryTextBlack);
-
       // Render cover inside card (first time only)
       if (!coverRendered_) {
         renderCoverToCard();
@@ -352,12 +349,10 @@ bool HomeState::restoreCoverThumbnail() {
     return false;
   }
 
-  // First, clear and redraw the card border (text boxes will be redrawn by ui::render)
+  // First, clear screen (text will be redrawn by ui::render)
   const Theme& theme = THEME;
-  const auto card = ui::CardDimensions::calculate(renderer_.getScreenWidth(), renderer_.getScreenHeight());
 
   renderer_.clearScreen(theme.backgroundColor);
-  renderer_.drawRect(card.x, card.y, card.width, card.height, theme.primaryTextBlack);
 
   // Decode compressed thumbnail
   const int thumbWidthBytes = (COVER_CACHE_WIDTH + 7) / 8;

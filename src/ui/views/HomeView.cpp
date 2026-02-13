@@ -1,7 +1,6 @@
 #include "HomeView.h"
 
 #include <CoverHelpers.h>
-#include <EpdFontFamily.h>
 
 #include <algorithm>
 #include <cstdio>
@@ -17,8 +16,8 @@ void render(const GfxRenderer& r, const Theme& t, const HomeView& v) {
   const int pageWidth = r.getScreenWidth();
   const int pageHeight = r.getScreenHeight();
 
-  // Title "Papyrix Reader" at top
-  r.drawCenteredText(t.readerFontId, 10, "Papyrix", t.primaryTextBlack, EpdFontFamily::BOLD);
+  // "Papyrix" brand title - bold in top-left corner
+  brandTitle(r, t, 10, "Papyrix");
 
   // Battery indicator - top right
   battery(r, t, pageWidth - 80, 10, v.batteryPercent);
@@ -33,11 +32,6 @@ void render(const GfxRenderer& r, const Theme& t, const HomeView& v) {
   const bool hasCover = v.coverData != nullptr || v.hasCoverBmp;
 
   if (v.hasBook) {
-    // Draw book card border (skip if BMP cover present - HomeState drew it)
-    if (!v.hasCoverBmp) {
-      r.drawRect(cardX, cardY, cardWidth, cardHeight, t.primaryTextBlack);
-    }
-
     // Draw cover image if available (in-memory version; BMP cover rendered by HomeState)
     const auto coverArea = card.getCoverArea();
     if (v.coverData != nullptr && v.coverWidth > 0 && v.coverHeight > 0) {
@@ -46,61 +40,25 @@ void render(const GfxRenderer& r, const Theme& t, const HomeView& v) {
       r.drawImage(v.coverData, rect.x, rect.y, v.coverWidth, v.coverHeight);
     }
 
-    // Draw book placeholder when no cover available (same area as real covers)
+    // Draw book placeholder when no cover available
     if (!hasCover) {
       bookPlaceholder(r, t, coverArea.x, coverArea.y, coverArea.width, coverArea.height);
     }
 
+    // Title/author below the cover area
     const int titleLineHeight = r.getLineHeight(t.uiFontId);
-
-    // "Continue Reading" at bottom of card
-    const char* continueText = "Continue Reading";
-    const int continueWidth = r.getTextWidth(t.uiFontId, continueText);
-    const int continueX = cardX + (cardWidth - continueWidth) / 2;
-    const int continueY = cardY + cardHeight - 40;
-
-    // Draw white background for "Continue Reading" when cover is present
-    if (hasCover) {
-      constexpr int continuePadding = 6;
-      const int continueBoxWidth = continueWidth + continuePadding * 2;
-      const int continueBoxHeight = titleLineHeight + continuePadding;
-      const int continueBoxX = (pageWidth - continueBoxWidth) / 2;
-      const int continueBoxY = continueY - continuePadding / 2;
-      r.fillRect(continueBoxX, continueBoxY, continueBoxWidth, continueBoxHeight, !t.primaryTextBlack);
-      r.drawRect(continueBoxX, continueBoxY, continueBoxWidth, continueBoxHeight, t.primaryTextBlack);
-    }
-
-    r.drawText(t.uiFontId, continueX, continueY, continueText, t.primaryTextBlack);
-
-    // Title/author block below the card
-    constexpr int blockSpacing = 10;
-    constexpr int blockPadding = 8;
+    constexpr int textSpacing = 10;
     constexpr int buttonBarHeight = 50;
-    const int maxTextWidth = cardWidth - 2 * blockPadding;
-
-    // Calculate available height for block (between card and button bar)
-    const int blockY = cardY + cardHeight + blockSpacing;
-    const int availableHeight = pageHeight - blockY - buttonBarHeight - blockSpacing;
+    const int textStartY = cardY + cardHeight + textSpacing;
+    const int availableHeight = pageHeight - textStartY - buttonBarHeight - textSpacing;
     const int authorHeight = (v.bookAuthor[0] != '\0') ? titleLineHeight * 3 / 2 : 0;
-    const int maxTitleHeight = availableHeight - 2 * blockPadding - authorHeight;
+    const int maxTitleHeight = availableHeight - authorHeight;
     const int maxTitleLines = std::max(1, maxTitleHeight / titleLineHeight);
 
-    const auto titleLines =
-        r.wrapTextWithHyphenation(t.uiFontId, v.bookTitle, maxTextWidth, std::min(3, maxTitleLines));
+    const auto titleLines = r.wrapTextWithHyphenation(t.uiFontId, v.bookTitle, cardWidth, std::min(3, maxTitleLines));
 
-    // Calculate total text height for the block
-    int totalTextHeight = static_cast<int>(titleLines.size()) * titleLineHeight;
-    if (v.bookAuthor[0] != '\0') {
-      totalTextHeight += titleLineHeight * 3 / 2;  // Author line + spacing
-    }
-
-    const int blockHeight = totalTextHeight + 2 * blockPadding;
-
-    // Draw bordered block for title/author
-    r.drawRect(cardX, blockY, cardWidth, blockHeight, t.primaryTextBlack);
-
-    // Draw title lines centered in block
-    int textY = blockY + blockPadding;
+    // Draw title lines centered
+    int textY = textStartY;
     for (const auto& line : titleLines) {
       const int lineWidth = r.getTextWidth(t.uiFontId, line.c_str());
       const int lineX = cardX + (cardWidth - lineWidth) / 2;
@@ -110,11 +68,11 @@ void render(const GfxRenderer& r, const Theme& t, const HomeView& v) {
 
     // Draw author if available
     if (v.bookAuthor[0] != '\0') {
-      textY += titleLineHeight / 2;  // Extra spacing before author
-      const auto truncAuthor = r.truncatedText(t.uiFontId, v.bookAuthor, maxTextWidth);
+      textY += titleLineHeight / 4;
+      const auto truncAuthor = r.truncatedText(t.uiFontId, v.bookAuthor, cardWidth);
       const int authorWidth = r.getTextWidth(t.uiFontId, truncAuthor.c_str());
       const int authorX = cardX + (cardWidth - authorWidth) / 2;
-      r.drawText(t.uiFontId, authorX, textY, truncAuthor.c_str(), t.primaryTextBlack);
+      r.drawText(t.uiFontId, authorX, textY, truncAuthor.c_str(), t.secondaryTextBlack);
     }
 
   } else {

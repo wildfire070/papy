@@ -31,8 +31,7 @@ struct CardDimensions {
 
   CoverArea getCoverArea() const {
     constexpr int padding = 10;
-    constexpr int continueAreaHeight = 60;
-    return {x + padding, y + padding, width - 2 * padding, height - 2 * padding - continueAreaHeight};
+    return {x + padding, y + padding, width - 2 * padding, height - 2 * padding};
   }
 };
 
