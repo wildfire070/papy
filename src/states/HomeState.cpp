@@ -12,6 +12,7 @@
 #include "../core/BootMode.h"
 #include "../core/Core.h"
 #include "Battery.h"
+#include "FontManager.h"
 #include "MappedInputManager.h"
 #include "ThemeManager.h"
 
@@ -180,6 +181,11 @@ void HomeState::render(Core& core) {
       }
     }
   }
+
+  // Resolve external font for title/author (may trigger SD load on first call)
+  view_.titleFontId = (theme.readerFontFamilySmall[0] != '\0')
+                          ? FONT_MANAGER.getFontId(theme.readerFontFamilySmall, theme.uiFontId)
+                          : theme.uiFontId;
 
   // Render rest of UI (text boxes will draw on top of cover)
   ui::render(renderer_, theme, view_);

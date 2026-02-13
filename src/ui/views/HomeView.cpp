@@ -46,7 +46,8 @@ void render(const GfxRenderer& r, const Theme& t, const HomeView& v) {
     }
 
     // Title/author below the cover area
-    const int titleLineHeight = r.getLineHeight(t.uiFontId);
+    const int titleFontId = (v.titleFontId >= 0) ? v.titleFontId : t.uiFontId;
+    const int titleLineHeight = r.getLineHeight(titleFontId);
     constexpr int textSpacing = 10;
     constexpr int buttonBarHeight = 50;
     const int textStartY = cardY + cardHeight + textSpacing;
@@ -55,24 +56,24 @@ void render(const GfxRenderer& r, const Theme& t, const HomeView& v) {
     const int maxTitleHeight = availableHeight - authorHeight;
     const int maxTitleLines = std::max(1, maxTitleHeight / titleLineHeight);
 
-    const auto titleLines = r.wrapTextWithHyphenation(t.uiFontId, v.bookTitle, cardWidth, std::min(3, maxTitleLines));
+    const auto titleLines = r.wrapTextWithHyphenation(titleFontId, v.bookTitle, cardWidth, std::min(3, maxTitleLines));
 
     // Draw title lines centered
     int textY = textStartY;
     for (const auto& line : titleLines) {
-      const int lineWidth = r.getTextWidth(t.uiFontId, line.c_str());
+      const int lineWidth = r.getTextWidth(titleFontId, line.c_str());
       const int lineX = cardX + (cardWidth - lineWidth) / 2;
-      r.drawText(t.uiFontId, lineX, textY, line.c_str(), t.primaryTextBlack);
+      r.drawText(titleFontId, lineX, textY, line.c_str(), t.primaryTextBlack);
       textY += titleLineHeight;
     }
 
     // Draw author if available
     if (v.bookAuthor[0] != '\0') {
       textY += titleLineHeight / 4;
-      const auto truncAuthor = r.truncatedText(t.uiFontId, v.bookAuthor, cardWidth);
-      const int authorWidth = r.getTextWidth(t.uiFontId, truncAuthor.c_str());
+      const auto truncAuthor = r.truncatedText(titleFontId, v.bookAuthor, cardWidth);
+      const int authorWidth = r.getTextWidth(titleFontId, truncAuthor.c_str());
       const int authorX = cardX + (cardWidth - authorWidth) / 2;
-      r.drawText(t.uiFontId, authorX, textY, truncAuthor.c_str(), t.secondaryTextBlack);
+      r.drawText(titleFontId, authorX, textY, truncAuthor.c_str(), t.secondaryTextBlack);
     }
 
   } else {

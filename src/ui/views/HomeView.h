@@ -56,6 +56,9 @@ struct HomeView {
   // Cover from BMP file (rendered by HomeState after ui::render)
   bool hasCoverBmp = false;
 
+  // Font override for title/author (resolved by state, -1 = use theme default)
+  int titleFontId = -1;
+
   // UI state
   int8_t batteryPercent = 100;
   bool needsRender = true;
