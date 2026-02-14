@@ -14,7 +14,7 @@ void GfxRenderer::insertFont(const int fontId, EpdFontFamily font) { fontMap.ins
 void GfxRenderer::removeFont(const int fontId) {
   fontMap.erase(fontId);
   _streamingFonts.erase(fontId);
-  wordWidthCache.clear();
+  std::unordered_map<uint64_t, int16_t>().swap(wordWidthCache);
 }
 
 static inline void rotateCoordinates(const GfxRenderer::Orientation orientation, const int x, const int y,
@@ -128,7 +128,7 @@ int GfxRenderer::getTextWidth(const int fontId, const char* text, const EpdFontF
 
   // Limit cache size to prevent heap fragmentation
   if (wordWidthCache.size() >= MAX_WIDTH_CACHE_SIZE) {
-    wordWidthCache.clear();
+    std::unordered_map<uint64_t, int16_t>().swap(wordWidthCache);
   }
 
   wordWidthCache[key] = static_cast<int16_t>(w);

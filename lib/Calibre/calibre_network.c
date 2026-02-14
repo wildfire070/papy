@@ -243,6 +243,7 @@ calibre_err_t calibre_connect(calibre_conn_t* conn, const char* host, uint16_t p
 
     int ret = getaddrinfo(host, NULL, &hints, &res);
     if (ret != 0 || !res) {
+      if (res) freeaddrinfo(res);
       close(sock);
       calibre_set_error(conn, CALIBRE_ERR_CONNECT, "DNS resolution failed");
       return CALIBRE_ERR_CONNECT;

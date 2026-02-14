@@ -106,7 +106,7 @@ class GfxRenderer {
   void begin();
   void insertFont(int fontId, EpdFontFamily font);
   void removeFont(int fontId);
-  void clearWidthCache() { wordWidthCache.clear(); }
+  void clearWidthCache() { std::unordered_map<uint64_t, int16_t>().swap(wordWidthCache); }
   void setExternalFont(ExternalFont* font) { _externalFont = font; }
   ExternalFont* getExternalFont() const { return _externalFont; }
 
