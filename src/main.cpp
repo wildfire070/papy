@@ -558,5 +558,12 @@ void loop() {
   }
 
   // Add delay at the end of the loop to prevent tight spinning
-  delay(10);
+  // Increase delay after idle to save power (~4x less CPU load)
+  // Idea: https://github.com/crosspoint-reader/crosspoint-reader/commit/0991782 by @ngxson (https://github.com/ngxson)
+  static constexpr unsigned long kIdlePowerSavingMs = 3000;
+  if (papyrix::core.input.idleTimeMs() >= kIdlePowerSavingMs) {
+    delay(50);
+  } else {
+    delay(10);
+  }
 }
