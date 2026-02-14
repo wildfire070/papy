@@ -251,7 +251,9 @@ class TestParser {
         return;
       }
     }
-    characterData(userData, s, len);
+    // Not a recognized entity — silently drop.
+    // The default handler also receives XML/DOCTYPE declarations,
+    // comments, and processing instructions which must not become visible text.
   }
 
   static void XMLCALL endElement(void* userData, const XML_Char* name) {
@@ -977,14 +979,16 @@ int main() {
     runner.expectTrue(text.find("\xE2\x80\xA6") != std::string::npos, "entity_hellip: ellipsis present");
   }
 
-  // Test 55: Unknown entity is passed through as raw text
+  // Test 55: Unknown entity is silently dropped (not passed through as text)
   {
     TestParser parser;
     bool ok = parser.parse("<html><body><p>Hello&unknownentity;World</p></body></html>");
     runner.expectTrue(ok, "entity_unknown: parses successfully");
     std::string text = parser.getAllText();
-    runner.expectTrue(text.find("&unknownentity;") != std::string::npos,
-                      "entity_unknown: unknown entity passed through");
+    runner.expectTrue(text.find("&unknownentity;") == std::string::npos,
+                      "entity_unknown: unknown entity not visible");
+    runner.expectTrue(text.find("Hello") != std::string::npos, "entity_unknown: text before entity preserved");
+    runner.expectTrue(text.find("World") != std::string::npos, "entity_unknown: text after entity preserved");
   }
 
   // Test 56: XML built-in entities still work (&amp; &lt; &gt;)
@@ -1204,7 +1208,105 @@ int main() {
     runner.expectTrue(text.find("\xE2\x80\xA0") != std::string::npos, "entity_mixed_realworld: dagger");
   }
 
-  // Test 74: Numeric hex entities for Unicode symbols
+  // ============================================
+  // Default handler filtering tests (DOCTYPE, XML decl, comments)
+  // These must NOT appear as visible text
+  // ============================================
+
+  // Test 74: XML declaration is not visible
+  {
+    TestParser parser;
+    bool ok = parser.parse("<?xml version=\"1.0\" encoding=\"UTF-8\"?><html><body><p>Content</p></body></html>");
+    runner.expectTrue(ok, "drop_xml_decl: parses successfully");
+    std::string text = parser.getAllText();
+    runner.expectTrue(text.find("xml") == std::string::npos, "drop_xml_decl: xml decl not visible");
+    runner.expectTrue(text.find("version") == std::string::npos, "drop_xml_decl: version not visible");
+    runner.expectTrue(text.find("Content") != std::string::npos, "drop_xml_decl: body content visible");
+  }
+
+  // Test 75: DOCTYPE declaration is not visible
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<?xml version=\"1.0\"?>"
+        "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" \"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">"
+        "<html><body><p>Content</p></body></html>");
+    runner.expectTrue(ok, "drop_doctype: parses successfully");
+    std::string text = parser.getAllText();
+    runner.expectTrue(text.find("DOCTYPE") == std::string::npos, "drop_doctype: DOCTYPE not visible");
+    runner.expectTrue(text.find("W3C") == std::string::npos, "drop_doctype: DTD URL not visible");
+    runner.expectTrue(text.find("Content") != std::string::npos, "drop_doctype: body content visible");
+  }
+
+  // Test 76: HTML comment is not visible
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body>"
+        "<!-- This is a comment that should not appear -->"
+        "<p>Visible text</p>"
+        "</body></html>");
+    runner.expectTrue(ok, "drop_comment: parses successfully");
+    std::string text = parser.getAllText();
+    runner.expectTrue(text.find("comment") == std::string::npos, "drop_comment: comment not visible");
+    runner.expectTrue(text.find("Visible text") != std::string::npos, "drop_comment: body text visible");
+  }
+
+  // Test 77: Processing instruction is not visible
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<?xml version=\"1.0\"?>"
+        "<html><body>"
+        "<?some-pi instruction data?>"
+        "<p>After PI</p>"
+        "</body></html>");
+    runner.expectTrue(ok, "drop_pi: parses successfully");
+    std::string text = parser.getAllText();
+    runner.expectTrue(text.find("some-pi") == std::string::npos, "drop_pi: PI not visible");
+    runner.expectTrue(text.find("instruction") == std::string::npos, "drop_pi: PI data not visible");
+    runner.expectTrue(text.find("After PI") != std::string::npos, "drop_pi: body text visible");
+  }
+
+  // Test 78: Full EPUB-like preamble with DOCTYPE + XML decl + entities still work
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+        "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" \"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">"
+        "<html><body>"
+        "<p>&ldquo;Hello&rdquo; &mdash; welcome to the caf&eacute;</p>"
+        "</body></html>");
+    runner.expectTrue(ok, "epub_preamble: parses successfully");
+    std::string text = parser.getAllText();
+    runner.expectTrue(text.find("xml") == std::string::npos, "epub_preamble: xml decl not visible");
+    runner.expectTrue(text.find("DOCTYPE") == std::string::npos, "epub_preamble: DOCTYPE not visible");
+    runner.expectTrue(text.find("W3C") == std::string::npos, "epub_preamble: DTD not visible");
+    // Entities still resolve correctly
+    runner.expectTrue(text.find("\xE2\x80\x9C") != std::string::npos, "epub_preamble: ldquo resolved");
+    runner.expectTrue(text.find("\xE2\x80\x9D") != std::string::npos, "epub_preamble: rdquo resolved");
+    runner.expectTrue(text.find("\xE2\x80\x94") != std::string::npos, "epub_preamble: mdash resolved");
+    runner.expectTrue(text.find("\xC3\xA9") != std::string::npos, "epub_preamble: eacute resolved");
+    runner.expectTrue(text.find("Hello") != std::string::npos, "epub_preamble: text content visible");
+  }
+
+  // Test 79: Multiple comments interspersed with content
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body>"
+        "<!-- comment 1 --><p>First</p>"
+        "<!-- comment 2 --><p>Second</p>"
+        "<!-- comment 3 -->"
+        "</body></html>");
+    runner.expectTrue(ok, "drop_multi_comments: parses successfully");
+    std::string text = parser.getAllText();
+    runner.expectTrue(text.find("comment") == std::string::npos, "drop_multi_comments: no comments visible");
+    runner.expectTrue(text.find("First") != std::string::npos, "drop_multi_comments: First visible");
+    runner.expectTrue(text.find("Second") != std::string::npos, "drop_multi_comments: Second visible");
+  }
+
+  // Test 80: Numeric hex entities for Unicode symbols (was Test 74)
   {
     TestParser parser;
     bool ok = parser.parse("<html><body><p>&#x2603; &#x2665; &#xA9;</p></body></html>");

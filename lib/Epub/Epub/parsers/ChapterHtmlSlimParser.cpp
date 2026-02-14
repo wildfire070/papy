@@ -440,8 +440,9 @@ void XMLCALL ChapterHtmlSlimParser::defaultHandler(void* userData, const XML_Cha
       return;
     }
   }
-  // Not a recognized entity — pass through as raw text
-  characterData(userData, s, len);
+  // Not a recognized entity — silently drop.
+  // The default handler also receives XML/DOCTYPE declarations,
+  // comments, and processing instructions which must not become visible text.
 }
 
 bool ChapterHtmlSlimParser::shouldAbort() const {
