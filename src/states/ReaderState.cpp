@@ -961,6 +961,12 @@ bool ReaderState::renderCoverPage(Core& core) {
 }
 
 void ReaderState::startBackgroundCaching(Core& core) {
+  // XTC content uses pre-rendered bitmaps — no page cache or thumbnail support
+  if (core.content.metadata().type == ContentType::Xtc) {
+    thumbnailDone_ = true;
+    return;
+  }
+
   // BackgroundTask handles safe restart via CAS loop
   if (cacheTask_.isRunning()) {
     Serial.println("[READER] Warning: Previous cache task still running, stopping first");
