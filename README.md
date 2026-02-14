@@ -280,7 +280,13 @@ make reader-test
 
 # Build and process a book
 make reader-test FILE=book.epub OUTPUT=/tmp/cache
+
+# Dump parsed text content of each page
+tools/reader-test/build/reader-test --dump book.epub /tmp/cache
 ```
+
+Options:
+- `--dump` — Print the parsed text content of each page (useful for verifying entity resolution, text extraction, and layout)
 
 ### Creating a GitHub release
 

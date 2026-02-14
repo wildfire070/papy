@@ -12,6 +12,7 @@
 #include <freertos/task.h>
 
 #include "../Page.h"
+#include "../htmlEntities.h"
 
 const char* HEADER_TAGS[] = {"h1", "h2", "h3", "h4", "h5", "h6"};
 constexpr int NUM_HEADER_TAGS = sizeof(HEADER_TAGS) / sizeof(HEADER_TAGS[0]);
@@ -427,6 +428,22 @@ void XMLCALL ChapterHtmlSlimParser::endElement(void* userData, const XML_Char* n
   }
 }
 
+void XMLCALL ChapterHtmlSlimParser::defaultHandler(void* userData, const XML_Char* s, int len) {
+  // Called for text that expat doesn't handle — primarily undeclared entities.
+  // Expat handles the 5 built-in XML entities (&amp; &lt; &gt; &quot; &apos;) and any
+  // entities declared in the document's DTD. This catches HTML entities like &nbsp;,
+  // &mdash;, &ldquo; etc. that many EPUBs use without proper DTD declarations.
+  if (len >= 3 && s[0] == '&' && s[len - 1] == ';') {
+    const char* utf8 = lookupHtmlEntity(s + 1, len - 2);
+    if (utf8) {
+      characterData(userData, utf8, static_cast<int>(strlen(utf8)));
+      return;
+    }
+  }
+  // Not a recognized entity — pass through as raw text
+  characterData(userData, s, len);
+}
+
 bool ChapterHtmlSlimParser::shouldAbort() const {
   // Check external abort callback first (cooperative cancellation)
   if (externalAbortCallback_ && externalAbortCallback_()) {
@@ -456,6 +473,7 @@ void ChapterHtmlSlimParser::cleanupParser() {
   if (xmlParser_) {
     XML_SetElementHandler(xmlParser_, nullptr, nullptr);
     XML_SetCharacterDataHandler(xmlParser_, nullptr);
+    XML_SetDefaultHandlerExpand(xmlParser_, nullptr);
     XML_ParserFree(xmlParser_);
     xmlParser_ = nullptr;
   }
@@ -496,9 +514,17 @@ bool ChapterHtmlSlimParser::initParser() {
   lastProgress_ = -1;
   pagesCreated_ = 0;
 
+  // Allow parsing documents with undeclared HTML entities (e.g. &nbsp;, &mdash;).
+  // Without this, Expat returns XML_ERROR_UNDEFINED_ENTITY for any entity
+  // not declared in the document's DTD. UseForeignDTD makes Expat treat
+  // undeclared entities as "skipped" rather than errors, passing them to
+  // our default handler for resolution via the HTML entity lookup table.
+  XML_UseForeignDTD(xmlParser_, XML_TRUE);
+
   XML_SetUserData(xmlParser_, this);
   XML_SetElementHandler(xmlParser_, startElement, endElement);
   XML_SetCharacterDataHandler(xmlParser_, characterData);
+  XML_SetDefaultHandlerExpand(xmlParser_, defaultHandler);
 
   return true;
 }

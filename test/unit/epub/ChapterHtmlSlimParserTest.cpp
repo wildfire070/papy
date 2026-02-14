@@ -11,6 +11,7 @@
 #include <FsHelpers.h>
 #include <SDCardManager.h>
 #include <expat.h>
+#include <htmlEntities.h>
 
 #include <climits>
 #include <cstring>
@@ -242,6 +243,17 @@ class TestParser {
     }
   }
 
+  static void XMLCALL defaultHandler(void* userData, const XML_Char* s, int len) {
+    if (len >= 3 && s[0] == '&' && s[len - 1] == ';') {
+      const char* utf8 = lookupHtmlEntity(s + 1, len - 2);
+      if (utf8) {
+        characterData(userData, utf8, static_cast<int>(strlen(utf8)));
+        return;
+      }
+    }
+    characterData(userData, s, len);
+  }
+
   static void XMLCALL endElement(void* userData, const XML_Char* name) {
     auto* self = static_cast<TestParser*>(userData);
 
@@ -271,9 +283,11 @@ class TestParser {
     XML_Parser parser = XML_ParserCreate(nullptr);
     if (!parser) return false;
 
+    XML_UseForeignDTD(parser, XML_TRUE);
     XML_SetUserData(parser, this);
     XML_SetElementHandler(parser, startElement, endElement);
     XML_SetCharacterDataHandler(parser, characterData);
+    XML_SetDefaultHandlerExpand(parser, defaultHandler);
 
     if (XML_Parse(parser, html.c_str(), static_cast<int>(html.size()), 1) == XML_STATUS_ERROR) {
       XML_ParserFree(parser);
@@ -914,6 +928,292 @@ int main() {
     runner.expectEq(static_cast<size_t>(1), parser.anchorMap.size(),
                     "anchor_skip_pagebreak: only post-pagebreak anchor");
     runner.expectEqual("after-pagebreak", parser.anchorMap[0].first, "anchor_skip_pagebreak: correct id");
+  }
+
+  // ============================================
+  // HTML entity handling tests
+  // ============================================
+
+  // Test 51: &nbsp; entity is resolved (no DTD declaration needed)
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>Hello&nbsp;World</p></body></html>");
+    runner.expectTrue(ok, "entity_nbsp: parses successfully");
+    // NBSP (U+00A0) = 0xC2 0xA0 in UTF-8
+    std::string text = parser.getAllText();
+    runner.expectTrue(text.find("Hello") != std::string::npos, "entity_nbsp: Hello present");
+    runner.expectTrue(text.find("World") != std::string::npos, "entity_nbsp: World present");
+    runner.expectTrue(text.find('\xC2') != std::string::npos, "entity_nbsp: NBSP byte present");
+  }
+
+  // Test 52: &mdash; entity is resolved
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>Hello&mdash;World</p></body></html>");
+    runner.expectTrue(ok, "entity_mdash: parses successfully");
+    // mdash (U+2014) = 0xE2 0x80 0x94 in UTF-8
+    std::string text = parser.getAllText();
+    runner.expectTrue(text.find("\xE2\x80\x94") != std::string::npos, "entity_mdash: em-dash present");
+  }
+
+  // Test 53: &ldquo; and &rdquo; entities are resolved
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>&ldquo;Hello&rdquo;</p></body></html>");
+    runner.expectTrue(ok, "entity_quotes: parses successfully");
+    std::string text = parser.getAllText();
+    // ldquo (U+201C) = 0xE2 0x80 0x9C, rdquo (U+201D) = 0xE2 0x80 0x9D
+    runner.expectTrue(text.find("\xE2\x80\x9C") != std::string::npos, "entity_quotes: left quote present");
+    runner.expectTrue(text.find("\xE2\x80\x9D") != std::string::npos, "entity_quotes: right quote present");
+  }
+
+  // Test 54: &hellip; entity is resolved
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>Wait&hellip;</p></body></html>");
+    runner.expectTrue(ok, "entity_hellip: parses successfully");
+    std::string text = parser.getAllText();
+    // hellip (U+2026) = 0xE2 0x80 0xA6
+    runner.expectTrue(text.find("\xE2\x80\xA6") != std::string::npos, "entity_hellip: ellipsis present");
+  }
+
+  // Test 55: Unknown entity is passed through as raw text
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>Hello&unknownentity;World</p></body></html>");
+    runner.expectTrue(ok, "entity_unknown: parses successfully");
+    std::string text = parser.getAllText();
+    runner.expectTrue(text.find("&unknownentity;") != std::string::npos,
+                      "entity_unknown: unknown entity passed through");
+  }
+
+  // Test 56: XML built-in entities still work (&amp; &lt; &gt;)
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>A &amp; B &lt; C &gt; D</p></body></html>");
+    runner.expectTrue(ok, "entity_builtin: parses successfully");
+    std::string text = parser.getAllText();
+    runner.expectTrue(text.find("&") != std::string::npos, "entity_builtin: ampersand present");
+    runner.expectTrue(text.find("<") != std::string::npos, "entity_builtin: less-than present");
+    runner.expectTrue(text.find(">") != std::string::npos, "entity_builtin: greater-than present");
+  }
+
+  // Test 57: Multiple entities in one paragraph
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>&lsquo;Don&rsquo;t &ndash; really&rdquo;</p></body></html>");
+    runner.expectTrue(ok, "entity_multiple: parses successfully");
+    std::string text = parser.getAllText();
+    // lsquo (U+2018) = 0xE2 0x80 0x98
+    // rsquo (U+2019) = 0xE2 0x80 0x99
+    // ndash (U+2013) = 0xE2 0x80 0x93
+    runner.expectTrue(text.find("\xE2\x80\x98") != std::string::npos, "entity_multiple: left single quote");
+    runner.expectTrue(text.find("\xE2\x80\x99") != std::string::npos, "entity_multiple: right single quote");
+    runner.expectTrue(text.find("\xE2\x80\x93") != std::string::npos, "entity_multiple: en-dash");
+  }
+
+  // Test 58: &copy; and &reg; entities
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>&copy; 2024 &reg;</p></body></html>");
+    runner.expectTrue(ok, "entity_symbols: parses successfully");
+    std::string text = parser.getAllText();
+    // copy (U+00A9) = 0xC2 0xA9, reg (U+00AE) = 0xC2 0xAE
+    runner.expectTrue(text.find("\xC2\xA9") != std::string::npos, "entity_symbols: copyright present");
+    runner.expectTrue(text.find("\xC2\xAE") != std::string::npos, "entity_symbols: registered present");
+  }
+
+  // Test 59: Accented character entities
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>caf&eacute; na&iuml;ve</p></body></html>");
+    runner.expectTrue(ok, "entity_accents: parses successfully");
+    std::string text = parser.getAllText();
+    // eacute (U+00E9) = 0xC3 0xA9, iuml (U+00EF) = 0xC3 0xAF
+    runner.expectTrue(text.find("\xC3\xA9") != std::string::npos, "entity_accents: e-acute present");
+    runner.expectTrue(text.find("\xC3\xAF") != std::string::npos, "entity_accents: i-umlaut present");
+  }
+
+  // Test 60: Entity inside skipped region (head) is not processed
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><head><title>&mdash; Title</title></head>"
+        "<body><p>&mdash; Content</p></body></html>");
+    runner.expectTrue(ok, "entity_skip_head: parses successfully");
+    std::string text = parser.getAllText();
+    runner.expectTrue(text.find("Title") == std::string::npos, "entity_skip_head: head content skipped");
+    runner.expectTrue(text.find("\xE2\x80\x94") != std::string::npos, "entity_skip_head: body entity resolved");
+  }
+
+  // Test 61: Numeric decimal entities (handled natively by expat)
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>&#8212; &#8220;hi&#8221;</p></body></html>");
+    runner.expectTrue(ok, "entity_numeric_dec: parses successfully");
+    std::string text = parser.getAllText();
+    // &#8212; = em dash (U+2014), &#8220; = left dquote (U+201C), &#8221; = right dquote (U+201D)
+    runner.expectTrue(text.find("\xE2\x80\x94") != std::string::npos, "entity_numeric_dec: em dash");
+    runner.expectTrue(text.find("\xE2\x80\x9C") != std::string::npos, "entity_numeric_dec: left dquote");
+    runner.expectTrue(text.find("\xE2\x80\x9D") != std::string::npos, "entity_numeric_dec: right dquote");
+  }
+
+  // Test 62: Numeric hex entities (handled natively by expat)
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>&#x2014; &#x201C;hi&#x201D;</p></body></html>");
+    runner.expectTrue(ok, "entity_numeric_hex: parses successfully");
+    std::string text = parser.getAllText();
+    runner.expectTrue(text.find("\xE2\x80\x94") != std::string::npos, "entity_numeric_hex: em dash");
+    runner.expectTrue(text.find("\xE2\x80\x9C") != std::string::npos, "entity_numeric_hex: left dquote");
+    runner.expectTrue(text.find("\xE2\x80\x9D") != std::string::npos, "entity_numeric_hex: right dquote");
+  }
+
+  // Test 63: Numeric entities for accented characters
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>&#233; &#241; &#252;</p></body></html>");
+    runner.expectTrue(ok, "entity_numeric_accents: parses successfully");
+    std::string text = parser.getAllText();
+    // &#233; = e-acute (U+00E9), &#241; = n-tilde (U+00F1), &#252; = u-umlaut (U+00FC)
+    runner.expectTrue(text.find("\xC3\xA9") != std::string::npos, "entity_numeric_accents: e-acute");
+    runner.expectTrue(text.find("\xC3\xB1") != std::string::npos, "entity_numeric_accents: n-tilde");
+    runner.expectTrue(text.find("\xC3\xBC") != std::string::npos, "entity_numeric_accents: u-umlaut");
+  }
+
+  // Test 64: Currency entities
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>&euro;100 &pound;50 &yen;1000</p></body></html>");
+    runner.expectTrue(ok, "entity_currency: parses successfully");
+    std::string text = parser.getAllText();
+    runner.expectTrue(text.find("\xE2\x82\xAC") != std::string::npos, "entity_currency: euro");
+    runner.expectTrue(text.find("\xC2\xA3") != std::string::npos, "entity_currency: pound");
+    runner.expectTrue(text.find("\xC2\xA5") != std::string::npos, "entity_currency: yen");
+  }
+
+  // Test 65: Math entities
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>2 &times; 3 &divide; 1 &plusmn; 0.5</p></body></html>");
+    runner.expectTrue(ok, "entity_math: parses successfully");
+    std::string text = parser.getAllText();
+    runner.expectTrue(text.find("\xC3\x97") != std::string::npos, "entity_math: times");
+    runner.expectTrue(text.find("\xC3\xB7") != std::string::npos, "entity_math: divide");
+    runner.expectTrue(text.find("\xC2\xB1") != std::string::npos, "entity_math: plusmn");
+  }
+
+  // Test 66: Arrow entities
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>&larr; &rarr; &uarr; &darr;</p></body></html>");
+    runner.expectTrue(ok, "entity_arrows: parses successfully");
+    std::string text = parser.getAllText();
+    runner.expectTrue(text.find("\xE2\x86\x90") != std::string::npos, "entity_arrows: larr");
+    runner.expectTrue(text.find("\xE2\x86\x92") != std::string::npos, "entity_arrows: rarr");
+    runner.expectTrue(text.find("\xE2\x86\x91") != std::string::npos, "entity_arrows: uarr");
+    runner.expectTrue(text.find("\xE2\x86\x93") != std::string::npos, "entity_arrows: darr");
+  }
+
+  // Test 67: Greek letter entities
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>&alpha; &beta; &gamma; &delta; &pi; &Omega;</p></body></html>");
+    runner.expectTrue(ok, "entity_greek: parses successfully");
+    std::string text = parser.getAllText();
+    runner.expectTrue(text.find("\xCE\xB1") != std::string::npos, "entity_greek: alpha");
+    runner.expectTrue(text.find("\xCE\xB2") != std::string::npos, "entity_greek: beta");
+    runner.expectTrue(text.find("\xCE\xB3") != std::string::npos, "entity_greek: gamma");
+    runner.expectTrue(text.find("\xCE\xB4") != std::string::npos, "entity_greek: delta");
+    runner.expectTrue(text.find("\xCF\x80") != std::string::npos, "entity_greek: pi");
+    runner.expectTrue(text.find("\xCE\xA9") != std::string::npos, "entity_greek: Omega");
+  }
+
+  // Test 68: Typographic mark entities
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>20&deg;C &sect;4 &para;5</p></body></html>");
+    runner.expectTrue(ok, "entity_typo_marks: parses successfully");
+    std::string text = parser.getAllText();
+    runner.expectTrue(text.find("\xC2\xB0") != std::string::npos, "entity_typo_marks: degree");
+    runner.expectTrue(text.find("\xC2\xA7") != std::string::npos, "entity_typo_marks: section");
+    runner.expectTrue(text.find("\xC2\xB6") != std::string::npos, "entity_typo_marks: pilcrow");
+  }
+
+  // Test 69: Fraction entities
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>&frac12; cup + &frac14; tsp</p></body></html>");
+    runner.expectTrue(ok, "entity_fractions: parses successfully");
+    std::string text = parser.getAllText();
+    runner.expectTrue(text.find("\xC2\xBD") != std::string::npos, "entity_fractions: frac12");
+    runner.expectTrue(text.find("\xC2\xBC") != std::string::npos, "entity_fractions: frac14");
+  }
+
+  // Test 70: Guillemet entities
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>&laquo;excellent&raquo;</p></body></html>");
+    runner.expectTrue(ok, "entity_guillemets: parses successfully");
+    std::string text = parser.getAllText();
+    runner.expectTrue(text.find("\xC2\xAB") != std::string::npos, "entity_guillemets: laquo");
+    runner.expectTrue(text.find("\xC2\xBB") != std::string::npos, "entity_guillemets: raquo");
+  }
+
+  // Test 71: Superscript and dagger entities
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>E=mc&sup2; note&dagger; ref&Dagger;</p></body></html>");
+    runner.expectTrue(ok, "entity_sup_dagger: parses successfully");
+    std::string text = parser.getAllText();
+    runner.expectTrue(text.find("\xC2\xB2") != std::string::npos, "entity_sup_dagger: sup2");
+    runner.expectTrue(text.find("\xE2\x80\xA0") != std::string::npos, "entity_sup_dagger: dagger");
+    runner.expectTrue(text.find("\xE2\x80\xA1") != std::string::npos, "entity_sup_dagger: Dagger");
+  }
+
+  // Test 72: &trade; and &thinsp; entities
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>Brand&trade; thin&thinsp;space</p></body></html>");
+    runner.expectTrue(ok, "entity_trade_thinsp: parses successfully");
+    std::string text = parser.getAllText();
+    runner.expectTrue(text.find("\xE2\x84\xA2") != std::string::npos, "entity_trade_thinsp: trade");
+    runner.expectTrue(text.find("\xE2\x80\x89") != std::string::npos, "entity_trade_thinsp: thinsp");
+  }
+
+  // Test 73: Mixed real-world content with multiple entity types
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body>"
+        "<p>&ldquo;The caf&eacute; served cr&egrave;me br&ucirc;l&eacute;e for &euro;8.50&mdash;a bargain!&rdquo;</p>"
+        "<p>Temperature: 20&deg;C &plusmn; 2&deg;. See &sect;4.2 and &para;5.</p>"
+        "<p>&frac12; cup &bull; H&sup2;O &bull; footnote&dagger;</p>"
+        "</body></html>");
+    runner.expectTrue(ok, "entity_mixed_realworld: parses successfully");
+    std::string text = parser.getAllText();
+    // Check representative entities from each paragraph
+    runner.expectTrue(text.find("\xE2\x80\x9C") != std::string::npos, "entity_mixed_realworld: ldquo");
+    runner.expectTrue(text.find("\xC3\xA9") != std::string::npos, "entity_mixed_realworld: eacute");
+    runner.expectTrue(text.find("\xE2\x82\xAC") != std::string::npos, "entity_mixed_realworld: euro");
+    runner.expectTrue(text.find("\xE2\x80\x94") != std::string::npos, "entity_mixed_realworld: mdash");
+    runner.expectTrue(text.find("\xC2\xB0") != std::string::npos, "entity_mixed_realworld: degree");
+    runner.expectTrue(text.find("\xC2\xB1") != std::string::npos, "entity_mixed_realworld: plusmn");
+    runner.expectTrue(text.find("\xC2\xBD") != std::string::npos, "entity_mixed_realworld: frac12");
+    runner.expectTrue(text.find("\xC2\xB2") != std::string::npos, "entity_mixed_realworld: sup2");
+    runner.expectTrue(text.find("\xE2\x80\xA0") != std::string::npos, "entity_mixed_realworld: dagger");
+  }
+
+  // Test 74: Numeric hex entities for Unicode symbols
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>&#x2603; &#x2665; &#xA9;</p></body></html>");
+    runner.expectTrue(ok, "entity_numeric_symbols: parses successfully");
+    std::string text = parser.getAllText();
+    // &#x2603; = snowman (U+2603), &#x2665; = heart (U+2665), &#xA9; = copyright (U+00A9)
+    runner.expectTrue(text.find("\xE2\x98\x83") != std::string::npos, "entity_numeric_symbols: snowman");
+    runner.expectTrue(text.find("\xE2\x99\xA5") != std::string::npos, "entity_numeric_symbols: heart");
+    runner.expectTrue(text.find("\xC2\xA9") != std::string::npos, "entity_numeric_symbols: copyright");
   }
 
   return runner.allPassed() ? 0 : 1;

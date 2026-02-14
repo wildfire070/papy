@@ -96,6 +96,7 @@ class ChapterHtmlSlimParser {
   static void XMLCALL startElement(void* userData, const XML_Char* name, const XML_Char** atts);
   static void XMLCALL characterData(void* userData, const XML_Char* s, int len);
   static void XMLCALL endElement(void* userData, const XML_Char* name);
+  static void XMLCALL defaultHandler(void* userData, const XML_Char* s, int len);
 
   // Suspend/resume state
   FsFile file_;

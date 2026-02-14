@@ -1,12 +1,14 @@
 #include <sys/stat.h>
 
 #include <cstdio>
+#include <cstring>
 #include <memory>
 #include <string>
 
 #include <EInkDisplay.h>
 #include <Epub.h>
 #include <EpubChapterParser.h>
+#include <Epub/Page.h>
 #include <GfxRenderer.h>
 #include <Markdown.h>
 #include <MarkdownParser.h>
@@ -46,8 +48,26 @@ static bool mkdirRecursive(const std::string& path) {
   return true;
 }
 
+static void dumpPages(PageCache& cache) {
+  for (int p = 0; p < cache.pageCount(); p++) {
+    auto page = cache.loadPage(p);
+    if (!page) continue;
+    printf("    --- Page %d ---\n", p);
+    for (auto& elem : page->elements) {
+      if (elem->getTag() == TAG_PageLine) {
+        auto& tb = static_cast<PageLine*>(elem.get())->getTextBlock();
+        for (auto& wd : tb.getWords()) {
+          printf("%s ", wd.word.c_str());
+        }
+        printf("\n");
+      }
+    }
+  }
+}
+
 static void usage() {
-  fprintf(stderr, "Usage: reader-test <file.epub|.md|.txt> [output_dir]\n");
+  fprintf(stderr, "Usage: reader-test [--dump] <file.epub|.md|.txt> [output_dir]\n");
+  fprintf(stderr, "  --dump     Print parsed text content of each page\n");
   fprintf(stderr, "  output_dir defaults to /tmp/papyrix-cache/\n");
 }
 
@@ -57,8 +77,20 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  const std::string filepath = argv[1];
-  const std::string outputDir = argc > 2 ? argv[2] : "/tmp/papyrix-cache";
+  bool dump = false;
+  int argIdx = 1;
+  if (argc > 1 && strcmp(argv[1], "--dump") == 0) {
+    dump = true;
+    argIdx++;
+  }
+
+  if (argIdx >= argc) {
+    usage();
+    return 1;
+  }
+
+  const std::string filepath = argv[argIdx];
+  const std::string outputDir = argIdx + 1 < argc ? argv[argIdx + 1] : "/tmp/papyrix-cache";
 
   ContentType type = detectType(filepath);
   if (type == UNKNOWN) {
@@ -101,6 +133,7 @@ int main(int argc, char* argv[]) {
       PageCache cache(cachePath);
       cache.create(parser, config, 0);
       printf("  Spine %d: %d pages -> %s\n", i, cache.pageCount(), cachePath.c_str());
+      if (dump) dumpPages(cache);
       totalPages += cache.pageCount();
     }
     printf("Total: %d pages\n", totalPages);
@@ -118,6 +151,7 @@ int main(int argc, char* argv[]) {
     PageCache cache(cachePath);
     cache.create(parser, config, 0);
     printf("Markdown: %d pages -> %s\n", cache.pageCount(), cachePath.c_str());
+    if (dump) dumpPages(cache);
 
   } else {
     Txt txt(filepath, outputDir);
@@ -132,6 +166,7 @@ int main(int argc, char* argv[]) {
     PageCache cache(cachePath);
     cache.create(parser, config, 0);
     printf("TXT: %d pages -> %s\n", cache.pageCount(), cachePath.c_str());
+    if (dump) dumpPages(cache);
   }
 
   return 0;

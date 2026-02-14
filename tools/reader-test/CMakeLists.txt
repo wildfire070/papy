@@ -4,7 +4,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 
-add_compile_definitions(TEST_BUILD)
+add_compile_definitions(TEST_BUILD XML_GE=0 XML_DTD _LARGEFILE64_SOURCE)
 
 find_package(EXPAT REQUIRED)
 
@@ -35,6 +35,7 @@ add_executable(reader-test
   ${PROJECT_ROOT}/lib/Epub/Epub/parsers/ContentOpfParser.cpp
   ${PROJECT_ROOT}/lib/Epub/Epub/parsers/TocNcxParser.cpp
   ${PROJECT_ROOT}/lib/Epub/Epub/parsers/TocNavParser.cpp
+  ${PROJECT_ROOT}/lib/Epub/Epub/htmlEntities.cpp
   ${PROJECT_ROOT}/lib/Epub/Epub/css/CssParser.cpp
   ${PROJECT_ROOT}/lib/PageCache/EpubChapterParser.cpp
   ${PROJECT_ROOT}/lib/PageCache/PageCache.cpp
