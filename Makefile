@@ -3,7 +3,7 @@
 
 .PHONY: all build build-release release upload upload-release flash flash-release \
         clean format check monitor size erase build-fs upload-fs sleep-screen gh-release changelog help \
-        test test-build test-run test-clean
+        test test-build test-run test-clean reader-test
 
 # Default target
 all: help
@@ -133,6 +133,16 @@ test-run: ## Run unit tests (build first if needed)
 
 test-clean: ## Clean test build artifacts
 	@rm -rf test/build
+
+## Tools:
+
+reader-test: ## Build desktop reader-test tool (process books without flashing)
+	@mkdir -p tools/reader-test/build
+	@cd tools/reader-test/build && cmake .. && cmake --build . --parallel
+	@echo "Built: tools/reader-test/build/reader-test"
+ifdef FILE
+	@tools/reader-test/build/reader-test $(FILE) $(OUTPUT)
+endif
 
 ## Help:
 

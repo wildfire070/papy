@@ -270,6 +270,18 @@ Usage:
 ./monitor -speed 921600                    # Custom baud rate (default: 115200)
 ```
 
+#### Reader test (desktop)
+
+A desktop tool for testing the content parsing pipeline (EPUB, TXT, Markdown) without flashing to hardware. Useful for catching parsing bugs, layout issues, or crashes.
+
+```bash
+# Build only
+make reader-test
+
+# Build and process a book
+make reader-test FILE=book.epub OUTPUT=/tmp/cache
+```
+
 ### Creating a GitHub release
 
 ```sh
