@@ -1094,6 +1094,7 @@ void ReaderState::enterTocMode(Core& core) {
     tocView_.setCurrentChapter(static_cast<uint8_t>(currentIdx));
   }
 
+  tocView_.buttons = ui::ButtonBar("Back", "Go", "<<", ">>");
   tocMode_ = true;
   needsRender_ = true;
   Serial.println("[READER] Entered TOC mode");
@@ -1112,14 +1113,22 @@ void ReaderState::handleTocInput(Core& core, const Event& e) {
 
   switch (e.button) {
     case Button::Up:
-    case Button::Left:
       tocView_.moveUp();
       needsRender_ = true;
       break;
 
     case Button::Down:
-    case Button::Right:
       tocView_.moveDown();
+      needsRender_ = true;
+      break;
+
+    case Button::Left:
+      tocView_.movePageUp(tocVisibleCount());
+      needsRender_ = true;
+      break;
+
+    case Button::Right:
+      tocView_.movePageDown(tocVisibleCount());
       needsRender_ = true;
       break;
 
@@ -1294,12 +1303,18 @@ void ReaderState::jumpToTocEntry(Core& core, int tocIndex) {
   Serial.printf("[READER] Jumped to TOC entry %d (spine/page %d)\n", tocIndex, chapter.pageNum);
 }
 
+int ReaderState::tocVisibleCount() const {
+  constexpr int startY = 60;
+  constexpr int bottomMargin = 70;
+  const Theme& theme = THEME_MANAGER.current();
+  const int itemHeight = theme.itemHeight + theme.itemSpacing;
+  return (renderer_.getScreenHeight() - startY - bottomMargin) / itemHeight;
+}
+
 void ReaderState::renderTocOverlay(Core& core) {
   const Theme& theme = THEME_MANAGER.current();
   constexpr int startY = 60;
-  const int availableHeight = renderer_.getScreenHeight() - startY - 20;
-  const int itemHeight = theme.itemHeight + theme.itemSpacing;
-  const int visibleCount = availableHeight / itemHeight;
+  const int visibleCount = tocVisibleCount();
 
   // Adjust scroll to keep selection visible
   tocView_.ensureVisible(visibleCount);
@@ -1314,6 +1329,7 @@ void ReaderState::renderTocOverlay(Core& core) {
   const int tocFontId =
       (type == ContentType::Xtc || !hasExternalFont) ? theme.uiFontId : core.settings.getReaderFontId(theme);
 
+  const int itemHeight = theme.itemHeight + theme.itemSpacing;
   const int end = std::min(tocView_.scrollOffset + visibleCount, static_cast<int>(tocView_.chapterCount));
   for (int i = tocView_.scrollOffset; i < end; i++) {
     const int y = startY + (i - tocView_.scrollOffset) * itemHeight;
@@ -1321,6 +1337,7 @@ void ReaderState::renderTocOverlay(Core& core) {
                     i == tocView_.selected, i == tocView_.currentChapter);
   }
 
+  ui::buttonBar(renderer_, theme, tocView_.buttons);
   renderer_.displayBuffer();
   core.display.markDirty();
 }

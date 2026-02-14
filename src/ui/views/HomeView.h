@@ -277,6 +277,19 @@ struct ChapterListView {
     needsRender = true;
   }
 
+  void movePageUp(int count) {
+    if (chapterCount == 0 || count <= 0) return;
+    selected = (selected >= count) ? selected - count : 0;
+    needsRender = true;
+  }
+
+  void movePageDown(int count) {
+    if (chapterCount == 0 || count <= 0) return;
+    int target = selected + count;
+    selected = (target < chapterCount) ? static_cast<uint8_t>(target) : chapterCount - 1;
+    needsRender = true;
+  }
+
   // Adjust scroll to keep selected visible (call before rendering)
   void ensureVisible(int visibleCount) {
     if (chapterCount == 0 || visibleCount <= 0) return;

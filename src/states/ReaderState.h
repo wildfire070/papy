@@ -143,6 +143,7 @@ class ReaderState : public State {
   void exitTocMode();
   void handleTocInput(Core& core, const Event& e);
   void renderTocOverlay(Core& core);
+  int tocVisibleCount() const;
   void populateTocView(Core& core);
   int findCurrentTocEntry(Core& core);
   void jumpToTocEntry(Core& core, int tocIndex);
