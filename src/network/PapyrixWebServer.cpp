@@ -13,6 +13,11 @@
 
 namespace papyrix {
 
+static void sendGzipHtml(WebServer* server, const char* data, size_t len) {
+  server->sendHeader("Content-Encoding", "gzip");
+  server->send_P(200, "text/html", data, len);
+}
+
 bool PapyrixWebServer::flushUploadBuffer() {
   if (upload_.bufferPos > 0 && upload_.file) {
     const size_t written = upload_.file.write(upload_.buffer.data(), upload_.bufferPos);
@@ -109,7 +114,7 @@ void PapyrixWebServer::handleClient() {
   server_->handleClient();
 }
 
-void PapyrixWebServer::handleRoot() { server_->send(200, "text/html", HomePageHtml); }
+void PapyrixWebServer::handleRoot() { sendGzipHtml(server_.get(), HomePageHtml, HomePageHtmlCompressedSize); }
 
 void PapyrixWebServer::handleNotFound() { server_->send(404, "text/plain", "404 Not Found"); }
 
@@ -125,7 +130,7 @@ void PapyrixWebServer::handleStatus() {
   server_->send(200, "application/json", json);
 }
 
-void PapyrixWebServer::handleFileList() { server_->send(200, "text/html", FilesPageHtml); }
+void PapyrixWebServer::handleFileList() { sendGzipHtml(server_.get(), FilesPageHtml, FilesPageHtmlCompressedSize); }
 
 void PapyrixWebServer::handleFileListData() {
   String currentPath = "/";
