@@ -349,9 +349,10 @@ Once you have opened a book, the button layout changes to facilitate reading.
 
 Accessible by pressing **Confirm** while inside a book. The screen header displays the book title.
 
-1.  Use **Left** (or **Volume Up**), or **Right** (or **Volume Down**) to highlight the desired chapter.
-2.  Press **Confirm** to jump to that chapter.
-3.  *Alternatively, press **Back** to cancel and return to your current page.*
+1.  Use **Up** or **Down** (Volume Up / Volume Down) to highlight the desired chapter.
+2.  Use **Left** or **Right** to page up or page down through the list.
+3.  Press **Confirm** to jump to the selected chapter.
+4.  *Alternatively, press **Back** to cancel and return to your current page.*
 
 ---
 
