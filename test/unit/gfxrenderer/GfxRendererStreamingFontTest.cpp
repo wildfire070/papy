@@ -18,8 +18,7 @@ class GfxRenderer {
   explicit GfxRenderer(EInkDisplay&) {}
 
   void setStreamingFont(int fontId, EpdFontFamily::Style style, StreamingEpdFont* font) {
-    int idx = (style == EpdFontFamily::BOLD_ITALIC) ? EpdFontFamily::BOLD : style;
-    _streamingFonts[fontId][idx] = font;
+    _streamingFonts[fontId][EpdFontFamily::externalStyleIndex(style)] = font;
   }
 
   void setStreamingFont(int fontId, StreamingEpdFont* font) { _streamingFonts[fontId][EpdFontFamily::REGULAR] = font; }
@@ -40,7 +39,7 @@ class GfxRenderer {
   StreamingEpdFont* getStreamingFont(int fontId, EpdFontFamily::Style style = EpdFontFamily::REGULAR) const {
     auto it = _streamingFonts.find(fontId);
     if (it == _streamingFonts.end()) return nullptr;
-    int idx = (style == EpdFontFamily::BOLD_ITALIC) ? EpdFontFamily::BOLD : style;
+    int idx = EpdFontFamily::externalStyleIndex(style);
     StreamingEpdFont* sf = it->second[idx];
     if (!sf && idx != EpdFontFamily::REGULAR && _fontStyleResolver) {
       _fontStyleResolver(_fontStyleResolverCtx, fontId, idx);
@@ -50,7 +49,7 @@ class GfxRenderer {
   }
 
  private:
-  mutable std::map<int, std::array<StreamingEpdFont*, 3>> _streamingFonts;
+  mutable std::map<int, std::array<StreamingEpdFont*, EpdFontFamily::kExternalStyleCount>> _streamingFonts;
   FontStyleResolver _fontStyleResolver = nullptr;
   void* _fontStyleResolverCtx = nullptr;
 };
@@ -108,12 +107,12 @@ int main() {
     runner.expectEq(boldFont, gfx.getStreamingFont(1, EpdFontFamily::BOLD), "setStreamingFont_with_style_stores_bold");
   }
 
-  // Test 3: setStreamingFont with ITALIC style stores at index 2
+  // Test 3: getStreamingFont with ITALIC returns REGULAR (external fonts have no italic)
   {
     GfxRenderer gfx(display);
-    gfx.setStreamingFont(1, EpdFontFamily::ITALIC, italicFont);
-    runner.expectEq(italicFont, gfx.getStreamingFont(1, EpdFontFamily::ITALIC),
-                    "setStreamingFont_with_style_stores_italic");
+    gfx.setStreamingFont(1, EpdFontFamily::REGULAR, regularFont);
+    runner.expectEq(regularFont, gfx.getStreamingFont(1, EpdFontFamily::ITALIC),
+                    "getStreamingFont_italic_returns_regular");
   }
 
   // Test 4: setStreamingFont with BOLD_ITALIC maps to BOLD (index 1)
@@ -133,19 +132,18 @@ int main() {
                     "setStreamingFont_without_style_defaults_to_regular");
   }
 
-  // Test 6: getStreamingFont returns correct style when all styles set
+  // Test 6: getStreamingFont returns correct style; ITALIC maps to REGULAR
   {
     GfxRenderer gfx(display);
     gfx.setStreamingFont(1, EpdFontFamily::REGULAR, regularFont);
     gfx.setStreamingFont(1, EpdFontFamily::BOLD, boldFont);
-    gfx.setStreamingFont(1, EpdFontFamily::ITALIC, italicFont);
 
     runner.expectEq(regularFont, gfx.getStreamingFont(1, EpdFontFamily::REGULAR),
                     "getStreamingFont_returns_correct_style_regular");
     runner.expectEq(boldFont, gfx.getStreamingFont(1, EpdFontFamily::BOLD),
                     "getStreamingFont_returns_correct_style_bold");
-    runner.expectEq(italicFont, gfx.getStreamingFont(1, EpdFontFamily::ITALIC),
-                    "getStreamingFont_returns_correct_style_italic");
+    runner.expectEq(regularFont, gfx.getStreamingFont(1, EpdFontFamily::ITALIC),
+                    "getStreamingFont_italic_maps_to_regular");
   }
 
   // Test 7: getStreamingFont with BOLD_ITALIC returns BOLD font
@@ -184,7 +182,6 @@ int main() {
     GfxRenderer gfx(display);
     gfx.setStreamingFont(1, EpdFontFamily::REGULAR, regularFont);
     gfx.setStreamingFont(1, EpdFontFamily::BOLD, boldFont);
-    gfx.setStreamingFont(1, EpdFontFamily::ITALIC, italicFont);
 
     gfx.removeStreamingFont(1);
 
@@ -202,12 +199,10 @@ int main() {
     auto* font1Regular = reinterpret_cast<StreamingEpdFont*>(0x1001);
     auto* font1Bold = reinterpret_cast<StreamingEpdFont*>(0x1002);
     auto* font2Regular = reinterpret_cast<StreamingEpdFont*>(0x2001);
-    auto* font2Italic = reinterpret_cast<StreamingEpdFont*>(0x2003);
 
     gfx.setStreamingFont(1, EpdFontFamily::REGULAR, font1Regular);
     gfx.setStreamingFont(1, EpdFontFamily::BOLD, font1Bold);
     gfx.setStreamingFont(2, EpdFontFamily::REGULAR, font2Regular);
-    gfx.setStreamingFont(2, EpdFontFamily::ITALIC, font2Italic);
 
     // Verify fontId 1
     runner.expectEq(font1Regular, gfx.getStreamingFont(1, EpdFontFamily::REGULAR),
@@ -218,11 +213,11 @@ int main() {
     runner.expectEq(font1Regular, gfx.getStreamingFont(1, EpdFontFamily::ITALIC),
                     "multiple_fontids_independent_font1_italic_fallback");
 
-    // Verify fontId 2
+    // Verify fontId 2 (ITALIC maps to REGULAR for external fonts)
     runner.expectEq(font2Regular, gfx.getStreamingFont(2, EpdFontFamily::REGULAR),
                     "multiple_fontids_independent_font2_regular");
-    runner.expectEq(font2Italic, gfx.getStreamingFont(2, EpdFontFamily::ITALIC),
-                    "multiple_fontids_independent_font2_italic");
+    runner.expectEq(font2Regular, gfx.getStreamingFont(2, EpdFontFamily::ITALIC),
+                    "multiple_fontids_independent_font2_italic_maps_to_regular");
     // fontId 2 has no BOLD, should fall back to REGULAR
     runner.expectEq(font2Regular, gfx.getStreamingFont(2, EpdFontFamily::BOLD),
                     "multiple_fontids_independent_font2_bold_fallback");
@@ -255,7 +250,7 @@ int main() {
                     "resolver_called_when_bold_is_null: correct styleIdx");
   }
 
-  // Test 13: Resolver called when italic is null - provides italic font
+  // Test 13: Resolver NOT called for italic - maps to regular directly
   {
     GfxRenderer gfx(display);
     gfx.setStreamingFont(1, EpdFontFamily::REGULAR, regularFont);
@@ -264,10 +259,8 @@ int main() {
     gfx.setFontStyleResolver(testResolver, &ctx);
 
     StreamingEpdFont* result = gfx.getStreamingFont(1, EpdFontFamily::ITALIC);
-    runner.expectEq(italicFont, result, "resolver_called_when_italic_is_null: returns italic from resolver");
-    runner.expectEq(1, ctx.callCount, "resolver_called_when_italic_is_null: resolver called once");
-    runner.expectEq(static_cast<int>(EpdFontFamily::ITALIC), ctx.lastStyleIdx,
-                    "resolver_called_when_italic_is_null: correct styleIdx");
+    runner.expectEq(regularFont, result, "resolver_not_called_for_italic: returns regular");
+    runner.expectEq(0, ctx.callCount, "resolver_not_called_for_italic: resolver not called");
   }
 
   // Test 14: Resolver NOT called when requested style already exists

@@ -27,7 +27,7 @@ class GfxRenderer {
   RenderMode renderMode;
   Orientation orientation;
   std::map<int, EpdFontFamily> fontMap;
-  mutable std::map<int, std::array<StreamingEpdFont*, 3>> _streamingFonts;
+  mutable std::map<int, std::array<StreamingEpdFont*, EpdFontFamily::kExternalStyleCount>> _streamingFonts;
   ExternalFont* _externalFont = nullptr;
   using FontStyleResolver = void (*)(void* ctx, int fontId, int styleIdx);
   mutable FontStyleResolver _fontStyleResolver = nullptr;
@@ -63,15 +63,14 @@ class GfxRenderer {
   }
 
   void setStreamingFont(int fontId, EpdFontFamily::Style style, StreamingEpdFont* font) {
-    int idx = (style == EpdFontFamily::BOLD_ITALIC) ? EpdFontFamily::BOLD : style;
-    _streamingFonts[fontId][idx] = font;
+    _streamingFonts[fontId][EpdFontFamily::externalStyleIndex(style)] = font;
   }
   void setStreamingFont(int fontId, StreamingEpdFont* font) { _streamingFonts[fontId][EpdFontFamily::REGULAR] = font; }
   void removeStreamingFont(int fontId) { _streamingFonts.erase(fontId); }
   StreamingEpdFont* getStreamingFont(int fontId, EpdFontFamily::Style style = EpdFontFamily::REGULAR) const {
     auto it = _streamingFonts.find(fontId);
     if (it == _streamingFonts.end()) return nullptr;
-    int idx = (style == EpdFontFamily::BOLD_ITALIC) ? EpdFontFamily::BOLD : style;
+    int idx = EpdFontFamily::externalStyleIndex(style);
     StreamingEpdFont* sf = it->second[idx];
     if (!sf && idx != EpdFontFamily::REGULAR && _fontStyleResolver) {
       _fontStyleResolver(_fontStyleResolverCtx, fontId, idx);
@@ -111,6 +110,10 @@ class GfxRenderer {
     if (!text || !*text) return 0;
     auto it = fontMap.find(fontId);
     if (it == fontMap.end()) return 0;
+    // Trigger lazy loading of deferred font variant (e.g., bold custom font)
+    if (style != EpdFontFamily::REGULAR) {
+      getStreamingFont(fontId, style);
+    }
     const auto& font = it->second;
     int w = 0;
     const char* ptr = text;

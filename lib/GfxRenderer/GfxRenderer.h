@@ -40,9 +40,9 @@ class GfxRenderer {
   uint8_t* frameBuffer = nullptr;
   uint8_t* bwBufferChunks[BW_BUFFER_NUM_CHUNKS] = {nullptr};
   std::map<int, EpdFontFamily> fontMap;
-  // Streaming fonts: [fontId] -> array of [REGULAR, BOLD, ITALIC] (BOLD_ITALIC uses BOLD)
-  // Mutable: getStreamingFont may trigger lazy loading of bold/italic variants via resolver
-  mutable std::map<int, std::array<StreamingEpdFont*, 3>> _streamingFonts;
+  // Streaming fonts: [fontId] -> array of [REGULAR, BOLD] (external fonts have no italic)
+  // Mutable: getStreamingFont may trigger lazy loading of bold variant via resolver
+  mutable std::map<int, std::array<StreamingEpdFont*, EpdFontFamily::kExternalStyleCount>> _streamingFonts;
   ExternalFont* _externalFont = nullptr;
 
   // Lazy font style resolver: called when a streaming font variant (bold/italic) is
@@ -122,9 +122,7 @@ class GfxRenderer {
   }
 
   void setStreamingFont(int fontId, EpdFontFamily::Style style, StreamingEpdFont* font) {
-    int idx = (style == EpdFontFamily::BOLD_ITALIC) ? EpdFontFamily::BOLD : style;
-    // std::map::operator[] value-initializes new entries, so array elements are nullptr by default
-    _streamingFonts[fontId][idx] = font;
+    _streamingFonts[fontId][EpdFontFamily::externalStyleIndex(style)] = font;
   }
   void setStreamingFont(int fontId, StreamingEpdFont* font) { _streamingFonts[fontId][EpdFontFamily::REGULAR] = font; }
   void removeStreamingFont(int fontId) { _streamingFonts.erase(fontId); }
@@ -133,7 +131,7 @@ class GfxRenderer {
   StreamingEpdFont* getStreamingFont(int fontId, EpdFontFamily::Style style = EpdFontFamily::REGULAR) const {
     auto it = _streamingFonts.find(fontId);
     if (it == _streamingFonts.end()) return nullptr;
-    int idx = (style == EpdFontFamily::BOLD_ITALIC) ? EpdFontFamily::BOLD : style;
+    int idx = EpdFontFamily::externalStyleIndex(style);
     StreamingEpdFont* sf = it->second[idx];
     if (!sf && idx != EpdFontFamily::REGULAR && _fontStyleResolver) {
       _fontStyleResolver(_fontStyleResolverCtx, fontId, idx);

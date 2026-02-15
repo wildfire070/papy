@@ -85,6 +85,11 @@ int GfxRenderer::getTextWidth(const int fontId, const char* text, const EpdFontF
     return 0;
   }
 
+  // Trigger lazy loading of deferred font variant (e.g., bold custom font)
+  if (style != EpdFontFamily::REGULAR) {
+    getStreamingFont(fontId, style);
+  }
+
   // Check cache first (significant speedup during EPUB section creation)
   const uint64_t key = makeWidthCacheKey(fontId, text, style);
   auto it = wordWidthCache.find(key);
@@ -152,6 +157,12 @@ void GfxRenderer::drawText(const int fontId, const int x, const int y, const cha
     Serial.printf("[%lu] [GFX] Font %d not found\n", millis(), fontId);
     return;
   }
+
+  // Trigger lazy loading of deferred font variant (e.g., bold custom font)
+  if (style != EpdFontFamily::REGULAR) {
+    getStreamingFont(fontId, style);
+  }
+
   const auto font = fontMap.at(fontId);
 
   // no printable characters
@@ -758,7 +769,7 @@ void GfxRenderer::renderChar(const EpdFontFamily& fontFamily, const uint32_t cp,
   const uint8_t* bitmap = nullptr;
   auto streamingIt = _streamingFonts.find(fontId);
   if (streamingIt != _streamingFonts.end()) {
-    int idx = (style == EpdFontFamily::BOLD_ITALIC) ? EpdFontFamily::BOLD : style;
+    int idx = EpdFontFamily::externalStyleIndex(style);
     StreamingEpdFont* sf = streamingIt->second[idx];
     if (!sf) sf = streamingIt->second[EpdFontFamily::REGULAR];
     if (sf) {
