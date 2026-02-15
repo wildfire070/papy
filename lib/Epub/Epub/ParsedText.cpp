@@ -259,7 +259,7 @@ std::vector<uint16_t> ParsedText::calculateWordWidths(const GfxRenderer& rendere
   wordWidths.reserve(totalWordCount);
 
   // Add indentation at the beginning of first word in paragraph
-  if (indentLevel > 0 && !words.empty()) {
+  if (indentLevel > 0 && !words.empty() && style != TextBlock::CENTER_ALIGN) {
     std::string& first_word = words.front();
     switch (indentLevel) {
       case 2:  // Normal - em-space (U+2003)

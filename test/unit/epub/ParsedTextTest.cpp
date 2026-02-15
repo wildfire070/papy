@@ -703,6 +703,93 @@ int main() {
   }
 
   // ============================================
+  // Indentation logic tests
+  // These test the condition used in calculateWordWidths() to decide
+  // whether to prepend Unicode space characters for paragraph indentation
+  // ============================================
+
+  // Block style enum values (from TextBlock.h)
+  enum BLOCK_STYLE : uint8_t {
+    JUSTIFIED = 0,
+    LEFT_ALIGN = 1,
+    CENTER_ALIGN = 2,
+    RIGHT_ALIGN = 3,
+  };
+
+  // Helper: applies indentation logic (mirrors calculateWordWidths)
+  auto applyIndent = [](std::string& firstWord, uint8_t indentLevel, uint8_t style) {
+    if (indentLevel > 0 && !firstWord.empty() && style != CENTER_ALIGN) {
+      switch (indentLevel) {
+        case 2:  // Normal - em-space (U+2003)
+          firstWord.insert(0, "\xe2\x80\x83");
+          break;
+        case 3:  // Large - em-space + en-space (U+2003 + U+2002)
+          firstWord.insert(0, "\xe2\x80\x83\xe2\x80\x82");
+          break;
+        default:  // Fallback: single en-space (U+2002)
+          firstWord.insert(0, "\xe2\x80\x82");
+          break;
+      }
+    }
+  };
+
+  // Test: JUSTIFIED text gets indented
+  {
+    std::string word = "Hello";
+    applyIndent(word, 2, JUSTIFIED);
+    runner.expectEqual("\xe2\x80\x83Hello", word, "indent: JUSTIFIED gets em-space");
+  }
+
+  // Test: LEFT_ALIGN text gets indented
+  {
+    std::string word = "Hello";
+    applyIndent(word, 2, LEFT_ALIGN);
+    runner.expectEqual("\xe2\x80\x83Hello", word, "indent: LEFT_ALIGN gets em-space");
+  }
+
+  // Test: CENTER_ALIGN text does NOT get indented
+  {
+    std::string word = "Hello";
+    applyIndent(word, 2, CENTER_ALIGN);
+    runner.expectEqual("Hello", word, "indent: CENTER_ALIGN skips indentation");
+  }
+
+  // Test: RIGHT_ALIGN text gets indented
+  {
+    std::string word = "Hello";
+    applyIndent(word, 2, RIGHT_ALIGN);
+    runner.expectEqual("\xe2\x80\x83Hello", word, "indent: RIGHT_ALIGN gets em-space");
+  }
+
+  // Test: CENTER_ALIGN with large indent level still skips
+  {
+    std::string word = "Title";
+    applyIndent(word, 3, CENTER_ALIGN);
+    runner.expectEqual("Title", word, "indent: CENTER_ALIGN skips large indent too");
+  }
+
+  // Test: indentLevel 0 never indents regardless of style
+  {
+    std::string word = "Hello";
+    applyIndent(word, 0, JUSTIFIED);
+    runner.expectEqual("Hello", word, "indent: level 0 JUSTIFIED no indent");
+  }
+
+  // Test: indent level 3 produces em-space + en-space
+  {
+    std::string word = "Hello";
+    applyIndent(word, 3, JUSTIFIED);
+    runner.expectEqual("\xe2\x80\x83\xe2\x80\x82Hello", word, "indent: level 3 = em+en space");
+  }
+
+  // Test: indent level 1 (fallback) produces en-space
+  {
+    std::string word = "Hello";
+    applyIndent(word, 1, JUSTIFIED);
+    runner.expectEqual("\xe2\x80\x82Hello", word, "indent: level 1 fallback = en-space");
+  }
+
+  // ============================================
   // RTL position calculation tests
   // These test the logic used in extractLine() for RTL word positioning
   // ============================================
