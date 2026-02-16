@@ -21,8 +21,9 @@ void render(const GfxRenderer& r, const Theme& t, const CoverPageView& v) {
   // Draw cover image centered in upper portion
   if (v.coverData != nullptr) {
     // Calculate scaled size to fit screen while maintaining aspect ratio
-    const int maxW = screenW - 40;
-    const int maxH = screenH - 200;  // Leave room for title/author
+    // Use 450x750 containment (0.6 ratio) to match converted image dimensions and avoid scaling artifacts
+    const int maxW = 450;
+    const int maxH = 750;
 
     int drawW = v.coverWidth;
     int drawH = v.coverHeight;

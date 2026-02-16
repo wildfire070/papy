@@ -7,8 +7,8 @@ class FsFile;
 class Print;
 
 struct ImageConvertConfig {
-  int maxWidth = 480;
-  int maxHeight = 800;
+  int maxWidth = 450;
+  int maxHeight = 750;
   bool oneBit = false;
   bool quickMode = false;
   const char* logTag = "IMG";

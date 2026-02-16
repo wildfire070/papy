@@ -6,8 +6,8 @@
 // Replicate ImageConvertConfig from lib/ImageConverter/ImageConverter.h
 // to test struct defaults and routing logic without hardware dependencies
 struct TestImageConvertConfig {
-  int maxWidth = 480;
-  int maxHeight = 800;
+  int maxWidth = 450;
+  int maxHeight = 750;
   bool oneBit = false;
   bool quickMode = false;
   const char* logTag = "IMG";
@@ -28,7 +28,7 @@ JpegRoute getJpegRoute(const TestImageConvertConfig& config) {
   if (config.quickMode) {
     return JpegRoute::QuickMode;
   }
-  if (config.maxWidth == 480 && config.maxHeight == 800 && !config.shouldAbort) {
+  if (config.maxWidth == 450 && config.maxHeight == 750 && !config.shouldAbort) {
     return config.oneBit ? JpegRoute::FastPath1Bit : JpegRoute::FastPath;
   }
   return config.oneBit ? JpegRoute::WithSize1Bit : JpegRoute::WithSize;
@@ -57,8 +57,8 @@ int main() {
   // Test 1: Default config values
   {
     TestImageConvertConfig config;
-    runner.expectEq(480, config.maxWidth, "default_maxWidth");
-    runner.expectEq(800, config.maxHeight, "default_maxHeight");
+    runner.expectEq(450, config.maxWidth, "default_maxWidth");
+    runner.expectEq(750, config.maxHeight, "default_maxHeight");
     runner.expectFalse(config.oneBit, "default_oneBit");
     runner.expectFalse(config.quickMode, "default_quickMode");
     runner.expectTrue(config.shouldAbort == nullptr, "default_shouldAbort_null");
@@ -126,38 +126,38 @@ int main() {
     runner.expectTrue(getJpegRoute(config) == JpegRoute::WithSize, "jpeg_custom_size_withsize");
   }
 
-  // Test 8: KEY CHANGE - shouldAbort set with 480x800 -> bypasses fast path, uses WithSize
-  // Before this change: 480x800 always used FastPath (no abort support)
-  // After this change: 480x800 + shouldAbort routes to WithSize (supports abort)
+  // Test 8: KEY CHANGE - shouldAbort set with 450x750 -> bypasses fast path, uses WithSize
+  // Before this change: 450x750 always used FastPath (no abort support)
+  // After this change: 450x750 + shouldAbort routes to WithSize (supports abort)
   {
     TestImageConvertConfig config;
     config.shouldAbort = []() { return false; };
     runner.expectTrue(getJpegRoute(config) == JpegRoute::WithSize,
-                      "jpeg_480x800_with_abort_uses_withsize");
+                      "jpeg_450x750_with_abort_uses_withsize");
   }
 
-  // Test 9: shouldAbort set with 480x800 + oneBit -> WithSize1Bit
+  // Test 9: shouldAbort set with 450x750 + oneBit -> WithSize1Bit
   {
     TestImageConvertConfig config;
     config.oneBit = true;
     config.shouldAbort = []() { return false; };
     runner.expectTrue(getJpegRoute(config) == JpegRoute::WithSize1Bit,
-                      "jpeg_480x800_1bit_with_abort_uses_withsize1bit");
+                      "jpeg_450x750_1bit_with_abort_uses_withsize1bit");
   }
 
-  // Test 10: Only width differs from 480 -> WithSize
+  // Test 10: Only width differs from 450 -> WithSize
   {
     TestImageConvertConfig config;
     config.maxWidth = 200;
-    // maxHeight still 800
+    // maxHeight still 750
     runner.expectTrue(getJpegRoute(config) == JpegRoute::WithSize, "jpeg_width_differs_withsize");
   }
 
-  // Test 11: Only height differs from 800 -> WithSize
+  // Test 11: Only height differs from 750 -> WithSize
   {
     TestImageConvertConfig config;
     config.maxHeight = 400;
-    // maxWidth still 480
+    // maxWidth still 450
     runner.expectTrue(getJpegRoute(config) == JpegRoute::WithSize, "jpeg_height_differs_withsize");
   }
 

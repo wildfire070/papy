@@ -15,7 +15,7 @@ class JpegImageConverter : public ImageConverter {
     if (config.quickMode) {
       return JpegToBmpConverter::jpegFileToBmpStreamQuick(input, output, config.maxWidth, config.maxHeight);
     }
-    if (config.maxWidth == 480 && config.maxHeight == 800 && !config.shouldAbort) {
+    if (config.maxWidth == 450 && config.maxHeight == 750 && !config.shouldAbort) {
       return config.oneBit ? JpegToBmpConverter::jpegFileTo1BitBmpStream(input, output)
                            : JpegToBmpConverter::jpegFileToBmpStream(input, output);
     }

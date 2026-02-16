@@ -268,30 +268,39 @@ void GfxRenderer::drawBitmap(const Bitmap& bitmap, const int x, const int y, con
     return;
   }
 
-  for (int bmpY = 0; bmpY < bitmap.getHeight(); bmpY++) {
-    // The BMP's (0, 0) is the bottom-left corner (if the height is positive, top-left if negative).
-    // Screen's (0, 0) is the top-left corner.
-    int screenY = y + (bitmap.isTopDown() ? bmpY : bitmap.getHeight() - 1 - bmpY);
-    if (isScaled) {
-      screenY = std::floor(screenY * scale);
-    }
-    if (screenY >= getScreenHeight()) {
-      break;
+  // Inverse mapping: iterate destination pixels, sample from source.
+  // This avoids gaps/overlaps that forward mapping causes when downscaling.
+  const int destWidth = isScaled ? static_cast<int>(bitmap.getWidth() * scale) : bitmap.getWidth();
+  const int destHeight = isScaled ? static_cast<int>(bitmap.getHeight() * scale) : bitmap.getHeight();
+  const float invScale = isScaled ? (1.0f / scale) : 1.0f;
+
+  int lastBmpY = -1;
+  for (int destY = 0; destY < destHeight; destY++) {
+    const int screenY = y + destY;
+    if (screenY < 0) continue;
+    if (screenY >= getScreenHeight()) break;
+
+    int srcY = isScaled ? static_cast<int>(destY * invScale) : destY;
+    if (srcY >= bitmap.getHeight()) srcY = bitmap.getHeight() - 1;
+
+    // BMP row order: bottom-up (default) or top-down
+    const int bmpY = bitmap.isTopDown() ? srcY : bitmap.getHeight() - 1 - srcY;
+
+    if (bmpY != lastBmpY) {
+      if (bitmap.readRow(bitmapOutputRow_, bitmapRowBytes_, bmpY) != BmpReaderError::Ok) {
+        Serial.printf("[%lu] [GFX] Failed to read row %d from bitmap\n", millis(), bmpY);
+        return;
+      }
+      lastBmpY = bmpY;
     }
 
-    if (bitmap.readRow(bitmapOutputRow_, bitmapRowBytes_, bmpY) != BmpReaderError::Ok) {
-      Serial.printf("[%lu] [GFX] Failed to read row %d from bitmap\n", millis(), bmpY);
-      return;
-    }
+    for (int destX = 0; destX < destWidth; destX++) {
+      const int screenX = x + destX;
+      if (screenX < 0) continue;
+      if (screenX >= getScreenWidth()) break;
 
-    for (int bmpX = 0; bmpX < bitmap.getWidth(); bmpX++) {
-      int screenX = x + bmpX;
-      if (isScaled) {
-        screenX = std::floor(screenX * scale);
-      }
-      if (screenX >= getScreenWidth()) {
-        break;
-      }
+      int bmpX = isScaled ? static_cast<int>(destX * invScale) : destX;
+      if (bmpX >= bitmap.getWidth()) bmpX = bitmap.getWidth() - 1;
 
       const uint8_t val = bitmapOutputRow_[bmpX / 4] >> (6 - ((bmpX * 2) % 8)) & 0x3;
 

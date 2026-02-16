@@ -28,8 +28,8 @@ constexpr bool USE_FLOYD_STEINBERG = false;  // Floyd-Steinberg error diffusion 
 constexpr bool USE_NOISE_DITHERING = false;  // Hash-based noise dithering (good for downsampling)
 // Pre-resize to target display size (CRITICAL: avoids dithering artifacts from post-downsampling)
 constexpr bool USE_PRESCALE = true;     // true: scale image to target size before dithering
-constexpr int TARGET_MAX_WIDTH = 480;   // Max width for cover images (portrait display width)
-constexpr int TARGET_MAX_HEIGHT = 800;  // Max height for cover images (portrait display height)
+constexpr int TARGET_MAX_WIDTH = 450;   // Max width for cover images (0.6 aspect ratio to avoid scaling artifacts)
+constexpr int TARGET_MAX_HEIGHT = 750;  // Max height for cover images (0.6 aspect ratio to avoid scaling artifacts)
 // ============================================================================
 
 inline void write16(Print& out, const uint16_t value) {
