@@ -664,7 +664,7 @@ void readerStatusBar(const GfxRenderer& r, const Theme& t, int marginLeft, int m
 
   const auto screenHeight = r.getScreenHeight();
   const auto screenWidth = r.getScreenWidth();
-  const int textY = screenHeight - marginBottom + 2;
+  const int textY = screenHeight - marginBottom - 2;
   int percentageTextWidth = 0;
 
   // 1. Battery (left side)
@@ -683,7 +683,7 @@ void readerStatusBar(const GfxRenderer& r, const Theme& t, int marginLeft, int m
   constexpr int batteryWidth = 15;
   constexpr int batteryHeight = 10;
   const int x = marginLeft;
-  const int y = screenHeight - marginBottom + 5;
+  const int y = screenHeight - marginBottom + 1;
 
   // Draw battery outline
   r.drawLine(x, y, x + batteryWidth - 4, y, t.primaryTextBlack);
