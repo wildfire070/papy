@@ -6,6 +6,7 @@
 #include <HardwareSerial.h>
 #include <ImageConverter.h>
 #include <SDCardManager.h>
+#include <Utf8.h>
 #include <esp_heap_caps.h>
 #include <expat.h>
 #include <freertos/FreeRTOS.h>
@@ -67,6 +68,7 @@ void ChapterHtmlSlimParser::flushPartWordBuffer() {
   }
 
   partWordBuffer[partWordBufferIndex] = '\0';
+  partWordBufferIndex = utf8NormalizeNfc(partWordBuffer, partWordBufferIndex);
   currentTextBlock->addWord(partWordBuffer, fontStyle);
   partWordBufferIndex = 0;
 }

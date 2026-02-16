@@ -19,6 +19,8 @@ from collections import namedtuple
 from pathlib import Path
 
 import freetype
+from freetype.raw import *
+from ctypes import byref, pointer
 
 # Unicode intervals for multi-language support
 # Must not overlap and should be in ascending order for merging
@@ -30,6 +32,7 @@ INTERVALS_BASE = [
     (0x0180, 0x024F),  # Latin Extended-B (includes Vietnamese Ơ, Ư)
     (0x0250, 0x02AF),  # IPA Extensions
     (0x0300, 0x036F),  # Combining Diacritical Marks
+    (0x0370, 0x03FF),  # Greek and Coptic
     (0x0400, 0x04FF),  # Cyrillic
     (0x1E00, 0x1EFF),  # Latin Extended Additional (Vietnamese tones)
     (0x2000, 0x206F),  # General Punctuation
@@ -49,6 +52,11 @@ INTERVALS_ARABIC = [
     (0x0750, 0x077F),  # Arabic Supplement
     (0xFB50, 0xFDFF),  # Arabic Presentation Forms-A (ligatures)
     (0xFE70, 0xFEFF),  # Arabic Presentation Forms-B (contextual forms)
+]
+
+INTERVALS_HEBREW = [
+    (0x0590, 0x05FF),  # Hebrew (letters, points, cantillation marks)
+    (0xFB1D, 0xFB4F),  # Alphabetic Presentation Forms (Hebrew ligatures)
 ]
 
 GlyphProps = namedtuple(
@@ -188,10 +196,30 @@ def render_glyph_1bit(bitmap):
     return bytes(pixelsbw)
 
 
-def convert_font(font_paths, size, intervals, is_2bit):
+def set_variable_font_weight(face, weight):
+    """Set weight axis on a variable font. No-op if font is not variable."""
+    mm_var_p = pointer(FT_MM_Var())
+    err = FT_Get_MM_Var(face._FT_Face, byref(mm_var_p))
+    if err != 0:
+        return
+    mm = mm_var_p.contents
+    coords = (FT_Fixed * mm.num_axis)()
+    for i in range(mm.num_axis):
+        axis = mm.axis[i]
+        name = axis.name.decode().lower()
+        if "weight" in name or "wght" in name:
+            coords[i] = FT_Fixed(int(weight * 65536))
+        else:
+            coords[i] = axis.default
+    FT_Set_Var_Design_Coordinates(face._FT_Face, mm.num_axis, coords)
+
+
+def convert_font(font_paths, size, intervals, is_2bit, weight=None):
     """Convert font files to glyph data."""
     font_stack = [freetype.Face(str(p)) for p in font_paths]
     for face in font_stack:
+        if weight:
+            set_variable_font_weight(face, weight)
         face.set_char_size(size << 6, size << 6, 150, 150)
 
     merged_intervals = merge_intervals(intervals)
@@ -217,9 +245,9 @@ def convert_font(font_paths, size, intervals, is_2bit):
                 packed = render_glyph_1bit(bitmap)
 
             glyph = GlyphProps(
-                width=bitmap.width,
-                height=bitmap.rows,
-                advance_x=norm_floor(face.glyph.advance.x),
+                width=min(bitmap.width, 255),
+                height=min(bitmap.rows, 255),
+                advance_x=min(norm_floor(face.glyph.advance.x), 255),
                 left=face.glyph.bitmap_left,
                 top=face.glyph.bitmap_top,
                 data_length=len(packed),
@@ -498,9 +526,19 @@ Examples:
         help="Include Arabic script (U+0600-06FF, Presentation Forms)",
     )
     parser.add_argument(
+        "--hebrew",
+        action="store_true",
+        help="Include Hebrew script (U+0590-05FF, Presentation Forms)",
+    )
+    parser.add_argument(
         "--all-sizes",
         action="store_true",
         help="Generate 14, 16, 18pt sizes",
+    )
+    parser.add_argument(
+        "--weight",
+        type=int,
+        help="Variable font weight (e.g., 400 for regular, 700 for bold)",
     )
     parser.add_argument(
         "--additional-intervals",
@@ -519,6 +557,8 @@ Examples:
             intervals.extend(INTERVALS_THAI)
         if args.arabic:
             intervals.extend(INTERVALS_ARABIC)
+        if args.hebrew:
+            intervals.extend(INTERVALS_HEBREW)
         if args.additional_intervals:
             for interval_str in args.additional_intervals:
                 parts = [int(n, base=0) for n in interval_str.split(",")]
@@ -544,6 +584,8 @@ Examples:
             print("Including Thai script")
         if args.arabic:
             print("Including Arabic script")
+        if args.hebrew:
+            print("Including Hebrew script")
         print()
 
         for size in sizes:
@@ -559,7 +601,7 @@ Examples:
                     continue
 
                 print(f"Converting: {font_path.name} ({size}pt {style_name})...")
-                data = convert_font([font_path], size, intervals, args.is_2bit)
+                data = convert_font([font_path], size, intervals, args.is_2bit, args.weight)
                 if data is None:
                     continue
 
@@ -586,6 +628,8 @@ Examples:
             intervals.extend(INTERVALS_THAI)
         if args.arabic:
             intervals.extend(INTERVALS_ARABIC)
+        if args.hebrew:
+            intervals.extend(INTERVALS_HEBREW)
         if args.additional_intervals:
             for interval_str in args.additional_intervals:
                 parts = [int(n, base=0) for n in interval_str.split(",")]
@@ -597,7 +641,7 @@ Examples:
                 print(f"Error: Font file not found: {p}", file=sys.stderr)
                 sys.exit(1)
 
-        data = convert_font(font_paths, args.size, intervals, args.is_2bit)
+        data = convert_font(font_paths, args.size, intervals, args.is_2bit, args.weight)
         if data is None:
             sys.exit(1)
 

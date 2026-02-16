@@ -5,6 +5,7 @@
 #include <FsHelpers.h>
 #include <GfxRenderer.h>
 #include <SDCardManager.h>
+#include <Utf8.h>
 #include <esp_system.h>
 
 #include <algorithm>
@@ -106,6 +107,7 @@ void FileListState::loadFiles(Core& core) {
   // Collect all entries (no hard limit during collection)
   while ((entry = dir.openNextFile())) {
     entry.getName(name, sizeof(name));
+    utf8NormalizeNfc(name, strlen(name));
 
     if (isHidden(name)) {
       entry.close();

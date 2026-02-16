@@ -4,6 +4,7 @@
 #include <Epub/ParsedText.h>
 #include <GfxRenderer.h>
 #include <SDCardManager.h>
+#include <Utf8.h>
 
 #include <utility>
 
@@ -122,6 +123,7 @@ bool PlainTextParser::parsePages(const std::function<void(std::unique_ptr<Page>)
       if (c == '\n') {
         // Flush partial word
         if (!partialWord.empty()) {
+          partialWord.resize(utf8NormalizeNfc(&partialWord[0], partialWord.size()));
           currentBlock->addWord(partialWord, EpdFontFamily::REGULAR);
           partialWord.clear();
         }
@@ -157,6 +159,7 @@ bool PlainTextParser::parsePages(const std::function<void(std::unique_ptr<Page>)
 
       if (isWhitespace(c)) {
         if (!partialWord.empty()) {
+          partialWord.resize(utf8NormalizeNfc(&partialWord[0], partialWord.size()));
           currentBlock->addWord(partialWord, EpdFontFamily::REGULAR);
           partialWord.clear();
         }
@@ -167,6 +170,7 @@ bool PlainTextParser::parsePages(const std::function<void(std::unique_ptr<Page>)
 
       // Prevent extremely long words from accumulating
       if (partialWord.length() > 100) {
+        partialWord.resize(utf8NormalizeNfc(&partialWord[0], partialWord.size()));
         currentBlock->addWord(partialWord, EpdFontFamily::REGULAR);
         partialWord.clear();
       }
@@ -183,6 +187,7 @@ bool PlainTextParser::parsePages(const std::function<void(std::unique_ptr<Page>)
 
   // Flush remaining content
   if (!partialWord.empty()) {
+    partialWord.resize(utf8NormalizeNfc(&partialWord[0], partialWord.size()));
     currentBlock->addWord(partialWord, EpdFontFamily::REGULAR);
   }
   flushBlock();

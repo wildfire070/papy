@@ -2,6 +2,7 @@
 
 #include <FsHelpers.h>
 #include <HardwareSerial.h>
+#include <Utf8.h>
 
 #include "../BookMetadataCache.h"
 
@@ -147,6 +148,7 @@ void XMLCALL TocNavParser::endElement(void* userData, const XML_Char* name) {
   if (strcmp(name, "a") == 0 && self->state == IN_ANCHOR) {
     // Create TOC entry when closing anchor tag (we have all data now)
     if (!self->currentLabel.empty() && !self->currentHref.empty()) {
+      self->currentLabel.resize(utf8NormalizeNfc(&self->currentLabel[0], self->currentLabel.size()));
       std::string href = FsHelpers::normalisePath(self->baseContentPath + self->currentHref);
       std::string anchor;
 

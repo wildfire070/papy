@@ -50,6 +50,7 @@ add_executable(reader-test
   ${PROJECT_ROOT}/lib/miniz/miniz.c
   ${PROJECT_ROOT}/lib/ScriptDetector/ScriptDetector.cpp
   ${PROJECT_ROOT}/lib/Utf8/Utf8.cpp
+  ${PROJECT_ROOT}/lib/Utf8/Utf8Nfc.cpp
   ${PROJECT_ROOT}/lib/FsHelpers/FsHelpers.cpp
 )
 

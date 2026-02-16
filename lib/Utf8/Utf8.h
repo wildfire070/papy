@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <string>
 
+#include "Utf8Nfc.h"
+
 uint32_t utf8NextCodepoint(const unsigned char** string);
 
 /**

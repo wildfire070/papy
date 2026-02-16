@@ -14,6 +14,7 @@
 #include <GfxRenderer.h>
 #include <HardwareSerial.h>
 #include <SDCardManager.h>
+#include <Utf8.h>
 #include <esp_heap_caps.h>
 
 #include <utility>
@@ -51,6 +52,7 @@ int MarkdownParser::getCurrentFontStyle(const ParseContext& ctx) const {
 void MarkdownParser::flushWordBuffer(ParseContext& ctx) {
   if (ctx.wordBufferIndex > 0) {
     ctx.wordBuffer[ctx.wordBufferIndex] = '\0';
+    ctx.wordBufferIndex = utf8NormalizeNfc(ctx.wordBuffer, ctx.wordBufferIndex);
     if (ctx.textBlock) {
       ctx.textBlock->addWord(ctx.wordBuffer, static_cast<EpdFontFamily::Style>(getCurrentFontStyle(ctx)));
     }

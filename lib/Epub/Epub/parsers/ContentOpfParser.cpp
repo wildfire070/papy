@@ -3,6 +3,7 @@
 #include <FsHelpers.h>
 #include <HardwareSerial.h>
 #include <Serialization.h>
+#include <Utf8.h>
 
 #include "../BookMetadataCache.h"
 
@@ -347,11 +348,13 @@ void XMLCALL ContentOpfParser::endElement(void* userData, const XML_Char* name) 
   }
 
   if (self->state == IN_BOOK_TITLE && strcmp(name, "dc:title") == 0) {
+    self->title.resize(utf8NormalizeNfc(&self->title[0], self->title.size()));
     self->state = IN_METADATA;
     return;
   }
 
   if (self->state == IN_BOOK_AUTHOR && strcmp(name, "dc:creator") == 0) {
+    self->author.resize(utf8NormalizeNfc(&self->author[0], self->author.size()));
     self->state = IN_METADATA;
     return;
   }
