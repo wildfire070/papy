@@ -83,6 +83,17 @@ foreach(TEST_SRC ${TEST_SOURCES})
       ${PROJECT_ROOT}/lib/Epub/Epub/css/CssParser.cpp
       ${TEST_HELPERS}
     )
+  elseif(TEST_NAME STREQUAL "XtcCoverHelperTest")
+    add_executable(${TEST_NAME}
+      ${TEST_SRC}
+      ${PROJECT_ROOT}/lib/Xtc/Xtc/XtcParser.cpp
+      ${PROJECT_ROOT}/lib/Xtc/XtcCoverHelper.cpp
+      ${TEST_HELPERS}
+    )
+    target_include_directories(${TEST_NAME} PRIVATE
+      ${PROJECT_ROOT}/lib/Xtc
+      ${PROJECT_ROOT}/lib/Xtc/Xtc
+    )
   elseif(TEST_NAME STREQUAL "HtmlEntitiesTest")
     add_executable(${TEST_NAME}
       ${TEST_SRC}

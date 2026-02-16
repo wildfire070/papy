@@ -1,6 +1,9 @@
 #include "XtcProvider.h"
 
+#include <CoverHelpers.h>
+#include <HardwareSerial.h>
 #include <SDCardManager.h>
+#include <XtcCoverHelper.h>
 
 #include <cstring>
 #include <functional>
@@ -49,7 +52,9 @@ Result<void> XtcProvider::open(const char* path, const char* cacheDir) {
     meta.cachePath[0] = '\0';
   }
 
-  meta.coverPath[0] = '\0';  // TODO: Extract first page as cover
+  std::string coverPath = getCoverBmpPath();
+  strncpy(meta.coverPath, coverPath.c_str(), sizeof(meta.coverPath) - 1);
+  meta.coverPath[sizeof(meta.coverPath) - 1] = '\0';
 
   meta.totalPages = parser.getPageCount();
   meta.currentPage = 0;
@@ -82,6 +87,46 @@ Result<TocEntry> XtcProvider::getTocEntry(uint16_t index) const {
   entry.depth = 0;  // XTC chapters are flat
 
   return Ok(entry);
+}
+
+std::string XtcProvider::getCoverBmpPath() const { return std::string(meta.cachePath) + "/cover.bmp"; }
+
+std::string XtcProvider::getThumbBmpPath() const { return std::string(meta.cachePath) + "/thumb.bmp"; }
+
+bool XtcProvider::generateCoverBmp() {
+  const auto coverPath = getCoverBmpPath();
+  if (SdMan.exists(coverPath.c_str())) {
+    return true;
+  }
+  return xtc::generateCoverBmpFromParser(parser, coverPath);
+}
+
+bool XtcProvider::generateThumbBmp() {
+  const auto thumbPath = getThumbBmpPath();
+  const auto failedMarkerPath = std::string(meta.cachePath) + "/.thumb.failed";
+
+  if (SdMan.exists(thumbPath.c_str())) return true;
+
+  if (SdMan.exists(failedMarkerPath.c_str())) {
+    return false;
+  }
+
+  if (!SdMan.exists(getCoverBmpPath().c_str()) && !generateCoverBmp()) {
+    FsFile marker;
+    if (SdMan.openFileForWrite("XTC", failedMarkerPath, marker)) {
+      marker.close();
+    }
+    return false;
+  }
+
+  const bool success = CoverHelpers::generateThumbFromCover(getCoverBmpPath(), thumbPath, "XTC");
+  if (!success) {
+    FsFile marker;
+    if (SdMan.openFileForWrite("XTC", failedMarkerPath, marker)) {
+      marker.close();
+    }
+  }
+  return success;
 }
 
 }  // namespace papyrix

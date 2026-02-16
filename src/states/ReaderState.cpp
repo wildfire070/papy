@@ -963,9 +963,14 @@ bool ReaderState::renderCoverPage(Core& core) {
 }
 
 void ReaderState::startBackgroundCaching(Core& core) {
-  // XTC content uses pre-rendered bitmaps — no page cache or thumbnail support
+  // XTC content uses pre-rendered bitmaps — no page cache needed.
+  // Generate cover + thumbnail synchronously since XTC has no background task.
   if (core.content.metadata().type == ContentType::Xtc) {
-    thumbnailDone_ = true;
+    if (!thumbnailDone_) {
+      core.content.generateCover(true);
+      core.content.generateThumbnail();
+      thumbnailDone_ = true;
+    }
     return;
   }
 

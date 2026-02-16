@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <memory>
 #include <string>
 
 #include "SdFat.h"
@@ -41,13 +42,33 @@ class SDCardManager {
     return openFileForRead(moduleName, path.c_str(), file);
   }
 
+  bool openFileForWrite(const char* moduleName, const std::string& path, FsFile& file) {
+    (void)moduleName;
+    auto buf = std::make_shared<std::string>();
+    writtenFiles_[path] = buf;
+    file.setSharedBuffer(buf);
+    return true;
+  }
+
+  // Retrieve buffer written to a file (survives after FsFile destruction via shared_ptr)
+  std::string getWrittenData(const std::string& path) const {
+    auto it = writtenFiles_.find(path);
+    if (it != writtenFiles_.end() && it->second) {
+      return *it->second;
+    }
+    return "";
+  }
+
   static SDCardManager& getInstance() {
     static SDCardManager instance;
     return instance;
   }
 
+  void clearWrittenFiles() { writtenFiles_.clear(); }
+
  private:
   std::map<std::string, std::string> files_;
+  std::map<std::string, std::shared_ptr<std::string>> writtenFiles_;
 };
 
 #define SdMan SDCardManager::getInstance()

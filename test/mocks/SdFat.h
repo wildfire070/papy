@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <memory>
 #include <sstream>
 #include <string>
 
@@ -21,6 +22,15 @@ class FsFile {
   // For testing with in-memory buffer
   void setBuffer(const std::string& data) {
     buffer_ = data;
+    sharedBuffer_.reset();
+    pos_ = 0;
+    isOpen_ = true;
+  }
+
+  // For write-mode: use a shared buffer so data survives after FsFile destruction
+  void setSharedBuffer(std::shared_ptr<std::string> buf) {
+    sharedBuffer_ = buf;
+    buffer_ = *buf;
     pos_ = 0;
     isOpen_ = true;
   }
@@ -37,6 +47,9 @@ class FsFile {
   }
 
   void close() {
+    if (sharedBuffer_) {
+      *sharedBuffer_ = buffer_;
+    }
     isOpen_ = false;
     pos_ = 0;
   }
@@ -65,6 +78,15 @@ class FsFile {
     return static_cast<int>(toRead);
   }
 
+  size_t write(uint8_t byte) {
+    if (!isOpen_) return 0;
+    if (pos_ >= buffer_.size()) {
+      buffer_.resize(pos_ + 1);
+    }
+    buffer_[pos_++] = static_cast<char>(byte);
+    return 1;
+  }
+
   size_t write(const uint8_t* buf, size_t len) {
     if (!isOpen_) return 0;
     // Extend buffer if needed
@@ -80,6 +102,7 @@ class FsFile {
 
  private:
   std::string buffer_;
+  std::shared_ptr<std::string> sharedBuffer_;
   size_t pos_ = 0;
   bool isOpen_ = false;
 };

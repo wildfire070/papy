@@ -2,6 +2,8 @@
 
 #include <Xtc/XtcParser.h>
 
+#include <string>
+
 #include "../core/Result.h"
 #include "ContentTypes.h"
 
@@ -25,6 +27,12 @@ struct XtcProvider {
   uint32_t pageCount() const;
   uint16_t tocCount() const;
   Result<TocEntry> getTocEntry(uint16_t index) const;
+
+  // Cover and thumbnail
+  std::string getCoverBmpPath() const;
+  std::string getThumbBmpPath() const;
+  bool generateCoverBmp();
+  bool generateThumbBmp();
 
   // Direct page access
   xtc::XtcParser& getParser() { return parser; }

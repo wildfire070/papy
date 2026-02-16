@@ -186,6 +186,8 @@ std::string ContentHandle::getThumbnailPath() const {
         return epub.getEpub()->getThumbBmpPath();
       }
       break;
+    case ContentType::Xtc:
+      return xtc.getThumbBmpPath();
     case ContentType::Txt:
       if (txt.getTxt()) {
         return txt.getTxt()->getThumbBmpPath();
@@ -209,6 +211,8 @@ std::string ContentHandle::getCoverPath() const {
         return epub.getEpub()->getCoverBmpPath();
       }
       break;
+    case ContentType::Xtc:
+      return xtc.getCoverBmpPath();
     case ContentType::Txt:
       if (txt.getTxt()) {
         return txt.getTxt()->getCoverBmpPath();
@@ -232,6 +236,11 @@ std::string ContentHandle::generateThumbnail() {
         return epub.getEpub()->getThumbBmpPath();
       }
       break;
+    case ContentType::Xtc:
+      if (xtc.generateThumbBmp()) {
+        return xtc.getThumbBmpPath();
+      }
+      break;
     case ContentType::Txt:
       if (txt.getTxt() && txt.getTxt()->generateThumbBmp()) {
         return txt.getTxt()->getThumbBmpPath();
@@ -253,6 +262,11 @@ std::string ContentHandle::generateCover(bool use1BitDithering) {
     case ContentType::Epub:
       if (epub.getEpub() && epub.getEpub()->generateCoverBmp(use1BitDithering)) {
         return epub.getEpub()->getCoverBmpPath();
+      }
+      break;
+    case ContentType::Xtc:
+      if (xtc.generateCoverBmp()) {
+        return xtc.getCoverBmpPath();
       }
       break;
     case ContentType::Txt:
