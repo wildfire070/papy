@@ -10,8 +10,14 @@
 #include <FsHelpers.h>
 #include <HardwareSerial.h>
 #include <SDCardManager.h>
+#include <Serialization.h>
 
 #include <cstring>
+
+namespace {
+constexpr uint8_t kMetaCacheVersion = 1;
+constexpr char kMetaCacheFile[] = "/meta.bin";
+}  // namespace
 
 Fb2::Fb2(std::string filepath, const std::string& cacheDir)
     : filepath(std::move(filepath)), fileSize(0), loaded(false) {
@@ -50,6 +56,14 @@ bool Fb2::load() {
     return false;
   }
 
+  // Try loading from metadata cache first
+  if (loadMetaCache()) {
+    loaded = true;
+    Serial.printf("[%lu] [FB2] Loaded from cache: %s (title: '%s', author: '%s')\n", millis(), filepath.c_str(),
+                  title.c_str(), author.c_str());
+    return true;
+  }
+
   FsFile file;
   if (!SdMan.openFileForRead("FB2", filepath, file)) {
     Serial.printf("[%lu] [FB2] Failed to open file\n", millis());
@@ -64,6 +78,8 @@ bool Fb2::load() {
     Serial.printf("[%lu] [FB2] Failed to parse XML\n", millis());
     return false;
   }
+
+  saveMetaCache();
 
   loaded = true;
   Serial.printf("[%lu] [FB2] Loaded FB2: %s (title: '%s', author: '%s')\n", millis(), filepath.c_str(), title.c_str(),
@@ -436,6 +452,103 @@ bool Fb2::generateThumbBmp() const {
     }
   }
   return success;
+}
+
+bool Fb2::loadMetaCache() {
+  const std::string metaPath = cachePath + kMetaCacheFile;
+  FsFile file;
+  if (!SdMan.openFileForRead("FB2", metaPath, file)) {
+    return false;
+  }
+
+  uint8_t version;
+  if (!serialization::readPodChecked(file, version) || version != kMetaCacheVersion) {
+    Serial.printf("[%lu] [FB2] Meta cache version mismatch\n", millis());
+    file.close();
+    return false;
+  }
+
+  if (!serialization::readString(file, title) || !serialization::readString(file, author) ||
+      !serialization::readString(file, coverPath)) {
+    Serial.printf("[%lu] [FB2] Failed to read meta cache strings\n", millis());
+    file.close();
+    return false;
+  }
+
+  uint32_t cachedFileSize;
+  if (!serialization::readPodChecked(file, cachedFileSize)) {
+    file.close();
+    return false;
+  }
+  fileSize = cachedFileSize;
+
+  uint16_t sectionCount;
+  if (!serialization::readPodChecked(file, sectionCount)) {
+    file.close();
+    return false;
+  }
+  sectionCounter_ = sectionCount;
+
+  uint16_t tocItemCount;
+  if (!serialization::readPodChecked(file, tocItemCount)) {
+    file.close();
+    return false;
+  }
+
+  tocItems_.clear();
+  tocItems_.reserve(tocItemCount);
+  for (uint16_t i = 0; i < tocItemCount; i++) {
+    TocItem item;
+    if (!serialization::readString(file, item.title)) {
+      file.close();
+      return false;
+    }
+    int16_t idx;
+    if (!serialization::readPodChecked(file, idx)) {
+      file.close();
+      return false;
+    }
+    item.sectionIndex = idx;
+    tocItems_.push_back(std::move(item));
+  }
+
+  file.close();
+  return true;
+}
+
+bool Fb2::saveMetaCache() const {
+  setupCacheDir();
+
+  const std::string metaPath = cachePath + kMetaCacheFile;
+  FsFile file;
+  if (!SdMan.openFileForWrite("FB2", metaPath, file)) {
+    Serial.printf("[%lu] [FB2] Failed to create meta cache\n", millis());
+    return false;
+  }
+
+  serialization::writePod(file, kMetaCacheVersion);
+  serialization::writeString(file, title);
+  serialization::writeString(file, author);
+  serialization::writeString(file, coverPath);
+
+  const uint32_t size32 = static_cast<uint32_t>(fileSize);
+  serialization::writePod(file, size32);
+
+  const uint16_t sectionCount = static_cast<uint16_t>(sectionCounter_);
+  serialization::writePod(file, sectionCount);
+
+  const uint16_t tocItemCount = static_cast<uint16_t>(tocItems_.size());
+  serialization::writePod(file, tocItemCount);
+
+  for (const auto& item : tocItems_) {
+    serialization::writeString(file, item.title);
+    const int16_t idx = static_cast<int16_t>(item.sectionIndex);
+    serialization::writePod(file, idx);
+  }
+
+  file.close();
+  Serial.printf("[%lu] [FB2] Saved meta cache (%u TOC items)\n", millis(), tocItemCount);
+  return true;
 }
 
 size_t Fb2::readContent(uint8_t* buffer, size_t offset, size_t length) const {

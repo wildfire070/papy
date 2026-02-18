@@ -68,6 +68,8 @@ class Fb2 {
   // Helper methods
   bool parseXmlStream();
   void postProcessMetadata();
+  bool loadMetaCache();
+  bool saveMetaCache() const;
 
  public:
   explicit Fb2(std::string filepath, const std::string& cacheDir);
