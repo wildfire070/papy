@@ -1,5 +1,54 @@
 
 
+## v1.9.0 (2026-02-18)
+
+*  Fix ui font. Issue #61 [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Fix battery icon vertical alignment in status bar and home view [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Web server: Add sleep screen management page. Issue #58 [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Web server: Support all book and image formats for file upload [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  UI: Remove Left button as back navigation in Network/Settings/Sync states [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Bump version [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+
+
+## v1.8.0 (2026-02-18)
+
+*  Add base support for FB2 [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Fb2: Add metadata cache for faster reloads [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Fb2: Fix metadata extraction from title-info and add TOC navigation support [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Bump version [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+
+
+## v1.7.4 (2026-02-17)
+
+*  GfxRenderer+HomeState: Fix bitmap rendering in dark mode and orientation. Issue #56 [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Bump version [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+
+
+## v1.7.3 (2026-02-16)
+
+*  Settings: Add left/right navigation to confirmation dialog. Issue #54 [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  GfxRenderer: Simplify bitmap row reading by flipping screen placement for bottom-up BMPs. Issue #55 [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Settings: Replace toggle with enumValue for unified setting rendering [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Bump version [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+
+
+## v1.7.2 (2026-02-16)
+
+*  Bump version [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Fix codestyle [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Xtc: Extract cover helper and add thumbnail support for XTC format. Issue #52 [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Epub: Add multi-author support with comma-separated dc:creator fields [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add portable shebang and clang-format availability check [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Image: Fix bitmap scaling artifacts with inverse mapping and 450x750 containment. Issue #53 [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Bump version [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+
+
+## v1.7.1 (2026-02-16)
+
+*  Increase status bar margin from 19 to 23px, update viewport height. Issue #51. [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add dynamic viewport height based on status bar visibility setting [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+
+
 ## v1.7.0 (2026-02-16)
 
 *  Add UTF-8 NFC normalization and extend builtin font coverage with Vietnamese, Thai and Greek [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
