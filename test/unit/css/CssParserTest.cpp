@@ -139,8 +139,11 @@ CssFontWeight parseFontWeight(const std::string& value) {
 
 void parseProperty(const std::string& name, const std::string& value, CssStyle& style) {
   if (name == "text-align") {
-    style.textAlign = parseTextAlign(value);
-    style.hasTextAlign = true;
+    std::string v = toLower(trim(value));
+    if (v != "inherit") {
+      style.textAlign = parseTextAlign(v);
+      style.hasTextAlign = true;
+    }
   } else if (name == "font-style") {
     style.fontStyle = parseFontStyle(value);
     style.hasFontStyle = true;
@@ -316,6 +319,36 @@ int main() {
     CssStyle style = parseInlineStyle("TEXT-ALIGN: center; FONT-WEIGHT: bold");
     runner.expectTrue(style.textAlign == TextAlign::Center, "parseInlineStyle: uppercase prop name");
     runner.expectTrue(style.fontWeight == CssFontWeight::Bold, "parseInlineStyle: uppercase prop name 2");
+  }
+
+  // ============================================
+  // text-align: inherit tests
+  // ============================================
+
+  // Test: text-align: inherit does not set hasTextAlign
+  {
+    CssStyle style = parseInlineStyle("text-align: inherit");
+    runner.expectFalse(style.hasTextAlign, "text-align_inherit: hasTextAlign not set");
+  }
+
+  // Test: text-align: inherit case-insensitive
+  {
+    CssStyle style = parseInlineStyle("text-align: Inherit");
+    runner.expectFalse(style.hasTextAlign, "text-align_Inherit: case insensitive");
+  }
+
+  // Test: text-align: inherit with whitespace
+  {
+    CssStyle style = parseInlineStyle("text-align:  INHERIT ");
+    runner.expectFalse(style.hasTextAlign, "text-align_INHERIT: whitespace + uppercase");
+  }
+
+  // Test: text-align: inherit combined with other properties
+  {
+    CssStyle style = parseInlineStyle("text-align: inherit; font-weight: bold");
+    runner.expectFalse(style.hasTextAlign, "text-align_inherit_combo: hasTextAlign not set");
+    runner.expectTrue(style.hasFontWeight, "text-align_inherit_combo: other props still parsed");
+    runner.expectTrue(style.fontWeight == CssFontWeight::Bold, "text-align_inherit_combo: font-weight correct");
   }
 
   // ============================================

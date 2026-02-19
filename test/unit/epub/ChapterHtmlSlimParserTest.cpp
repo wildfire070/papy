@@ -48,6 +48,46 @@ bool matches(const char* tag_name, const char* possible_tags[], const int possib
   return false;
 }
 
+// Block alignment styles (mirrors TextBlock::BLOCK_STYLE)
+enum class BlockStyle { LEFT, CENTER, RIGHT, JUSTIFIED };
+
+// Inline style parser for test (extracts text-align)
+struct TestCssStyle {
+  BlockStyle textAlign = BlockStyle::LEFT;
+  bool hasTextAlign = false;
+};
+
+TestCssStyle parseTestInlineStyle(const char** atts) {
+  TestCssStyle css;
+  if (!atts) return css;
+  for (int i = 0; atts[i]; i += 2) {
+    if (strcmp(atts[i], "style") != 0) continue;
+    const char* val = atts[i + 1];
+    // Simple text-align extraction
+    const char* ta = strstr(val, "text-align");
+    if (!ta) continue;
+    const char* colon = strchr(ta, ':');
+    if (!colon) continue;
+    colon++;
+    while (*colon == ' ') colon++;
+    if (strncmp(colon, "center", 6) == 0) {
+      css.textAlign = BlockStyle::CENTER;
+      css.hasTextAlign = true;
+    } else if (strncmp(colon, "right", 5) == 0) {
+      css.textAlign = BlockStyle::RIGHT;
+      css.hasTextAlign = true;
+    } else if (strncmp(colon, "left", 4) == 0) {
+      css.textAlign = BlockStyle::LEFT;
+      css.hasTextAlign = true;
+    } else if (strncmp(colon, "justify", 7) == 0) {
+      css.textAlign = BlockStyle::JUSTIFIED;
+      css.hasTextAlign = true;
+    }
+    // inherit: hasTextAlign stays false
+  }
+  return css;
+}
+
 // Test parser that collects parsed elements
 class TestParser {
  public:
@@ -58,6 +98,12 @@ class TestParser {
     bool isBold = false;
     bool isItalic = false;
     bool isRtl = false;
+    BlockStyle blockStyle = BlockStyle::LEFT;
+  };
+
+  struct AlignEntry {
+    int depth;
+    BlockStyle style;
   };
 
   std::vector<ParsedElement> elements;
@@ -70,6 +116,8 @@ class TestParser {
   bool pendingRtl = false;
   int rtlUntilDepth = INT_MAX;
   uint16_t blockCount = 0;
+  BlockStyle currentBlockStyle = BlockStyle::LEFT;
+  std::vector<AlignEntry> alignStack;
 
   void flushText() {
     if (!currentText.empty()) {
@@ -79,6 +127,7 @@ class TestParser {
       elem.isBold = boldUntilDepth < depth;
       elem.isItalic = italicUntilDepth < depth;
       elem.isRtl = pendingRtl;
+      elem.blockStyle = currentBlockStyle;
       elements.push_back(elem);
       currentText.clear();
     }
@@ -193,10 +242,15 @@ class TestParser {
       }
     }
 
+    // Parse inline style for text-align
+    TestCssStyle cssStyle = parseTestInlineStyle(atts);
+
     // Headers
     if (matches(name, HEADER_TAGS, NUM_HEADER_TAGS)) {
       self->flushText();
       self->blockCount++;
+      self->currentBlockStyle = BlockStyle::CENTER;
+      self->alignStack.push_back({self->depth, BlockStyle::CENTER});
       self->boldUntilDepth = std::min(self->boldUntilDepth, self->depth);
     }
 
@@ -204,6 +258,20 @@ class TestParser {
     if (matches(name, BLOCK_TAGS, NUM_BLOCK_TAGS)) {
       self->flushText();
       self->blockCount++;
+      // Determine block style: CSS text-align > inheritance > default
+      BlockStyle blockStyle = BlockStyle::LEFT;
+      bool hasExplicitAlign = false;
+      if (cssStyle.hasTextAlign) {
+        hasExplicitAlign = true;
+        blockStyle = cssStyle.textAlign;
+      }
+      if (!hasExplicitAlign && !self->alignStack.empty()) {
+        blockStyle = self->alignStack.back().style;
+      }
+      if (hasExplicitAlign) {
+        self->alignStack.push_back({self->depth, blockStyle});
+      }
+      self->currentBlockStyle = blockStyle;
     }
 
     // Bold tags
@@ -279,6 +347,9 @@ class TestParser {
       self->rtlUntilDepth = INT_MAX;
       self->pendingRtl = false;
     }
+    while (!self->alignStack.empty() && self->alignStack.back().depth >= self->depth) {
+      self->alignStack.pop_back();
+    }
   }
 
   bool parse(const std::string& html) {
@@ -348,6 +419,15 @@ class TestParser {
       if (elem.type == ParsedElement::TEXT && !elem.isRtl) return false;
     }
     return true;
+  }
+
+  BlockStyle getBlockStyleForText(const std::string& needle) const {
+    for (const auto& elem : elements) {
+      if (elem.type == ParsedElement::TEXT && elem.content.find(needle) != std::string::npos) {
+        return elem.blockStyle;
+      }
+    }
+    return BlockStyle::LEFT;
   }
 };
 
@@ -1316,6 +1396,141 @@ int main() {
     runner.expectTrue(text.find("\xE2\x98\x83") != std::string::npos, "entity_numeric_symbols: snowman");
     runner.expectTrue(text.find("\xE2\x99\xA5") != std::string::npos, "entity_numeric_symbols: heart");
     runner.expectTrue(text.find("\xC2\xA9") != std::string::npos, "entity_numeric_symbols: copyright");
+  }
+
+  // ============================================
+  // CSS text-align inheritance tests
+  // ============================================
+
+  // Test 81: Header tags default to center alignment
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><h1>Title</h1></body></html>");
+    runner.expectTrue(ok, "align_header_center: parses successfully");
+    runner.expectTrue(parser.getBlockStyleForText("Title") == BlockStyle::CENTER,
+                      "align_header_center: h1 is centered");
+  }
+
+  // Test 82: Block tag with explicit text-align center
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p style=\"text-align: center\">Centered</p></body></html>");
+    runner.expectTrue(ok, "align_explicit_center: parses successfully");
+    runner.expectTrue(parser.getBlockStyleForText("Centered") == BlockStyle::CENTER,
+                      "align_explicit_center: p is centered");
+  }
+
+  // Test 83: Block tag with explicit text-align right
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p style=\"text-align: right\">Right</p></body></html>");
+    runner.expectTrue(ok, "align_explicit_right: parses successfully");
+    runner.expectTrue(parser.getBlockStyleForText("Right") == BlockStyle::RIGHT,
+                      "align_explicit_right: p is right-aligned");
+  }
+
+  // Test 84: Alignment inherited from parent div
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body>"
+        "<div style=\"text-align: center\">"
+        "<p>Inherited center</p>"
+        "</div>"
+        "</body></html>");
+    runner.expectTrue(ok, "align_inherit_center: parses successfully");
+    runner.expectTrue(parser.getBlockStyleForText("Inherited center") == BlockStyle::CENTER,
+                      "align_inherit_center: p inherits center from div");
+  }
+
+  // Test 85: Alignment inherited from parent with multiple children
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body>"
+        "<div style=\"text-align: right\">"
+        "<p>First child</p>"
+        "<p>Second child</p>"
+        "</div>"
+        "</body></html>");
+    runner.expectTrue(ok, "align_inherit_multi: parses successfully");
+    runner.expectTrue(parser.getBlockStyleForText("First child") == BlockStyle::RIGHT,
+                      "align_inherit_multi: first p inherits right");
+    runner.expectTrue(parser.getBlockStyleForText("Second child") == BlockStyle::RIGHT,
+                      "align_inherit_multi: second p inherits right");
+  }
+
+  // Test 86: Alignment scope resets after parent closes
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body>"
+        "<div style=\"text-align: center\">"
+        "<p>Centered</p>"
+        "</div>"
+        "<p>Default</p>"
+        "</body></html>");
+    runner.expectTrue(ok, "align_scope_reset: parses successfully");
+    runner.expectTrue(parser.getBlockStyleForText("Centered") == BlockStyle::CENTER,
+                      "align_scope_reset: inside div is centered");
+    runner.expectTrue(parser.getBlockStyleForText("Default") == BlockStyle::LEFT,
+                      "align_scope_reset: after div resets to left");
+  }
+
+  // Test 87: Child explicit alignment overrides parent inheritance
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body>"
+        "<div style=\"text-align: center\">"
+        "<p style=\"text-align: right\">Right override</p>"
+        "<p>Still centered</p>"
+        "</div>"
+        "</body></html>");
+    runner.expectTrue(ok, "align_override: parses successfully");
+    runner.expectTrue(parser.getBlockStyleForText("Right override") == BlockStyle::RIGHT,
+                      "align_override: explicit right overrides inherited center");
+    runner.expectTrue(parser.getBlockStyleForText("Still centered") == BlockStyle::CENTER,
+                      "align_override: sibling still inherits center");
+  }
+
+  // Test 88: Nested inheritance (grandparent → parent → child)
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body>"
+        "<div style=\"text-align: center\">"
+        "<div>"
+        "<p>Deep inherited</p>"
+        "</div>"
+        "</div>"
+        "</body></html>");
+    runner.expectTrue(ok, "align_deep_inherit: parses successfully");
+    runner.expectTrue(parser.getBlockStyleForText("Deep inherited") == BlockStyle::CENTER,
+                      "align_deep_inherit: p inherits center through nested div");
+  }
+
+  // Test 89: No alignment set, defaults to left
+  {
+    TestParser parser;
+    bool ok = parser.parse("<html><body><p>Default left</p></body></html>");
+    runner.expectTrue(ok, "align_default_left: parses successfully");
+    runner.expectTrue(parser.getBlockStyleForText("Default left") == BlockStyle::LEFT,
+                      "align_default_left: p defaults to left");
+  }
+
+  // Test 90: justify alignment inherited
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body>"
+        "<div style=\"text-align: justify\">"
+        "<p>Justified text</p>"
+        "</div>"
+        "</body></html>");
+    runner.expectTrue(ok, "align_inherit_justify: parses successfully");
+    runner.expectTrue(parser.getBlockStyleForText("Justified text") == BlockStyle::JUSTIFIED,
+                      "align_inherit_justify: p inherits justify from div");
   }
 
   return runner.allPassed() ? 0 : 1;

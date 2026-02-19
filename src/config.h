@@ -55,7 +55,7 @@
  *    "./lib/EpdFont/builtinFonts/small14.h",
  *  ].map{|f| Digest::SHA256.hexdigest(File.read(f)).to_i(16) }.sum % (2 ** 32) - (2 ** 31)'
  */
-#define SMALL_FONT_ID 1482513144
+#define SMALL_FONT_ID 1696102355
 
 // System directory for settings and cache
 #define PAPYRIX_DIR "/.papyrix"

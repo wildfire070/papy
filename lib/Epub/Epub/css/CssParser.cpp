@@ -307,8 +307,11 @@ void CssParser::parseRule(const std::string& selector, const std::string& proper
 
 void CssParser::parseProperty(const std::string& name, const std::string& value, CssStyle& style) {
   if (name == "text-align") {
-    style.textAlign = parseTextAlign(value);
-    style.hasTextAlign = true;
+    std::string v = toLower(trim(value));
+    if (v != "inherit") {
+      style.textAlign = parseTextAlign(v);
+      style.hasTextAlign = true;
+    }
   } else if (name == "font-style") {
     style.fontStyle = parseFontStyle(value);
     style.hasFontStyle = true;

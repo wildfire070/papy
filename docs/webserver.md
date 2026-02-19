@@ -1,15 +1,16 @@
 # Web Server Guide
 
-This guide explains how to connect your Papyrix Reader to WiFi and use the built-in web server to upload EPUB files from your computer or phone.
+This guide explains how to connect your Papyrix Reader to WiFi and use the built-in web server to upload books from your computer or phone.
 
 ## Overview
 
 Papyrix Reader includes a built-in web server that allows you to:
 
-- Upload EPUB files wirelessly from any device on the same WiFi network
+- Upload books wirelessly from any device on the same WiFi network
 - Browse and manage files on your device's SD card
 - Create folders to organize your ebooks
 - Delete files and folders
+- Upload and manage custom sleep screen images
 
 ## Prerequisites
 
@@ -123,6 +124,7 @@ Navigation links:
 
 - **Home** - Returns to the status page
 - **File Manager** - Access file management features
+- **Sleep Screens** - Manage custom sleep screen images
 
 <img src="./images/wifi/webserver_homepage.png" width="600">
 
@@ -140,16 +142,20 @@ Click **File Manager** to access file management features.
 
 <img src="./images/wifi/webserver_files.png" width="600">
 
-#### Uploading EPUB Files
+#### Uploading Books
 
 1. Click the **+ Add** button in the top-right corner
 2. Select **Upload eBook** from the dropdown menu
-3. Click **Choose File** and select an `.epub` file from your device
+3. Click **Choose File** and select a book file from your device
 4. Click **Upload**
 5. A progress bar will show the upload status
 6. The page will automatically refresh when the upload is complete
 
-**Note:** Only `.epub` files are accepted. Other file types will be rejected.
+**Supported book formats:** `.epub`, `.fb2`, `.xtc`, `.xtch`, `.xtg`, `.xth`, `.txt`, `.text`, `.md`, `.markdown`
+
+**Supported image formats:** `.jpg`, `.jpeg`, `.png`, `.bmp`
+
+**Note:** Files with uppercase extensions (e.g., `Book.EPUB`) are automatically normalized to lowercase on upload. Unsupported file types will be rejected.
 
 <img src="./images/wifi/webserver_upload.png" width="600">
 
@@ -171,6 +177,34 @@ This is useful for organizing your ebooks by genre, author, or series.
 **Warning:** Deletion is permanent and cannot be undone!
 
 **Note:** Folders must be empty before they can be deleted.
+
+### Sleep Screens
+
+Click **Sleep Screens** to manage custom sleep screen images.
+
+#### Viewing Sleep Screens
+
+- The page displays all BMP images in the `/sleep` directory on the SD card
+- Each image shows its filename and file size
+- A summary at the top shows the total number of images and combined size
+
+#### Uploading Sleep Screens
+
+1. Click the **Upload** button in the top-right corner
+2. Select a `.bmp` file from your device
+3. Click **Upload**
+4. A progress bar will show the upload status
+5. The page will automatically refresh when the upload is complete
+
+**Note:** Only `.bmp` files are accepted. Use the [sleep screen converter](../README.md) (`make sleep-screen`) to convert images to the correct format.
+
+#### Deleting Sleep Screens
+
+1. Click the **🗑️** (trash) icon next to any image
+2. Confirm the deletion in the popup dialog
+3. Click **Delete** to permanently remove the image
+
+**Note:** Set the **Sleep Screen** setting to **Custom** on the device to use uploaded images. A random image will be shown each time the device sleeps. See the [User Guide](user_guide.md#37-sleep-screen) for more details.
 
 ---
 
@@ -208,7 +242,7 @@ This is useful for organizing your ebooks by genre, author, or series.
 
 **Solutions:**
 
-1. Ensure the file is a valid `.epub` file
+1. Ensure the file is a supported format (`.epub`, `.fb2`, `.txt`, `.md`, etc.)
 2. Check that the SD card has enough free space
 3. Try uploading a smaller file first to test
 4. Refresh the browser page and try again
@@ -241,7 +275,7 @@ This is useful for organizing your ebooks by genre, author, or series.
 - **Supported WiFi:** 2.4GHz networks (802.11 b/g/n)
 - **Web Server Port:** 80 (HTTP)
 - **Maximum Upload Size:** Limited by available SD card space
-- **Supported File Format:** `.epub` only
+- **Supported File Formats:** `.epub`, `.fb2`, `.xtc`, `.xtch`, `.xtg`, `.xth`, `.txt`, `.text`, `.md`, `.markdown` (books); `.jpg`, `.jpeg`, `.png`, `.bmp` (images)
 - **Browser Compatibility:** All modern browsers (Chrome, Firefox, Safari, Edge)
 
 ---
