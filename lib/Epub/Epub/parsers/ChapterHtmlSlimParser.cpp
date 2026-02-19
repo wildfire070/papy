@@ -307,6 +307,7 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
 
   if (matches(name, HEADER_TAGS, NUM_HEADER_TAGS)) {
     self->startNewTextBlock(TextBlock::CENTER_ALIGN);
+    self->alignStack_.push_back({self->depth, TextBlock::CENTER_ALIGN});
     self->boldUntilDepth = min(self->boldUntilDepth, self->depth);
   } else if (matches(name, BLOCK_TAGS, NUM_BLOCK_TAGS)) {
     if (strcmp(name, "br") == 0) {
@@ -315,9 +316,11 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
                                                 : static_cast<TextBlock::BLOCK_STYLE>(self->config.paragraphAlignment);
       self->startNewTextBlock(style);
     } else {
-      // Determine block style: CSS text-align takes precedence
+      // Determine block style: CSS text-align takes precedence, then inheritance, then default
       TextBlock::BLOCK_STYLE blockStyle = static_cast<TextBlock::BLOCK_STYLE>(self->config.paragraphAlignment);
+      bool hasExplicitAlign = false;
       if (cssStyle.hasTextAlign) {
+        hasExplicitAlign = true;
         switch (cssStyle.textAlign) {
           case TextAlign::Left:
             blockStyle = TextBlock::LEFT_ALIGN;
@@ -332,8 +335,17 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
             blockStyle = TextBlock::JUSTIFIED;
             break;
           default:
+            hasExplicitAlign = false;
             break;
         }
+      }
+      // CSS text-align is inherited: use parent's alignment if no explicit value
+      if (!hasExplicitAlign && !self->alignStack_.empty()) {
+        blockStyle = self->alignStack_.back().style;
+      }
+      // Push to inheritance stack if this element sets an explicit alignment
+      if (hasExplicitAlign) {
+        self->alignStack_.push_back({self->depth, blockStyle});
       }
       self->startNewTextBlock(blockStyle);
     }
@@ -437,6 +449,9 @@ void XMLCALL ChapterHtmlSlimParser::endElement(void* userData, const XML_Char* n
     self->rtlUntilDepth_ = INT_MAX;
     self->pendingRtl_ = false;
   }
+  while (!self->alignStack_.empty() && self->alignStack_.back().depth >= self->depth) {
+    self->alignStack_.pop_back();
+  }
 }
 
 void XMLCALL ChapterHtmlSlimParser::defaultHandler(void* userData, const XML_Char* s, int len) {
@@ -507,6 +522,7 @@ bool ChapterHtmlSlimParser::initParser() {
   aborted_ = false;
   stopRequested_ = false;
   suspended_ = false;
+  alignStack_.clear();
   dataUriStripper_.reset();
   startNewTextBlock(static_cast<TextBlock::BLOCK_STYLE>(config.paragraphAlignment));
 

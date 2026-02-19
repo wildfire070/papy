@@ -60,6 +60,13 @@ class ChapterHtmlSlimParser {
   TextBlock::BLOCK_STYLE pendingBlockStyle_ = TextBlock::LEFT_ALIGN;
   bool pendingRtl_ = false;
   int rtlUntilDepth_ = INT_MAX;
+
+  // CSS text-align inheritance stack (text-align is an inherited property in CSS)
+  struct AlignEntry {
+    int depth;
+    TextBlock::BLOCK_STYLE style;
+  };
+  std::vector<AlignEntry> alignStack_;
   bool aborted_ = false;
 
   // External abort callback for cooperative cancellation
