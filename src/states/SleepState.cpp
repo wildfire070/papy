@@ -94,7 +94,7 @@ void SleepState::renderDefaultSleepScreen(const Core& core) const {
 
   renderer_.clearScreen(THEME.backgroundColor);
   renderer_.drawImage(PapyrixLogo, (pageWidth + 128) / 2, (pageHeight - 128) / 2, 128, 128);
-  renderer_.drawCenteredText(THEME.uiFontId, pageHeight / 2 + 70, "Papyrix", THEME.primaryTextBlack, BOLD);
+  renderer_.drawCenteredText(THEME.uiFontId, pageHeight / 2 + 70, "Capy", THEME.primaryTextBlack, BOLD);
   renderer_.drawCenteredText(THEME.smallFontId, pageHeight / 2 + 110, "SLEEPING", THEME.primaryTextBlack);
 
   // Make sleep screen dark unless light is selected in settings
