@@ -306,7 +306,7 @@ The ThaiShaper library provides:
 
 ### Arabic Text Rendering
 
-Arabic script requires special handling in reader mode for book text:
+Arabic script is supported natively in the built-in fonts and requires special handling in reader mode for book text:
 - **Contextual shaping**: Letters change form based on position (initial, medial, final, isolated)
 - **Lam-Alef ligatures**: Automatic ligature formation for Lam + Alef combinations
 - **RTL layout**: Words are rendered right-to-left with right-aligned lines

@@ -41,6 +41,7 @@ The built-in fonts include native support for:
 - **Cyrillic** - Russian, Ukrainian, and other Cyrillic-script languages
 - **Thai** - Full Thai script with proper mark positioning
 - **Greek** - Modern Greek alphabet
+- **Arabic** - Arabic script with contextual shaping and RTL layout
 
 No custom fonts are needed for these scripts - they work out of the box.
 

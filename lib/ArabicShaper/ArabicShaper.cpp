@@ -150,11 +150,110 @@ std::vector<uint32_t> shapeText(const char* text) {
     shaped.push_back(getContextualForm(c, prevJoins, nextJoins));
   }
 
-  // Step 4: Reverse for visual order (RTL to LTR rendering)
+  // Step 4: Simplified BiDi reordering for visual order
+  // Classify each codepoint as RTL, LTR, or NEUTRAL
+  enum class BidiDir : uint8_t { LTR, RTL, NEUTRAL };
+  const size_t len = shaped.size();
+  std::vector<BidiDir> dirs(len);
+
+  for (size_t i = 0; i < len; i++) {
+    uint32_t c = shaped[i];
+    if ((c >= 0x0600 && c <= 0x06FF) || (c >= 0x0750 && c <= 0x077F) || (c >= 0xFB50 && c <= 0xFDFF) ||
+        (c >= 0xFE70 && c <= 0xFEFF)) {
+      dirs[i] = BidiDir::RTL;
+    } else if (c >= '0' && c <= '9') {
+      dirs[i] = BidiDir::LTR;  // European digits are always LTR
+    } else if (c <= 0x20 || c == '(' || c == ')' || c == '[' || c == ']' || c == ',' || c == '.' || c == ':' ||
+               c == ';' || c == '-' || c == '!' || c == '?' || c == '/' || c == '\'' || c == '"') {
+      dirs[i] = BidiDir::NEUTRAL;
+    } else {
+      dirs[i] = BidiDir::LTR;
+    }
+  }
+
+  // Resolve neutrals: brackets use content direction, others use neighbor context
+  for (size_t i = 0; i < len; i++) {
+    if (dirs[i] != BidiDir::NEUTRAL) continue;
+    uint32_t c = shaped[i];
+
+    if (c == '(' || c == '[') {
+      // Opening bracket: look right for first strong char
+      BidiDir found = BidiDir::RTL;  // fallback to base direction
+      for (size_t j = i + 1; j < len; j++) {
+        if (dirs[j] == BidiDir::LTR) {
+          found = BidiDir::LTR;
+          break;
+        }
+        if (dirs[j] == BidiDir::RTL) {
+          found = BidiDir::RTL;
+          break;
+        }
+      }
+      dirs[i] = found;
+    } else if (c == ')' || c == ']') {
+      // Closing bracket: look left for first strong char
+      BidiDir found = BidiDir::RTL;
+      for (int j = static_cast<int>(i) - 1; j >= 0; j--) {
+        if (dirs[j] == BidiDir::LTR) {
+          found = BidiDir::LTR;
+          break;
+        }
+        if (dirs[j] == BidiDir::RTL) {
+          found = BidiDir::RTL;
+          break;
+        }
+      }
+      dirs[i] = found;
+    } else {
+      // Other neutrals: if both neighbors agree, use that; else base direction (RTL)
+      BidiDir left = BidiDir::RTL, right = BidiDir::RTL;
+      for (int j = static_cast<int>(i) - 1; j >= 0; j--) {
+        if (dirs[j] != BidiDir::NEUTRAL) {
+          left = dirs[j];
+          break;
+        }
+      }
+      for (size_t j = i + 1; j < len; j++) {
+        if (dirs[j] != BidiDir::NEUTRAL) {
+          right = dirs[j];
+          break;
+        }
+      }
+      dirs[i] = (left == right) ? left : BidiDir::RTL;
+    }
+  }
+
+  // Build runs of consecutive same-direction chars
+  struct Run {
+    size_t start, end;  // [start, end)
+    BidiDir dir;
+  };
+  std::vector<Run> runs;
+  if (len > 0) {
+    size_t runStart = 0;
+    for (size_t i = 1; i <= len; i++) {
+      if (i == len || dirs[i] != dirs[runStart]) {
+        runs.push_back({runStart, i, dirs[runStart]});
+        runStart = i;
+      }
+    }
+  }
+
+  // Build visual order: reverse overall run order (RTL base), reverse chars within RTL runs
   std::vector<uint32_t> visual;
-  visual.reserve(shaped.size());
-  for (int i = static_cast<int>(shaped.size()) - 1; i >= 0; i--) {
-    visual.push_back(shaped[i]);
+  visual.reserve(len);
+  for (int r = static_cast<int>(runs.size()) - 1; r >= 0; r--) {
+    if (runs[r].dir == BidiDir::RTL) {
+      // RTL run: reverse chars (logical RTL → visual LTR)
+      for (int i = static_cast<int>(runs[r].end) - 1; i >= static_cast<int>(runs[r].start); i--) {
+        visual.push_back(shaped[i]);
+      }
+    } else {
+      // LTR run: keep char order
+      for (size_t i = runs[r].start; i < runs[r].end; i++) {
+        visual.push_back(shaped[i]);
+      }
+    }
   }
 
   return visual;

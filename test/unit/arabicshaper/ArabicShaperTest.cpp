@@ -198,12 +198,12 @@ int main() {
     runner.expectEq(static_cast<uint32_t>(0xFE80), result[0], "shapeText: Hamza isolated");
   }
 
-  // Test 22: ASCII passes through unchanged (reversed)
+  // Test 22: ASCII passes through unchanged (NOT reversed — LTR in RTL base)
   {
     auto result = shapeText("AB");
     runner.expectEq(static_cast<size_t>(2), result.size(), "shapeText: ASCII count");
-    runner.expectEq(static_cast<uint32_t>('B'), result[0], "shapeText: B first (reversed)");
-    runner.expectEq(static_cast<uint32_t>('A'), result[1], "shapeText: A second (reversed)");
+    runner.expectEq(static_cast<uint32_t>('A'), result[0], "shapeText: A first (LTR kept)");
+    runner.expectEq(static_cast<uint32_t>('B'), result[1], "shapeText: B second (LTR kept)");
   }
 
   // Test 23: Diacritics preserved
@@ -216,6 +216,102 @@ int main() {
     runner.expectEq(static_cast<uint32_t>(0xFE8E), result[0], "shapeText: Alef final with diacritic");
     runner.expectEq(static_cast<uint32_t>(0x064E), result[1], "shapeText: Fatha preserved");
     runner.expectEq(static_cast<uint32_t>(0xFE91), result[2], "shapeText: Beh initial with diacritic");
+  }
+
+  // ============================================
+  // Mixed BiDi text tests
+  // ============================================
+
+  // Test 24: Mixed Arabic + Latin (no brackets)
+  // Logical: أحمد Ahmed  (Alef-Hamza-Above + Ha + Meem + Dal + space + A + h + m + e + d)
+  // Visual (RTL base): Latin run first (LTR kept), then Arabic run (reversed)
+  {
+    auto result = shapeText("\xD8\xA3\xD8\xAD\xD9\x85\xD8\xAF Ahmed");
+    // Should have: 'A','h','m','e','d',' ', then 4 shaped Arabic chars (Dal Meem Ha Alef-Hamza)
+    runner.expectEq(static_cast<size_t>(10), result.size(), "mixed: Arabic+Latin count");
+    // LTR run comes first in visual (reversed run order)
+    runner.expectEq(static_cast<uint32_t>('A'), result[0], "mixed: Latin 'A' first");
+    runner.expectEq(static_cast<uint32_t>('h'), result[1], "mixed: Latin 'h'");
+    runner.expectEq(static_cast<uint32_t>('m'), result[2], "mixed: Latin 'm'");
+    runner.expectEq(static_cast<uint32_t>('e'), result[3], "mixed: Latin 'e'");
+    runner.expectEq(static_cast<uint32_t>('d'), result[4], "mixed: Latin 'd'");
+    // Space between runs resolves to RTL (adjacent to Arabic on right)
+    // Arabic run reversed: Dal-final, Meem-medial, Ha-medial, Alef-Hamza-initial
+  }
+
+  // Test 25: Mixed Arabic + Latin in parentheses
+  // Logical: أحمد (Ahmed)
+  // Brackets should attach to Latin content
+  {
+    auto result = shapeText("\xD8\xA3\xD8\xAD\xD9\x85\xD8\xAF (Ahmed)");
+    // Visual: "(Ahmed) " then Arabic reversed
+    // Find the '(' and ')' to verify they surround the Latin text
+    bool foundOpenParen = false;
+    bool foundCloseParen = false;
+    int openIdx = -1, closeIdx = -1;
+    for (size_t i = 0; i < result.size(); i++) {
+      if (result[i] == '(') { foundOpenParen = true; openIdx = static_cast<int>(i); }
+      if (result[i] == ')') { foundCloseParen = true; closeIdx = static_cast<int>(i); }
+    }
+    runner.expectTrue(foundOpenParen && foundCloseParen, "mixed parens: both parens present");
+    runner.expectTrue(openIdx < closeIdx, "mixed parens: ( before ) in visual order");
+    // 'A' should be right after '('
+    if (openIdx >= 0 && openIdx + 1 < static_cast<int>(result.size())) {
+      runner.expectEq(static_cast<uint32_t>('A'), result[openIdx + 1], "mixed parens: A after (");
+    }
+  }
+
+  // Test 26: Arabic with embedded digits
+  // Logical: صفحة 42  (Sad + Fa + Ha + Teh-Marbuta + space + 4 + 2)
+  // Digits are neutral, resolve based on neighbors
+  {
+    auto result = shapeText("\xD8\xB5\xD9\x81\xD8\xAD\xD8\xA9 42");
+    runner.expectEq(static_cast<size_t>(7), result.size(), "digits: count");
+    // Digits should appear before Arabic in visual order (they're at the end logically,
+    // and get reversed with the RTL context), digits keep internal order
+    // Find '4' and '2' positions
+    int pos4 = -1, pos2 = -1;
+    for (size_t i = 0; i < result.size(); i++) {
+      if (result[i] == '4') pos4 = static_cast<int>(i);
+      if (result[i] == '2') pos2 = static_cast<int>(i);
+    }
+    runner.expectTrue(pos4 >= 0 && pos2 >= 0, "digits: both digits present");
+    runner.expectTrue(pos4 < pos2, "digits: 4 before 2 (LTR digit order preserved)");
+  }
+
+  // Test 27: Pure Arabic regression — same as Test 18 but verifies BiDi doesn't break it
+  // Logical: Beh + Seen + Meem → visual: Meem-final, Seen-medial, Beh-initial
+  {
+    auto result = shapeText("\xD8\xA8\xD8\xB3\xD9\x85");
+    runner.expectEq(static_cast<size_t>(3), result.size(), "bidi regression: three chars count");
+    runner.expectEq(static_cast<uint32_t>(0xFEE2), result[0], "bidi regression: Meem final");
+    runner.expectEq(static_cast<uint32_t>(0xFEB4), result[1], "bidi regression: Seen medial");
+    runner.expectEq(static_cast<uint32_t>(0xFE91), result[2], "bidi regression: Beh initial");
+  }
+
+  // Test 28: The motivating bug — author name with Latin in parens
+  // Logical: لويس كارول (Lewis Carroll)
+  // Visual should have "(Lewis Carroll)" on the left, Arabic on the right
+  {
+    auto result = shapeText("\xD9\x84\xD9\x88\xD9\x8A\xD8\xB3 "
+                            "\xD9\x83\xD8\xA7\xD8\xB1\xD9\x88\xD9\x84 "
+                            "(Lewis Carroll)");
+    // Verify Latin text is not reversed: find 'L','e','w','i','s' in order
+    int prevPos = -1;
+    bool latinOrdered = true;
+    const char* lewis = "Lewis";
+    for (int ci = 0; ci < 5 && latinOrdered; ci++) {
+      bool found = false;
+      for (size_t i = (prevPos < 0 ? 0 : prevPos + 1); i < result.size(); i++) {
+        if (result[i] == static_cast<uint32_t>(lewis[ci])) {
+          prevPos = static_cast<int>(i);
+          found = true;
+          break;
+        }
+      }
+      if (!found) latinOrdered = false;
+    }
+    runner.expectTrue(latinOrdered, "bug fix: 'Lewis' chars in correct LTR order");
   }
 
   return runner.allPassed() ? 0 : 1;

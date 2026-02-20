@@ -374,7 +374,7 @@ uv run scripts/fontconvert.py noto-sans-thai -r NotoSansThai-Regular.ttf --2bit 
 
 ### Arabic Fonts
 
-Arabic fonts can be generated using the `--arabic` flag. Arabic text in books is automatically shaped (contextual letter forms, Lam-Alef ligatures) and rendered right-to-left. Arabic support is available in reader mode for book text only (not in the UI):
+The built-in fonts include Arabic script natively, so no custom font is needed. Arabic text in books is automatically shaped (contextual letter forms, Lam-Alef ligatures) and rendered right-to-left. Arabic support is available in reader mode for book text only (not in the UI). If you prefer a different typeface, Arabic fonts can be generated using the `--arabic` flag:
 
 ```bash
 # Arabic font with Arabic script support
@@ -397,8 +397,8 @@ If a custom font file is missing, corrupted, or exceeds size limits:
 - `.bin` external fonts: max 32MB file size, max 64x64 pixel glyphs
 
 Built-in fonts are always available:
-- **Reader** - Reader font (3 sizes) with Latin, Cyrillic, Vietnamese, Thai, and Greek coverage
-- **UI** - UI font with Latin, Cyrillic, Vietnamese, Thai, and Greek coverage
+- **Reader** - Reader font (3 sizes) with Latin, Cyrillic, Vietnamese, Thai, Greek, and Arabic coverage
+- **UI** - UI font with Latin, Cyrillic, Vietnamese, Thai, Greek, and Arabic coverage
 - **Small** - Small text
 
 > **Note:** Custom font loading is optional. The device works perfectly with built-in fonts if no custom fonts are configured.
