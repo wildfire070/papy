@@ -16,6 +16,7 @@
 
 constexpr size_t MAX_TITLE_LENGTH = 256;
 constexpr size_t MAX_AUTHOR_LENGTH = 128;
+constexpr size_t MAX_LANGUAGE_LENGTH = 32;
 
 namespace {
 size_t findUtf8Boundary(const char* s, size_t maxLen) {
@@ -56,6 +57,7 @@ class TestOpfParser {
     IN_METADATA,
     IN_BOOK_TITLE,
     IN_BOOK_AUTHOR,
+    IN_BOOK_LANGUAGE,
     IN_OTHER,
   };
 
@@ -82,6 +84,10 @@ class TestOpfParser {
         self->author.append(", ");
       }
       self->state = IN_BOOK_AUTHOR;
+      return;
+    }
+    if (self->state == IN_METADATA && strcmp(name, "dc:language") == 0) {
+      self->state = IN_BOOK_LANGUAGE;
       return;
     }
     // Skip manifest/spine/guide - not needed for metadata tests
@@ -115,6 +121,13 @@ class TestOpfParser {
       }
       return;
     }
+
+    if (self->state == IN_BOOK_LANGUAGE) {
+      if (self->language.size() + static_cast<size_t>(len) <= MAX_LANGUAGE_LENGTH) {
+        self->language.append(s, len);
+      }
+      return;
+    }
   }
 
   static void XMLCALL endElement(void* userData, const XML_Char* name) {
@@ -127,6 +140,18 @@ class TestOpfParser {
     }
     if (self->state == IN_BOOK_AUTHOR && strcmp(name, "dc:creator") == 0) {
       self->author.resize(utf8NormalizeNfc(&self->author[0], self->author.size()));
+      self->state = IN_METADATA;
+      return;
+    }
+    if (self->state == IN_BOOK_LANGUAGE && strcmp(name, "dc:language") == 0) {
+      auto& lang = self->language;
+      const size_t start = lang.find_first_not_of(" \t\r\n");
+      if (start == std::string::npos) {
+        lang.clear();
+      } else {
+        const size_t end = lang.find_last_not_of(" \t\r\n");
+        lang = lang.substr(start, end - start + 1);
+      }
       self->state = IN_METADATA;
       return;
     }
@@ -143,6 +168,7 @@ class TestOpfParser {
  public:
   std::string title;
   std::string author;
+  std::string language;
 
   bool parse(const std::string& xml) {
     XML_Parser parser = XML_ParserCreate(nullptr);
@@ -317,6 +343,79 @@ int main() {
     bool ok = parser.parse(xml);
     runner.expectTrue(ok, "opf_prefix: parses successfully");
     runner.expectEqual("Author A, Author B", parser.author, "opf_prefix: authors separated");
+  }
+
+  // ============================================
+  // Language parsing tests
+  // ============================================
+
+  // Test: Simple language tag
+  {
+    TestOpfParser parser;
+    bool ok = parser.parse(makeOpf("<dc:language>en</dc:language>"));
+    runner.expectTrue(ok, "language_simple: parses successfully");
+    runner.expectEqual("en", parser.language, "language_simple: correct language");
+  }
+
+  // Test: Language with region subtag
+  {
+    TestOpfParser parser;
+    bool ok = parser.parse(makeOpf("<dc:language>en-US</dc:language>"));
+    runner.expectTrue(ok, "language_region: parses successfully");
+    runner.expectEqual("en-US", parser.language, "language_region: correct language");
+  }
+
+  // Test: No dc:language element
+  {
+    TestOpfParser parser;
+    bool ok = parser.parse(makeOpf("<dc:title>Test</dc:title>"));
+    runner.expectTrue(ok, "language_absent: parses successfully");
+    runner.expectEqual("", parser.language, "language_absent: empty string");
+  }
+
+  // Test: Empty dc:language element
+  {
+    TestOpfParser parser;
+    bool ok = parser.parse(makeOpf("<dc:language></dc:language>"));
+    runner.expectTrue(ok, "language_empty: parses successfully");
+    runner.expectEqual("", parser.language, "language_empty: empty string");
+  }
+
+  // Test: Language with title and author
+  {
+    TestOpfParser parser;
+    bool ok = parser.parse(makeOpf("<dc:title>Book</dc:title>"
+                                   "<dc:creator>Author</dc:creator>"
+                                   "<dc:language>fr</dc:language>"));
+    runner.expectTrue(ok, "language_with_metadata: parses successfully");
+    runner.expectEqual("Book", parser.title, "language_with_metadata: title correct");
+    runner.expectEqual("Author", parser.author, "language_with_metadata: author correct");
+    runner.expectEqual("fr", parser.language, "language_with_metadata: language correct");
+  }
+
+  // Test: Language truncation at MAX_LANGUAGE_LENGTH
+  {
+    std::string longLang(MAX_LANGUAGE_LENGTH + 10, 'x');
+    TestOpfParser parser;
+    bool ok = parser.parse(makeOpf("<dc:language>" + longLang + "</dc:language>"));
+    runner.expectTrue(ok, "language_truncated: parses successfully");
+    runner.expectTrue(parser.language.size() <= MAX_LANGUAGE_LENGTH, "language_truncated: within limit");
+  }
+
+  // Test: Language with surrounding whitespace (pretty-printed OPF)
+  {
+    TestOpfParser parser;
+    bool ok = parser.parse(makeOpf("<dc:language>\n    en\n  </dc:language>"));
+    runner.expectTrue(ok, "language_whitespace: parses successfully");
+    runner.expectEqual("en", parser.language, "language_whitespace: whitespace trimmed");
+  }
+
+  // Test: Language that is only whitespace
+  {
+    TestOpfParser parser;
+    bool ok = parser.parse(makeOpf("<dc:language>  \n  </dc:language>"));
+    runner.expectTrue(ok, "language_only_whitespace: parses successfully");
+    runner.expectEqual("", parser.language, "language_only_whitespace: empty after trim");
   }
 
   // Test 15: Author with leading/trailing whitespace (expat preserves it)

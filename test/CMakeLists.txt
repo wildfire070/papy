@@ -94,6 +94,20 @@ foreach(TEST_SRC ${TEST_SOURCES})
       ${PROJECT_ROOT}/lib/Xtc
       ${PROJECT_ROOT}/lib/Xtc/Xtc
     )
+  elseif(TEST_NAME STREQUAL "HyphenationTest")
+    add_executable(${TEST_NAME}
+      ${TEST_SRC}
+      ${PROJECT_ROOT}/lib/Hyphenation/Hyphenation.cpp
+      ${PROJECT_ROOT}/lib/Hyphenation/Hyphenator.cpp
+      ${PROJECT_ROOT}/lib/Hyphenation/HyphenationCommon.cpp
+      ${PROJECT_ROOT}/lib/Hyphenation/LiangHyphenation.cpp
+      ${PROJECT_ROOT}/lib/Hyphenation/LanguageRegistry.cpp
+      ${PROJECT_ROOT}/lib/Utf8/Utf8.cpp
+      ${TEST_HELPERS}
+    )
+    target_include_directories(${TEST_NAME} PRIVATE
+      ${PROJECT_ROOT}/lib
+    )
   elseif(TEST_NAME STREQUAL "HtmlEntitiesTest")
     add_executable(${TEST_NAME}
       ${TEST_SRC}

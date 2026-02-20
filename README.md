@@ -51,6 +51,7 @@ This project is **not affiliated with Xteink**; it's built as a community projec
 - [x] Paragraph alignment (Justified/Left/Center/Right)
 - [x] Text layout presets (Compact/Standard/Large) for indentation and spacing
 - [x] Soft hyphen support for text layout
+- [x] Liang-pattern hyphenation with language detection from EPUB metadata (de, en, es, fr, it, ru, uk)
 - [x] Native Vietnamese, Thai, and Greek support in builtin fonts
 - [x] CJK (Chinese/Japanese/Korean) text layout
 - [x] Thai text rendering with proper mark positioning

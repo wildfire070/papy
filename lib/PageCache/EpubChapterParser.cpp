@@ -4,6 +4,7 @@
 #include <Epub/parsers/ChapterHtmlSlimParser.h>
 #include <GfxRenderer.h>
 #include <Html5Normalizer.h>
+#include <Hyphenation/Hyphenation.h>
 #include <SDCardManager.h>
 
 #include <utility>
@@ -55,6 +56,7 @@ bool EpubChapterParser::parsePages(const std::function<void(std::unique_ptr<Page
   // The liveParser_'s completePageFn captures `this` and delegates to member state
   // (onPageComplete_, maxPages_, etc.), so we just update those for the new batch.
   if (initialized_ && liveParser_ && liveParser_->isSuspended()) {
+    Hyphenation::setLanguage(epub_->getLanguage());
     onPageComplete_ = onPageComplete;
     maxPages_ = maxPages;
     pagesCreated_ = 0;
@@ -76,6 +78,9 @@ bool EpubChapterParser::parsePages(const std::function<void(std::unique_ptr<Page
   }
 
   // INIT PATH: first call — extract HTML, normalize, create parser
+  // Set up hyphenation language from EPUB metadata
+  Hyphenation::setLanguage(epub_->getLanguage());
+
   const auto localPath = epub_->getSpineItem(spineIndex_).href;
   tmpHtmlPath_ = epub_->getCachePath() + "/.tmp_" + std::to_string(spineIndex_) + ".html";
 

@@ -244,6 +244,8 @@ EPUB Load → ContentOpfParser → CssParser → ChapterHtmlSlimParser → Page
 
 Papyrix uses the **Knuth-Plass algorithm** for optimal line breaking, the same algorithm used by TeX. This produces higher-quality justified text than greedy algorithms.
 
+**Hyphenation**: The Liang algorithm (also from TeX) finds valid hyphenation points within words. Language is auto-detected from EPUB metadata (`<dc:language>`) and falls back to English. Supported languages: German, English, Spanish, French, Italian, Russian, Ukrainian. Binary trie patterns are sourced from [typst/hypher](https://github.com/typst/hypher).
+
 ```
 Words → calculateWordWidths() → computeLineBreaks() → extractLine() → TextBlock
 ```
@@ -529,6 +531,7 @@ The `--batch 5` flag is critical for reproducing suspend/resume bugs that only t
 - **`ScriptDetector/`** — Script classification
 - **`ArabicShaper/`** — Arabic text shaping (contextual forms, ligatures)
 - **`ThaiShaper/`** — Thai text shaping
+- **`Hyphenation/`** — Liang-pattern hyphenation with language-specific tries (de, en, es, fr, it, ru, uk)
 - **`Utf8/`** — UTF-8 string utilities
 - **`ZipFile/`** — EPUB ZIP extraction
 - **`Group5/`** — 1-bit image compression
