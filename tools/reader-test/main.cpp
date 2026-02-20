@@ -184,6 +184,7 @@ int main(int argc, char* argv[]) {
   config.paragraphAlignment = 0;
   config.spacingLevel = 1;
   config.lineCompression = 1.0f;
+  config.hyphenation = true;  // Enable hyphenation (matches default device setting)
 
   mkdirRecursive(outputDir);
 

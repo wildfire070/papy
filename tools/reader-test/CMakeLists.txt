@@ -46,6 +46,13 @@ add_executable(reader-test
   ${PROJECT_ROOT}/lib/EpdFont/EpdFont.cpp
   ${PROJECT_ROOT}/lib/EpdFont/EpdFontFamily.cpp
 
+  # Hyphenation
+  ${PROJECT_ROOT}/lib/Hyphenation/Hyphenation.cpp
+  ${PROJECT_ROOT}/lib/Hyphenation/HyphenationCommon.cpp
+  ${PROJECT_ROOT}/lib/Hyphenation/Hyphenator.cpp
+  ${PROJECT_ROOT}/lib/Hyphenation/LanguageRegistry.cpp
+  ${PROJECT_ROOT}/lib/Hyphenation/LiangHyphenation.cpp
+
   # Support
   ${PROJECT_ROOT}/lib/Html5/Html5Normalizer.cpp
   ${PROJECT_ROOT}/lib/ZipFile/ZipFile.cpp
@@ -80,6 +87,8 @@ target_include_directories(reader-test PRIVATE
   ${PROJECT_ROOT}/lib/ArabicShaper
   ${PROJECT_ROOT}/lib/ThaiShaper
   ${PROJECT_ROOT}/lib/ZipFile
+  ${PROJECT_ROOT}/lib
+  ${PROJECT_ROOT}/lib/Hyphenation
   ${PROJECT_ROOT}/lib/Html5
   ${PROJECT_ROOT}/lib/miniz
   ${PROJECT_ROOT}/lib/ImageConverter

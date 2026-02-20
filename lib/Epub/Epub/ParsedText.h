@@ -29,8 +29,13 @@ class ParsedText {
 
   std::vector<size_t> computeLineBreaks(int pageWidth, int spaceWidth, const std::vector<uint16_t>& wordWidths,
                                         const AbortCallback& shouldAbort = nullptr) const;
-  std::vector<size_t> computeLineBreaksGreedy(int pageWidth, int spaceWidth, const std::vector<uint16_t>& wordWidths,
-                                              const AbortCallback& shouldAbort = nullptr) const;
+  std::vector<size_t> computeLineBreaksGreedy(const GfxRenderer& renderer, int fontId, int pageWidth, int spaceWidth,
+                                              std::vector<uint16_t>& wordWidths,
+                                              const AbortCallback& shouldAbort = nullptr);
+  bool trySplitWordForLineEnd(const GfxRenderer& renderer, int fontId, int remainingWidth,
+                              std::list<std::string>::iterator wordIt,
+                              std::list<EpdFontFamily::Style>::iterator styleIt, size_t wordIndex,
+                              std::vector<uint16_t>& wordWidths);
   void extractLine(size_t breakIndex, int pageWidth, int spaceWidth, const std::vector<uint16_t>& wordWidths,
                    const std::vector<size_t>& lineBreakIndices,
                    const std::function<void(std::shared_ptr<TextBlock>)>& processLine);

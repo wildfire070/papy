@@ -50,8 +50,7 @@ INTERVALS_THAI = [
 INTERVALS_ARABIC = [
     (0x0600, 0x06FF),  # Arabic
     (0x0750, 0x077F),  # Arabic Supplement
-    (0xFB50, 0xFDFF),  # Arabic Presentation Forms-A (ligatures)
-    (0xFE70, 0xFEFF),  # Arabic Presentation Forms-B (contextual forms)
+    (0xFE70, 0xFEFF),  # Arabic Presentation Forms-B (contextual forms used by ArabicShaper)
 ]
 
 INTERVALS_HEBREW = [

@@ -150,6 +150,11 @@ void XMLCALL ContentOpfParser::startElement(void* userData, const XML_Char* name
     return;
   }
 
+  if (self->state == IN_METADATA && strcmp(name, "dc:language") == 0) {
+    self->state = IN_BOOK_LANGUAGE;
+    return;
+  }
+
   if (self->state == IN_PACKAGE && (strcmp(name, "manifest") == 0 || strcmp(name, "opf:manifest") == 0)) {
     self->state = IN_MANIFEST;
     if (!SdMan.openFileForWrite("COF", self->cachePath + itemCacheFile, self->tempItemStore)) {
@@ -328,6 +333,15 @@ void XMLCALL ContentOpfParser::characterData(void* userData, const XML_Char* s, 
     }
     return;
   }
+
+  if (self->state == IN_BOOK_LANGUAGE) {
+    // Language tags are ASCII, no UTF-8 boundary concerns
+    constexpr size_t MAX_LANGUAGE_LENGTH = 32;
+    if (self->language.size() + static_cast<size_t>(len) <= MAX_LANGUAGE_LENGTH) {
+      self->language.append(s, len);
+    }
+    return;
+  }
 }
 
 void XMLCALL ContentOpfParser::endElement(void* userData, const XML_Char* name) {
@@ -358,6 +372,20 @@ void XMLCALL ContentOpfParser::endElement(void* userData, const XML_Char* name) 
 
   if (self->state == IN_BOOK_AUTHOR && strcmp(name, "dc:creator") == 0) {
     self->author.resize(utf8NormalizeNfc(&self->author[0], self->author.size()));
+    self->state = IN_METADATA;
+    return;
+  }
+
+  if (self->state == IN_BOOK_LANGUAGE && strcmp(name, "dc:language") == 0) {
+    // Trim ASCII whitespace (pretty-printed OPF may have newlines around the tag text)
+    auto& lang = self->language;
+    const size_t start = lang.find_first_not_of(" \t\r\n");
+    if (start == std::string::npos) {
+      lang.clear();
+    } else {
+      const size_t end = lang.find_last_not_of(" \t\r\n");
+      lang = lang.substr(start, end - start + 1);
+    }
     self->state = IN_METADATA;
     return;
   }

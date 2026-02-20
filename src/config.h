@@ -8,7 +8,7 @@
  *    "./lib/EpdFont/builtinFonts/reader_xsmall_italic_2b.h",
  *  ].map{|f| Digest::SHA256.hexdigest(File.read(f)).to_i(16) }.sum % (2 ** 32) - (2 ** 31)'
  */
-#define READER_FONT_ID_XSMALL (-1506109732)
+#define READER_FONT_ID_XSMALL (-1260765921)
 
 /**
  * Generated with:
@@ -18,7 +18,7 @@
  *    "./lib/EpdFont/builtinFonts/reader_italic_2b.h",
  *  ].map{|f| Digest::SHA256.hexdigest(File.read(f)).to_i(16) }.sum % (2 ** 32) - (2 ** 31)'
  */
-#define READER_FONT_ID 1818981670
+#define READER_FONT_ID (-911811249)
 
 /**
  * Generated with:
@@ -28,7 +28,7 @@
  *    "./lib/EpdFont/builtinFonts/reader_medium_italic_2b.h",
  *  ].map{|f| Digest::SHA256.hexdigest(File.read(f)).to_i(16) }.sum % (2 ** 32) - (2 ** 31)'
  */
-#define READER_FONT_ID_MEDIUM (-455101320)
+#define READER_FONT_ID_MEDIUM 1951712027
 
 /**
  * Generated with:
@@ -38,7 +38,7 @@
  *    "./lib/EpdFont/builtinFonts/reader_large_italic_2b.h",
  *  ].map{|f| Digest::SHA256.hexdigest(File.read(f)).to_i(16) }.sum % (2 ** 32) - (2 ** 31)'
  */
-#define READER_FONT_ID_LARGE 1922188069
+#define READER_FONT_ID_LARGE (-1681625488)
 
 /**
  * Generated with:
@@ -47,7 +47,7 @@
  *    "./lib/EpdFont/builtinFonts/ui_bold_12.h",
  *  ].map{|f| Digest::SHA256.hexdigest(File.read(f)).to_i(16) }.sum % (2 ** 32) - (2 ** 31)'
  */
-#define UI_FONT_ID (-731562571)
+#define UI_FONT_ID 2115224670
 
 /**
  * Generated with:
@@ -55,7 +55,7 @@
  *    "./lib/EpdFont/builtinFonts/small14.h",
  *  ].map{|f| Digest::SHA256.hexdigest(File.read(f)).to_i(16) }.sum % (2 ** 32) - (2 ** 31)'
  */
-#define SMALL_FONT_ID 1696102355
+#define SMALL_FONT_ID 1712655465
 
 // System directory for settings and cache
 #define PAPYRIX_DIR "/.papyrix"
