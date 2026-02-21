@@ -1,5 +1,27 @@
 
 
+## v1.11.0 (2026-02-21)
+
+*  Page: Add image-aware display refresh and idle CPU frequency scaling [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Input: Add ButtonRepeat event for continuous navigation with directional buttons [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  EpdFont, PageCache: Add SD card I/O retry logic for transient read failures [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  EpdFont: Update builtin fonts for add Arabic support [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Bump version [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+
+
+## v1.10.0 (2026-02-20)
+
+*  CSS: Add text-align inheritance and handle inherit keyword [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add Liang-pattern hyphenation library with language detection from EPUB metadata. Issue #65 [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Bump version [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+
+
+## v1.9.1 (2026-02-19)
+
+*  Update changelog [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  TOC: Increase max chapters to 256 [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+
+
 ## v1.9.0 (2026-02-18)
 
 *  Fix ui font. Issue #61 [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
