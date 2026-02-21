@@ -136,6 +136,11 @@ class ReaderState : public State {
   // Source state (where reader was opened from)
   StateId sourceState_ = StateId::Home;
 
+  // Cached chapter title for StatusChapter mode (avoids SD I/O on every render)
+  char cachedChapterTitle_[64] = "";
+  int cachedChapterSpine_ = -1;
+  int cachedChapterPage_ = -1;
+
   // TOC overlay mode
   bool tocMode_ = false;
   ui::ChapterListView tocView_;

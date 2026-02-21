@@ -440,7 +440,7 @@ void SettingsState::loadReaderSettings() {
   // Index 7: Show Images (toggle)
   readerView_.values[7] = settings.showImages;
 
-  // Index 8: Status Bar (0=None, 1=Show)
+  // Index 8: Status Bar (0=None, 1=Title, 2=Chapter)
   readerView_.values[8] = settings.statusBar;
 
   // Index 9: Reading Orientation (0=Portrait, 1=Landscape CW, 2=Inverted, 3=Landscape CCW)

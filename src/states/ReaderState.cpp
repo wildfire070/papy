@@ -921,6 +921,26 @@ void ReaderState::renderStatusBar(Core& core, int marginRight, int marginBottom,
   data.mode = core.settings.statusBar;
   data.title = core.content.metadata().title;
 
+  // Resolve chapter title if in Chapter mode (cached to avoid SD I/O on every render)
+  if (data.mode == Settings::StatusChapter && core.content.tocCount() > 0) {
+    if (currentSpineIndex_ != cachedChapterSpine_ || currentSectionPage_ != cachedChapterPage_) {
+      cachedChapterTitle_[0] = '\0';
+      int tocIndex = findCurrentTocEntry(core);
+      if (tocIndex >= 0) {
+        auto result = core.content.getTocEntry(tocIndex);
+        if (result.ok()) {
+          strncpy(cachedChapterTitle_, result.value.title, sizeof(cachedChapterTitle_) - 1);
+          cachedChapterTitle_[sizeof(cachedChapterTitle_) - 1] = '\0';
+        }
+      }
+      cachedChapterSpine_ = currentSpineIndex_;
+      cachedChapterPage_ = currentSectionPage_;
+    }
+    if (cachedChapterTitle_[0] != '\0') {
+      data.title = cachedChapterTitle_;
+    }
+  }
+
   // Battery
   const uint16_t millivolts = batteryMonitor.readMillivolts();
   data.batteryPercent = (millivolts < 100) ? -1 : BatteryMonitor::percentageFromMillivolts(millivolts);

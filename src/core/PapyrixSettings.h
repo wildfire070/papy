@@ -19,7 +19,7 @@ struct Settings {
   enum SleepScreenMode : uint8_t { SleepDark = 0, SleepLight = 1, SleepCustom = 2, SleepCover = 3 };
 
   // Status bar display modes
-  enum StatusBarMode : uint8_t { StatusNone = 0, StatusShow = 1 };
+  enum StatusBarMode : uint8_t { StatusNone = 0, StatusShow = 1, StatusChapter = 2 };
 
   // Screen orientation
   enum Orientation : uint8_t {
