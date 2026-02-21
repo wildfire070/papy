@@ -1,5 +1,6 @@
 #include "Page.h"
 
+#include <GfxRenderer.h>
 #include <HardwareSerial.h>
 #include <Serialization.h>
 
@@ -31,7 +32,9 @@ std::unique_ptr<PageLine> PageLine::deserialize(FsFile& file) {
 
 void PageImage::render(GfxRenderer& renderer, const int fontId, const int xOffset, const int yOffset,
                        const bool black) {
-  (void)black;
+  if (!black) {
+    renderer.clearArea(xPos + xOffset, yPos + yOffset, block->getWidth(), block->getHeight(), 0xFF);
+  }
   block->render(renderer, fontId, xPos + xOffset, yPos + yOffset);
 }
 

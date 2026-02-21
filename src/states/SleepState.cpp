@@ -34,8 +34,8 @@ void SleepState::enter(Core& core) {
   Serial.println("[STATE] SleepState::enter - rendering sleep screen");
 
   // Show immediate feedback before rendering sleep screen
-  renderer_.clearScreen(THEME.backgroundColor);
-  renderer_.drawCenteredText(THEME.uiFontId, renderer_.getScreenHeight() / 2, "Sleeping...", THEME.primaryTextBlack);
+  renderer_.clearScreen(0xFF);
+  renderer_.drawCenteredText(THEME.uiFontId, renderer_.getScreenHeight() / 2, "Sleeping...", true);
   renderer_.displayBuffer(EInkDisplay::FAST_REFRESH);
 
   // Render the appropriate sleep screen based on settings
@@ -92,10 +92,12 @@ void SleepState::renderDefaultSleepScreen(const Core& core) const {
   const auto pageWidth = renderer_.getScreenWidth();
   const auto pageHeight = renderer_.getScreenHeight();
 
-  renderer_.clearScreen(THEME.backgroundColor);
+  // Fixed colors (white bg, black text) — independent of active theme.
+  // invertScreen() below handles dark/light based on sleep setting only.
+  renderer_.clearScreen(0xFF);
   renderer_.drawImage(PapyrixLogo, (pageWidth + 128) / 2, (pageHeight - 128) / 2, 128, 128);
-  renderer_.drawCenteredText(THEME.uiFontId, pageHeight / 2 + 70, "Papyrix", THEME.primaryTextBlack, BOLD);
-  renderer_.drawCenteredText(THEME.smallFontId, pageHeight / 2 + 110, "SLEEPING", THEME.primaryTextBlack);
+  renderer_.drawCenteredText(THEME.uiFontId, pageHeight / 2 + 70, "Papyrix", true, BOLD);
+  renderer_.drawCenteredText(THEME.smallFontId, pageHeight / 2 + 110, "SLEEPING", true);
 
   // Make sleep screen dark unless light is selected in settings
   if (core.settings.sleepScreen != Settings::SleepLight) {
