@@ -549,7 +549,8 @@ void loop() {
   // Idea: CrossPoint HalPowerManager by @ngxson (https://github.com/ngxson)
   static constexpr unsigned long kIdlePowerSavingMs = 3000;
   static bool cpuThrottled = false;
-  const bool isIdle = papyrix::core.input.idleTimeMs() >= kIdlePowerSavingMs;
+  const bool isIdle =
+      (currentBootMode == papyrix::BootMode::READER) && (papyrix::core.input.idleTimeMs() >= kIdlePowerSavingMs);
 
   if (isIdle && !cpuThrottled) {
     setCpuFrequencyMhz(10);
