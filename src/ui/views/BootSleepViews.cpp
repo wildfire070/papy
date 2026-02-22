@@ -17,7 +17,7 @@ void render(const GfxRenderer& r, const Theme& t, const BootView& v) {
   }
 
   // Text positions match old BootActivity exactly
-  r.drawCenteredText(t.uiFontId, pageHeight / 2 + 70, "Papyrix", t.primaryTextBlack, BOLD);
+  r.drawCenteredText(t.uiFontId, pageHeight / 2 + 70, "...TBR...", t.primaryTextBlack, BOLD);
   r.drawCenteredText(t.smallFontId, pageHeight / 2 + 110, v.status, t.primaryTextBlack);
   r.drawCenteredText(t.smallFontId, pageHeight - 30, v.version, t.primaryTextBlack);
 
