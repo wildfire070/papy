@@ -7,7 +7,6 @@
 
 class ZipFile {
  public:
-  static constexpr size_t DECOMP_DICT_SIZE = 32768;  // Must match TINFL_LZ_DICT_SIZE
   struct FileStatSlim {
     uint16_t method;             // Compression method
     uint32_t compressedSize;     // Compressed size

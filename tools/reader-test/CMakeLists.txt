@@ -56,7 +56,10 @@ add_executable(reader-test
   # Support
   ${PROJECT_ROOT}/lib/Html5/Html5Normalizer.cpp
   ${PROJECT_ROOT}/lib/ZipFile/ZipFile.cpp
-  ${PROJECT_ROOT}/lib/miniz/miniz.c
+  ${PROJECT_ROOT}/lib/InflateReader/InflateReader.cpp
+  ${PROJECT_ROOT}/lib/uzlib/src/tinflate.c
+  ${PROJECT_ROOT}/lib/uzlib/src/adler32.c
+  ${PROJECT_ROOT}/lib/uzlib/src/crc32.c
   ${PROJECT_ROOT}/lib/ScriptDetector/ScriptDetector.cpp
   ${PROJECT_ROOT}/lib/Utf8/Utf8.cpp
   ${PROJECT_ROOT}/lib/Utf8/Utf8Nfc.cpp
@@ -87,10 +90,11 @@ target_include_directories(reader-test PRIVATE
   ${PROJECT_ROOT}/lib/ArabicShaper
   ${PROJECT_ROOT}/lib/ThaiShaper
   ${PROJECT_ROOT}/lib/ZipFile
+  ${PROJECT_ROOT}/lib/InflateReader
+  ${PROJECT_ROOT}/lib/uzlib/src
   ${PROJECT_ROOT}/lib
   ${PROJECT_ROOT}/lib/Hyphenation
   ${PROJECT_ROOT}/lib/Html5
-  ${PROJECT_ROOT}/lib/miniz
   ${PROJECT_ROOT}/lib/ImageConverter
 )
 

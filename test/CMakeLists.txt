@@ -144,6 +144,19 @@ foreach(TEST_SRC ${TEST_SOURCES})
     target_include_directories(${TEST_NAME} PRIVATE
       ${PROJECT_ROOT}/lib/Fb2
     )
+  elseif(TEST_NAME STREQUAL "InflateReaderTest")
+    add_executable(${TEST_NAME}
+      ${TEST_SRC}
+      ${PROJECT_ROOT}/lib/InflateReader/InflateReader.cpp
+      ${PROJECT_ROOT}/lib/uzlib/src/tinflate.c
+      ${PROJECT_ROOT}/lib/uzlib/src/adler32.c
+      ${PROJECT_ROOT}/lib/uzlib/src/crc32.c
+      ${TEST_HELPERS}
+    )
+    target_include_directories(${TEST_NAME} PRIVATE
+      ${PROJECT_ROOT}/lib/InflateReader
+      ${PROJECT_ROOT}/lib/uzlib/src
+    )
   else()
     add_executable(${TEST_NAME} ${TEST_SRC} ${TEST_HELPERS})
   endif()
