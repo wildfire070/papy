@@ -14,13 +14,13 @@
 #include <EpubChapterParser.h>
 #include <Fb2.h>
 #include <Fb2Parser.h>
-#include <Epub/Page.h>
+#include <Page.h>
 #include <GfxRenderer.h>
 #include <Markdown.h>
 #include <MarkdownParser.h>
 #include <PageCache.h>
 #include <PlainTextParser.h>
-#include <Epub/RenderConfig.h>
+#include <RenderConfig.h>
 #include <SDCardManager.h>
 #include <Txt.h>
 #include <LittleFS.h>

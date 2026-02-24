@@ -3,12 +3,12 @@
 #include <Arduino.h>
 #include <ContentParser.h>
 #include <CoverHelpers.h>
-#include <Epub/Page.h>
 #include <EpubChapterParser.h>
 #include <Fb2.h>
 #include <Fb2Parser.h>
 #include <GfxRenderer.h>
 #include <MarkdownParser.h>
+#include <Page.h>
 #include <PageCache.h>
 #include <PlainTextParser.h>
 #include <SDCardManager.h>

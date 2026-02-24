@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Epub/RenderConfig.h>
+#include <RenderConfig.h>
 
 #include <cstdint>
 

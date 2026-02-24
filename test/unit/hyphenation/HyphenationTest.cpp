@@ -4,10 +4,10 @@
 
 #include "test_utils.h"
 
-#include <Hyphenation/HyphenationCommon.h>
-#include <Hyphenation/Hyphenation.h>
-#include <Hyphenation/Hyphenator.h>
-#include <Hyphenation/LanguageRegistry.h>
+#include <HyphenationCommon.h>
+#include <Hyphenation.h>
+#include <Hyphenator.h>
+#include <LanguageRegistry.h>
 
 #include <string>
 #include <vector>
