@@ -433,6 +433,13 @@ void XMLCALL ChapterHtmlSlimParser::endElement(void* userData, const XML_Char* n
 
   self->depth -= 1;
 
+  const bool headerOrBlockTag =
+      matches(name, HEADER_TAGS, NUM_HEADER_TAGS) || matches(name, BLOCK_TAGS, NUM_BLOCK_TAGS);
+
+  if (headerOrBlockTag && self->currentTextBlock && self->currentTextBlock->isEmpty()) {
+    self->currentTextBlock->setStyle(static_cast<TextBlock::BLOCK_STYLE>(self->config.paragraphAlignment));
+  }
+
   if (self->skipUntilDepth == self->depth) {
     self->skipUntilDepth = INT_MAX;
   }

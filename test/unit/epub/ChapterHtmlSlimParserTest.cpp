@@ -327,12 +327,22 @@ class TestParser {
   static void XMLCALL endElement(void* userData, const XML_Char* name) {
     auto* self = static_cast<TestParser*>(userData);
 
+    const bool headerOrBlockTag =
+        matches(name, HEADER_TAGS, NUM_HEADER_TAGS) || matches(name, BLOCK_TAGS, NUM_BLOCK_TAGS);
+
     // Flush text on block tag close
-    if (matches(name, BLOCK_TAGS, NUM_BLOCK_TAGS) || matches(name, HEADER_TAGS, NUM_HEADER_TAGS)) {
+    size_t prevCount = self->elements.size();
+    if (headerOrBlockTag) {
       self->flushText();
     }
 
     self->depth--;
+
+    // Reset alignment for empty blocks to prevent center alignment from empty headers
+    // bleeding into subsequent siblings (mirrors production fix)
+    if (headerOrBlockTag && self->elements.size() == prevCount) {
+      self->currentBlockStyle = BlockStyle::LEFT;
+    }
 
     if (self->skipUntilDepth == self->depth) {
       self->skipUntilDepth = INT_MAX;
@@ -1563,6 +1573,48 @@ int main() {
     runner.expectTrue(ok, "align_inherit_justify: parses successfully");
     runner.expectTrue(parser.getBlockStyleForText("Justified text") == BlockStyle::JUSTIFIED,
                       "align_inherit_justify: p inherits justify from div");
+  }
+
+  // Test 91: Empty header center alignment does not bleed into subsequent paragraphs
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body>"
+        "<h1></h1>"
+        "<p><img src=\"image.jpg\"/></p>"
+        "<p>Normal text</p>"
+        "</body></html>");
+    runner.expectTrue(ok, "align_empty_header_no_bleed: parses successfully");
+    runner.expectTrue(parser.getBlockStyleForText("Normal text") == BlockStyle::LEFT,
+                      "align_empty_header_no_bleed: text after empty h1 + image is left-aligned");
+  }
+
+  // Test 92: Empty header with hidden class does not bleed center alignment
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body>"
+        "<h1 class=\"hidden\"></h1>"
+        "<p>Should be left</p>"
+        "</body></html>");
+    runner.expectTrue(ok, "align_hidden_header_no_bleed: parses successfully");
+    runner.expectTrue(parser.getBlockStyleForText("Should be left") == BlockStyle::LEFT,
+                      "align_hidden_header_no_bleed: text after empty hidden h1 is left-aligned");
+  }
+
+  // Test 93: Non-empty header still gets center alignment
+  {
+    TestParser parser;
+    bool ok = parser.parse(
+        "<html><body>"
+        "<h1>Chapter Title</h1>"
+        "<p>Body text</p>"
+        "</body></html>");
+    runner.expectTrue(ok, "align_nonempty_header_center: parses successfully");
+    runner.expectTrue(parser.getBlockStyleForText("Chapter Title") == BlockStyle::CENTER,
+                      "align_nonempty_header_center: h1 with text is still centered");
+    runner.expectTrue(parser.getBlockStyleForText("Body text") == BlockStyle::LEFT,
+                      "align_nonempty_header_center: p after h1 is left-aligned");
   }
 
   return runner.allPassed() ? 0 : 1;
