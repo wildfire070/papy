@@ -315,31 +315,6 @@ This creates a changelog grouped by version tags, with commit messages and autho
 
 Papyrix is designed for the ESP32-C3's ~380KB RAM constraint. See [docs/architecture.md](docs/architecture.md) for detailed architecture documentation.
 
-### Core Architecture
-
-- **State Machine**: 10 pre-allocated states (Home, Reader, Settings, etc.) with lifecycle hooks
-- **Dual-Boot System**: UI mode (full features) vs Reader mode (minimal, maximum RAM) - device restarts between modes
-- **Content Providers**: Unified `ContentHandle` interface for EPUB, XTC, TXT, Markdown, and FB2 formats
-- **PageCache**: Partial page caching with background pre-rendering
-
-### WiFi and Memory
-
-The ESP32 WiFi stack allocates ~100KB and fragments heap memory in a way that cannot be recovered at runtime. After using WiFi features (File Transfer or Calibre Wireless), the device automatically restarts to reclaim memory.
-
-### Performance Optimizations
-
-**Hash-based lookups**: EPUB spine/TOC and glyph caches use FNV-1a hashing for O(1) lookups.
-
-**EPUB indexing**: Manifest item lookup uses an in-memory hash map for O(1) resolution of spine itemrefs. TOC-to-spine mapping also uses a hash map for O(1) href-to-index resolution.
-
-**XTC rendering**: 1-bit monochrome pages use byte-level processing. All-white bytes (common in margins) are skipped entirely.
-
-**Group5 compression**: 1-bit image data uses CCITT Group5 compression for fast decompression and reduced SD card I/O.
-
-**Word width caching**: 256-entry cache in GfxRenderer avoids repeated font measurements.
-
-**Image caching**: EPUB images are converted to BMP once and cached to `/.papyrix/epub_<hash>/images/`. Failed conversions are marked to avoid re-processing.
-
 ### Data caching
 
 The first time chapters of a book are loaded, they are cached to the SD card. Subsequent loads are served from the cache. This cache directory exists at `.papyrix` on the SD card. The structure is as follows:
@@ -381,12 +356,7 @@ The first time chapters of a book are loaded, they are cached to the SD card. Su
 └── epub_189013891/
 ```
 
-To clear cached data, use **Settings > Cleanup**:
-- **Clear Book Cache** — Delete all cached book data and reading progress
-- **Clear Device Storage** — Erase internal flash storage (requires restart)
-- **Factory Reset** — Erase all data (caches, settings, WiFi, fonts) and restart
-
-Alternatively, deleting the `.papyrix` directory manually will clear the book cache.
+To clear cached data, use **Settings > Cleanup** (see [User Guide](docs/user_guide.md)). Alternatively, delete the `.papyrix` directory manually.
 
 Due the way it's currently implemented, the cache is not automatically cleared when a book is deleted and moving a book file will use a new cache directory, resetting the reading progress.
 

@@ -137,53 +137,9 @@ For CJK texts, Papyrix uses external `.bin` format fonts that are streamed from 
 
 See `light-cjk-external.theme` for usage.
 
-## Converting Your Own Fonts
+## Converting and Installing Fonts
 
-Use the `fontconvert.py` script to convert TTF/OTF fonts. Requires [uv](https://docs.astral.sh/uv/):
-
-```bash
-# Basic conversion
-uv run scripts/fontconvert.py my-font -r MyFont-Regular.ttf -b MyFont-Bold.ttf --2bit -o /tmp/fonts/
-
-# All reader sizes (14, 16, 18pt)
-uv run scripts/fontconvert.py my-font -r MyFont-Regular.ttf --2bit --all-sizes -o /tmp/fonts/
-
-# Thai font
-uv run scripts/fontconvert.py noto-sans-thai -r NotoSansThai-Regular.ttf --2bit --thai --all-sizes -o /tmp/fonts/
-
-# Arabic font
-uv run scripts/fontconvert.py noto-sans-arabic -r NotoSansArabic-Regular.ttf -b NotoSansArabic-Bold.ttf --2bit --arabic --all-sizes -o /tmp/fonts/
-
-# Generate C header (for builtin fonts)
-uv run scripts/fontconvert.py my_font 16 MyFont-Regular.ttf --2bit > my_font_16_2b.h
-```
-
-### Options
-
-- **-r, --regular** - Path to regular style font (required for binary mode)
-- **-b, --bold** - Path to bold style font
-- **-i, --italic** - Path to italic style font
-- **-o, --output** - Output directory (default: current)
-- **-s, --size-opt** - Font size in points (default: 16)
-- **--all-sizes** - Generate 14pt, 16pt, and 18pt
-- **--thai** - Include Thai script characters
-- **--arabic** - Include Arabic script characters
-- **--2bit** - 2-bit grayscale (smoother, larger)
-- **--header** - Output C header instead of binary
-- **--additional-intervals** - Add custom Unicode ranges
-
-## Installing Fonts
-
-1. Copy the font folder(s) to `/config/fonts/` on your SD card
-2. Create or edit a `.theme` file in `/config/themes/`
-3. Set the font references:
-
-```ini
-[fonts]
-reader_font_small = my-font-14
-reader_font_medium = my-font-16
-reader_font_large = my-font-18
-```
+See the [Customization Guide](customization.md#custom-fonts) for detailed instructions on converting TTF/OTF fonts to `.epdfont` format and installing them on your device.
 
 ## Font Sources
 
