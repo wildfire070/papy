@@ -43,8 +43,6 @@ Leave the device on this screen while connecting from Calibre.
 2. Click the **Connect/Share** button in the toolbar
 3. Select **Start wireless device connection**
 
-<img src="./images/calibre/calibre-connect-menu.png" width="400">
-
 ### Automatic Discovery
 
 Calibre will automatically scan for wireless devices on your network. Your Papyrix Reader should appear in the device list within a few seconds.

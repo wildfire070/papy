@@ -12,5 +12,9 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/bitbank2/bb_epaper"
+  },
+  "build": {
+    "srcDir": "src",
+    "includeDir": "src"
   }
 }

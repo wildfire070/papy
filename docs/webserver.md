@@ -38,8 +38,6 @@ Once the scan completes, you'll see a list of available WiFi networks with the f
 - **`*` symbol** - Indicates the network is password-protected (encrypted)
 - **`+` symbol** - Indicates you have previously saved credentials for this network
 
-<img src="./images/wifi/wifi_networks.jpeg" height="500">
-
 ### Selecting a Network
 
 1. Use the **Left/Right** (or **Volume Up/Down**) buttons to navigate through the network list
@@ -83,8 +81,6 @@ Once connected, the screen will display:
 - **IP Address** (e.g., `192.168.1.102`)
 - **Web server URL** (e.g., `http://192.168.1.102/`)
 
-<img src="./images/wifi/wifi_connected.jpeg" height="500">
-
 **Important:** Make note of the IP address - you'll need this to access the web interface from your computer or phone.
 
 ---
@@ -126,8 +122,6 @@ Navigation links:
 - **File Manager** - Access file management features
 - **Sleep Screens** - Manage custom sleep screen images
 
-<img src="./images/wifi/webserver_homepage.png" width="600">
-
 ### File Manager
 
 Click **File Manager** to access file management features.
@@ -139,8 +133,6 @@ Click **File Manager** to access file management features.
 - **EPUB files** are highlighted in green with a 📗 icon
 - Click on a folder name to navigate into it
 - Use the breadcrumb navigation at the top to go back to parent folders
-
-<img src="./images/wifi/webserver_files.png" width="600">
 
 #### Uploading Books
 
@@ -156,8 +148,6 @@ Click **File Manager** to access file management features.
 **Supported image formats:** `.jpg`, `.jpeg`, `.png`, `.bmp`
 
 **Note:** Files with uppercase extensions (e.g., `Book.EPUB`) are automatically normalized to lowercase on upload. Unsupported file types will be rejected.
-
-<img src="./images/wifi/webserver_upload.png" width="600">
 
 #### Creating Folders
 

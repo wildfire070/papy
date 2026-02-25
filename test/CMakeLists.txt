@@ -28,19 +28,20 @@ include_directories(
   ${PROJECT_ROOT}/src
   ${PROJECT_ROOT}/src/core
   ${PROJECT_ROOT}/src/content
-  ${PROJECT_ROOT}/lib/Utf8
-  ${PROJECT_ROOT}/lib/Serialization
+  ${PROJECT_ROOT}/lib/Utf8/src
+  ${PROJECT_ROOT}/lib/Serialization/src
   ${PROJECT_ROOT}/lib/AsyncTask/src
-  ${PROJECT_ROOT}/lib/Epub/Epub
-  ${PROJECT_ROOT}/lib/Epub/Epub/css
-  ${PROJECT_ROOT}/lib/PageCache
-  ${PROJECT_ROOT}/lib/FsHelpers
-  ${PROJECT_ROOT}/lib/ScriptDetector
-  ${PROJECT_ROOT}/lib/Markdown
-  ${PROJECT_ROOT}/lib/Txt
-  ${PROJECT_ROOT}/lib/GfxRenderer
-  ${PROJECT_ROOT}/lib/EpdFont
-  ${PROJECT_ROOT}/lib/ArabicShaper
+  ${PROJECT_ROOT}/lib/RenderTypes/src
+  ${PROJECT_ROOT}/lib/Epub/src/Epub
+  ${PROJECT_ROOT}/lib/Epub/src/Epub/css
+  ${PROJECT_ROOT}/lib/PageCache/src
+  ${PROJECT_ROOT}/lib/FsHelpers/src
+  ${PROJECT_ROOT}/lib/ScriptDetector/src
+  ${PROJECT_ROOT}/lib/Markdown/src
+  ${PROJECT_ROOT}/lib/Txt/src
+  ${PROJECT_ROOT}/lib/GfxRenderer/src
+  ${PROJECT_ROOT}/lib/EpdFont/src
+  ${PROJECT_ROOT}/lib/ArabicShaper/src
 )
 
 # Common test helpers
@@ -57,61 +58,79 @@ foreach(TEST_SRC ${TEST_SOURCES})
   get_filename_component(TEST_NAME ${TEST_SRC} NAME_WE)
 
   # Special handling for tests that need additional source files
-  if(TEST_NAME STREQUAL "ArabicShaperTest")
+  if(TEST_NAME STREQUAL "ThaiShaperTest")
     add_executable(${TEST_NAME}
       ${TEST_SRC}
-      ${PROJECT_ROOT}/lib/ArabicShaper/ArabicCharacter.cpp
-      ${PROJECT_ROOT}/lib/ArabicShaper/ArabicShaper.cpp
+      ${PROJECT_ROOT}/lib/ThaiShaper/src/ThaiCharacter.cpp
+      ${PROJECT_ROOT}/lib/ThaiShaper/src/ThaiClusterBuilder.cpp
+      ${PROJECT_ROOT}/lib/ThaiShaper/src/ThaiWordBreak.cpp
+      ${PROJECT_ROOT}/lib/Utf8/src/Utf8.cpp
       ${TEST_HELPERS}
     )
-  elseif(TEST_NAME STREQUAL "ScriptDetectorTest")
+    target_include_directories(${TEST_NAME} PRIVATE
+      ${PROJECT_ROOT}/lib/ThaiShaper/src
+    )
+  elseif(TEST_NAME STREQUAL "ArabicShaperTest")
     add_executable(${TEST_NAME}
       ${TEST_SRC}
-      ${PROJECT_ROOT}/lib/ScriptDetector/ScriptDetector.cpp
-      ${PROJECT_ROOT}/lib/Utf8/Utf8.cpp
+      ${PROJECT_ROOT}/lib/ArabicShaper/src/ArabicCharacter.cpp
+      ${PROJECT_ROOT}/lib/ArabicShaper/src/ArabicShaper.cpp
       ${TEST_HELPERS}
     )
-  elseif(TEST_NAME STREQUAL "MarkdownParserTest")
+  elseif(TEST_NAME STREQUAL "FsHelpersNormaliseTest")
     add_executable(${TEST_NAME}
       ${TEST_SRC}
-      ${PROJECT_ROOT}/lib/Markdown/md_parser.c
+      ${PROJECT_ROOT}/lib/FsHelpers/src/FsHelpers.cpp
+      ${TEST_HELPERS}
+    )
+  elseif(TEST_NAME MATCHES "^ScriptDetector.*Test$")
+    add_executable(${TEST_NAME}
+      ${TEST_SRC}
+      ${PROJECT_ROOT}/lib/ScriptDetector/src/ScriptDetector.cpp
+      ${PROJECT_ROOT}/lib/Utf8/src/Utf8.cpp
+      ${TEST_HELPERS}
+    )
+  elseif(TEST_NAME MATCHES "^MarkdownParser.*Test$")
+    add_executable(${TEST_NAME}
+      ${TEST_SRC}
+      ${PROJECT_ROOT}/lib/Markdown/src/md_parser.c
       ${TEST_HELPERS}
     )
   elseif(TEST_NAME STREQUAL "CssParserClassTest")
     add_executable(${TEST_NAME}
       ${TEST_SRC}
-      ${PROJECT_ROOT}/lib/Epub/Epub/css/CssParser.cpp
+      ${PROJECT_ROOT}/lib/Epub/src/Epub/css/CssParser.cpp
       ${TEST_HELPERS}
     )
   elseif(TEST_NAME STREQUAL "XtcCoverHelperTest")
     add_executable(${TEST_NAME}
       ${TEST_SRC}
-      ${PROJECT_ROOT}/lib/Xtc/Xtc/XtcParser.cpp
-      ${PROJECT_ROOT}/lib/Xtc/XtcCoverHelper.cpp
+      ${PROJECT_ROOT}/lib/Xtc/src/Xtc/XtcParser.cpp
+      ${PROJECT_ROOT}/lib/Xtc/src/XtcCoverHelper.cpp
       ${TEST_HELPERS}
     )
     target_include_directories(${TEST_NAME} PRIVATE
-      ${PROJECT_ROOT}/lib/Xtc
-      ${PROJECT_ROOT}/lib/Xtc/Xtc
+      ${PROJECT_ROOT}/lib/Xtc/src
+      ${PROJECT_ROOT}/lib/Xtc/src/Xtc
     )
   elseif(TEST_NAME STREQUAL "HyphenationTest")
     add_executable(${TEST_NAME}
       ${TEST_SRC}
-      ${PROJECT_ROOT}/lib/Hyphenation/Hyphenation.cpp
-      ${PROJECT_ROOT}/lib/Hyphenation/Hyphenator.cpp
-      ${PROJECT_ROOT}/lib/Hyphenation/HyphenationCommon.cpp
-      ${PROJECT_ROOT}/lib/Hyphenation/LiangHyphenation.cpp
-      ${PROJECT_ROOT}/lib/Hyphenation/LanguageRegistry.cpp
-      ${PROJECT_ROOT}/lib/Utf8/Utf8.cpp
+      ${PROJECT_ROOT}/lib/Hyphenation/src/Hyphenation.cpp
+      ${PROJECT_ROOT}/lib/Hyphenation/src/Hyphenator.cpp
+      ${PROJECT_ROOT}/lib/Hyphenation/src/HyphenationCommon.cpp
+      ${PROJECT_ROOT}/lib/Hyphenation/src/LiangHyphenation.cpp
+      ${PROJECT_ROOT}/lib/Hyphenation/src/LanguageRegistry.cpp
+      ${PROJECT_ROOT}/lib/Utf8/src/Utf8.cpp
       ${TEST_HELPERS}
     )
     target_include_directories(${TEST_NAME} PRIVATE
-      ${PROJECT_ROOT}/lib
+      ${PROJECT_ROOT}/lib/Hyphenation/src
     )
   elseif(TEST_NAME STREQUAL "HtmlEntitiesTest")
     add_executable(${TEST_NAME}
       ${TEST_SRC}
-      ${PROJECT_ROOT}/lib/Epub/Epub/htmlEntities.cpp
+      ${PROJECT_ROOT}/lib/Epub/src/Epub/htmlEntities.cpp
       ${TEST_HELPERS}
     )
   elseif(TEST_NAME STREQUAL "ChapterHtmlSlimParserTest")
@@ -119,7 +138,7 @@ foreach(TEST_SRC ${TEST_SOURCES})
     find_package(EXPAT REQUIRED)
     add_executable(${TEST_NAME}
       ${TEST_SRC}
-      ${PROJECT_ROOT}/lib/Epub/Epub/htmlEntities.cpp
+      ${PROJECT_ROOT}/lib/Epub/src/Epub/htmlEntities.cpp
       ${TEST_HELPERS}
     )
     target_compile_definitions(${TEST_NAME} PRIVATE XML_GE=0 XML_DTD)
@@ -128,7 +147,7 @@ foreach(TEST_SRC ${TEST_SOURCES})
     find_package(EXPAT REQUIRED)
     add_executable(${TEST_NAME}
       ${TEST_SRC}
-      ${PROJECT_ROOT}/lib/Utf8/Utf8Nfc.cpp
+      ${PROJECT_ROOT}/lib/Utf8/src/Utf8Nfc.cpp
       ${TEST_HELPERS}
     )
     target_compile_definitions(${TEST_NAME} PRIVATE XML_GE=0)
@@ -142,7 +161,33 @@ foreach(TEST_SRC ${TEST_SOURCES})
     target_compile_definitions(${TEST_NAME} PRIVATE XML_GE=0)
     target_link_libraries(${TEST_NAME} PRIVATE EXPAT::EXPAT)
     target_include_directories(${TEST_NAME} PRIVATE
-      ${PROJECT_ROOT}/lib/Fb2
+      ${PROJECT_ROOT}/lib/Fb2/src
+    )
+  elseif(TEST_NAME STREQUAL "LoggingTest")
+    # Self-contained test with its own HardwareSerial.h mock (no TEST_HELPERS —
+    # platform_stubs.h conflicts with the real Logging.h's logSerial/LOG_* defs).
+    # BEFORE ensures our local mock and real Logging.h are found before test/mocks/.
+    add_executable(${TEST_NAME}
+      ${TEST_SRC}
+      ${PROJECT_ROOT}/lib/Logging/src/Logging.cpp
+    )
+    target_include_directories(${TEST_NAME} BEFORE PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/unit/logging   # Local HWCDC mock (before test/mocks/)
+      ${PROJECT_ROOT}/lib/Logging/src             # Real Logging.h
+    )
+    target_compile_definitions(${TEST_NAME} PRIVATE ENABLE_SERIAL_LOG LOG_LEVEL=2)
+  elseif(TEST_NAME STREQUAL "InflateReaderTest")
+    add_executable(${TEST_NAME}
+      ${TEST_SRC}
+      ${PROJECT_ROOT}/lib/InflateReader/src/InflateReader.cpp
+      ${PROJECT_ROOT}/lib/uzlib/src/tinflate.c
+      ${PROJECT_ROOT}/lib/uzlib/src/adler32.c
+      ${PROJECT_ROOT}/lib/uzlib/src/crc32.c
+      ${TEST_HELPERS}
+    )
+    target_include_directories(${TEST_NAME} PRIVATE
+      ${PROJECT_ROOT}/lib/InflateReader/src
+      ${PROJECT_ROOT}/lib/uzlib/src
     )
   else()
     add_executable(${TEST_NAME} ${TEST_SRC} ${TEST_HELPERS})

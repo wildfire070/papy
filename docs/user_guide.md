@@ -110,8 +110,6 @@ See [4. Reading Mode](#4-reading-mode) below for more information.
 
 ### 3.4 File Transfer (Sync)
 
-![File Transfer](images/file-transfer.jpg)
-
 File transfer is accessible from the Home screen by pressing the **Left** button (or from the file browser, select **Sync**). This allows you to upload new e-books to the device over WiFi or connect to Calibre.
 
 When you enter the screen, you'll be prompted to choose a network mode:

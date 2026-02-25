@@ -2,8 +2,17 @@
   "name": "ScriptDetector",
   "version": "1.0.0",
   "description": "Script detection utility for multi-script text rendering",
-  "keywords": "unicode, cjk, thai, script-detection",
+  "keywords": [
+    "unicode",
+    "cjk",
+    "thai",
+    "script-detection"
+  ],
   "dependencies": {
     "Utf8": "*"
+  },
+  "build": {
+    "srcDir": "src",
+    "includeDir": "src"
   }
 }
