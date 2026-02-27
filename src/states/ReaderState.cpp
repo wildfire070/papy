@@ -357,7 +357,8 @@ void ReaderState::enter(Core& core) {
   currentPage_ = progress.flatPage;
 
   // If at start of book and showImages enabled, begin at cover
-  if (currentSpineIndex_ == 0 && currentSectionPage_ == 0 && core.settings.showImages) {
+  // Skip for XTC — uses flat page indexing, no cover page concept in reader
+  if (type != ContentType::Xtc && currentSpineIndex_ == 0 && currentSectionPage_ == 0 && core.settings.showImages) {
     currentSectionPage_ = -1;  // Cover page
   }
 
