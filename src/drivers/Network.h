@@ -16,7 +16,7 @@ struct WifiNetwork {
 };
 
 // Network driver - ONLY used for book sync (Calibre, HTTP transfer)
-// WiFi fragments heap - device must restart after any network use
+// WiFi fragments heap - shutdown() disables radio and frees stack memory
 class Network {
  public:
   Result<void> init();
@@ -27,9 +27,6 @@ class Network {
 
   Result<void> connect(const char* ssid, const char* password);
   void disconnect();
-
-  // WiFi fragments heap - always true after any WiFi use
-  bool needsRestart() const { return initialized_; }
 
   // Get signal strength (RSSI)
   int8_t signalStrength() const;

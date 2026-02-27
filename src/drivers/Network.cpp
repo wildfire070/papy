@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <Logging.h>
 #include <WiFi.h>
+#include <esp_wifi.h>
 
 #include <algorithm>
 #include <cstring>
@@ -70,6 +71,8 @@ Result<void> Network::connect(const char* ssid, const char* password) {
     }
     delay(100);
   }
+
+  esp_wifi_set_ps(WIFI_PS_NONE);
 
   connected_ = true;
   LOG_INF(TAG, "Connected, IP: %s", WiFi.localIP().toString().c_str());
