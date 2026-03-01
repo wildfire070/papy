@@ -348,7 +348,36 @@ Once you have opened a book, the button layout changes to facilitate reading.
 
 ### System Navigation
 * **Return to Home:** Press **Back** to close the book and return to the Book Selection screen.
-* **Chapter Menu:** Press **Confirm** to open the Table of Contents/Chapter Selection screen.
+* **Reader Menu:** Press **Confirm** to open the Reader Menu (access chapters and bookmarks).
+
+### 4.1 Reader Menu
+
+Press **Confirm** while reading to open the Reader Menu. The menu provides two options:
+
+- **Chapters** — Open the Table of Contents / Chapter Selection screen
+- **Bookmarks** — Open the Bookmarks overlay for the current book
+
+Use **Left/Right** to highlight a menu item and **Confirm** to select. Press **Back** to close the menu and return to reading.
+
+### 4.2 Bookmarks
+
+The Bookmarks overlay lists all saved bookmarks for the current book, sorted by page position.
+
+#### Controls
+
+- **Back** — Close the bookmarks overlay
+- **Go** — Jump to the selected bookmark's page
+- **Add** — Bookmark the current page
+- **Del** — Remove the selected bookmark
+
+Use **Left/Right** (or **Volume Up/Down**) to move the selection cursor through the bookmark list.
+
+#### Details
+
+- Each book supports up to **20 bookmarks**. Adding a bookmark when the limit is reached is silently ignored.
+- Duplicate bookmarks at the same position are not allowed.
+- Bookmarks are **persisted to the SD card** and survive device restarts.
+- Each book has its own independent set of bookmarks.
 
 ---
 
@@ -360,7 +389,7 @@ Arabic (RTL):
 
 ![Table of Contents: Arabic](images/table-of-contents-arabic.jpg)
 
-Accessible by pressing **Confirm** while inside a book. The screen header displays the book title.
+Accessible from the Reader Menu by selecting **Chapters**. The screen header displays the book title.
 
 1.  Use **Up** or **Down** (Volume Up / Volume Down) to highlight the desired chapter.
 2.  Use **Left** or **Right** to page up or page down through the list.
