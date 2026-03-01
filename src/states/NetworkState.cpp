@@ -519,6 +519,11 @@ void NetworkState::startHotspot(Core& core) {
 void NetworkState::startWebServer(Core& core) {
   LOG_INF(TAG, "Starting web server");
 
+  // Allow ARP/DHCP to settle before binding server socket (STA mode)
+  if (!core.network.isAPMode()) {
+    delay(300);
+  }
+
   if (!server_) {
     server_.reset(new PapyrixWebServer());
     if (!server_) {

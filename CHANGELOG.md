@@ -1,5 +1,66 @@
 
 
+## v1.13.1 (2026-02-27)
+
+*  Fix XTC books always opening to cover page on enter. Issue #79 [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Network: Disable WiFi power save and fix STA mode server startup. Issues #76 [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Bump version [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+
+
+## v1.13.0 (2026-02-25)
+
+*  Fix combining mark rendering and diacritic-aware hyphenation [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  ZipFile: Replace miniz with uzlib and streaming InflateReader [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Refactor library structure [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Migrate to pioarduino platform and simplify ADC battery reading [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add structured logging system with LOG_ERR/INF/DBG macros and lazy reader font initialization [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Update docs [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Fix empty header center alignment bleeding into subsequent sibling blocks [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Add max allocatable block size to periodic heap debug log [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Fix soft-hyphen split word fragments persisting across interrupted greedy layout passes [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Update docs [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Fix displayWindow orientation transform and status bar ghosting in grayscale mode [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+
+
+## v1.12.2 (2026-02-23)
+
+*  Fix RTL flag not propagating to reused empty text blocks. Issue #64 [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+
+
+## v1.12.1 (2026-02-23)
+
+*  Fix status bar ghosting with grayscale refresh; use UTF-8 safe title truncation [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+
+
+## v1.12.0 (2026-02-22)
+
+*  Enable anti-aliasing for custom fonts; fix sleep screen grayscale ghosting. Issue #68 [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Update external fonts, rebuild with 2 bit [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Bump version [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+
+
+## v1.11.3 (2026-02-21)
+
+*  Fix. CPU throttling only activating in reader mode. Issue #70 [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+
+
+## v1.11.2 (2026-02-21)
+
+*  Update device images [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Update readme [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  PageImage: Clear background in dark mode; SleepState: Use fixed colors. Issue #67 [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Bump version [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+
+
+## v1.11.1 (2026-02-21)
+
+*  Fix code style and update CHANGELOG [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Reader: Add chapter title mode to status bar. Issue #38 [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  EpdFont: Add Vietnamese fallback to UI fonts via Noto Sans [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Update docs [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+*  Bump version [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]
+
+
 ## v1.11.0 (2026-02-21)
 
 *  Page: Add image-aware display refresh and idle CPU frequency scaling [[Pavel Liashkov](mailto:pavel.liashkov@protonmail.com)]

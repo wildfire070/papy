@@ -397,3 +397,31 @@ if (parsedSize != fileSize) {
     std::warning(std::format("Unparsed data detected: {} bytes remaining at offset 0x{:X}", fileSize - parsedSize, parsedSize));
 }
 ```
+
+---
+
+## Bookmarks
+
+### `bookmarks.bin`
+
+Stores saved bookmarks. Present in all cache directories (EPUB, FB2, TXT, Markdown, XTC).
+
+```
+Offset  Size             Description
+0x00    1                Bookmark count (uint8_t, max 20)
+0x01    72 * count       Bookmark entries
+```
+
+Each bookmark entry (72 bytes):
+
+```
+Offset  Size  Description
+0x00    2     Spine index (int16_t) — chapter index for EPUB/FB2, unused for other formats
+0x02    2     Section page (int16_t) — page within chapter/section
+0x04    4     Flat page (uint32_t) — absolute page number (used by TXT/Markdown/XTC formats)
+0x08    64    Label (char[64]) — null-terminated bookmark title
+```
+
+### `bookmarks.txt`
+
+Human-readable companion file exported alongside `bookmarks.bin`. Contains one line per bookmark with the label and page position. This file is for user reference only and is not read back by the firmware.

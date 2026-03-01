@@ -13,10 +13,8 @@
 [![Calibre](https://img.shields.io/badge/docs-Calibre_Wireless-green)](docs/calibre.md)
 
 
-A lightweight, user-friendly firmware fork for the **Xteink X4** e-paper display reader.
+A lightweight, user-friendly firmware for the **Xteink X4** e-paper display reader.
 Built using **PlatformIO** and targeting the **ESP32-C3** microcontroller.
-
-Papyrix is a fork of [CrossPoint Reader](https://github.com/daveallie/crosspoint-reader), focused on creating a light, streamlined reading experience with improved UI defaults.
 
 ![Home screen](./docs/images/device.jpg)
 
@@ -42,6 +40,7 @@ This project is **not affiliated with Xteink**; it's built as a community projec
 - [x] Markdown (.md, .markdown) file support with formatting
 - [x] Plain text (.txt, .text) file support
 - [x] Saved reading position
+- [x] Bookmarks (up to 20 per book, persisted to SD card)
 - [x] Book cover display (JPG/JPEG/PNG/BMP, case-insensitive)
 - [x] Table of contents navigation
 - [x] Image support within EPUB (JPEG/PNG/BMP, baseline JPEG only, max 2048×3072)
@@ -324,6 +323,8 @@ The first time chapters of a book are loaded, they are cached to the SD card. Su
 .papyrix/
 ├── epub_12471232/       # Each EPUB is cached to a subdirectory named `epub_<hash>`
 │   ├── progress.bin     # Stores reading progress (chapter, page, etc.)
+│   ├── bookmarks.bin    # Saved bookmarks (up to 20 per book)
+│   ├── bookmarks.txt    # Human-readable bookmark list (companion to bookmarks.bin)
 │   ├── cover.bmp        # Book cover image (once generated)
 │   ├── book.bin         # Book metadata (title, author, spine, table of contents, etc.)
 │   ├── sections/        # All chapter data is stored in the sections subdirectory
